@@ -1,4 +1,4 @@
-module('users.bert.SqueakJS.vm').requires().toRun(function() {
+module('users.bert.St78.vm').requires().toRun(function() {
 /*
  * Copyright (c) 2013 Bert Freudenberg
  *
@@ -171,18 +171,16 @@ Squeak = {
     },
 };
 
-Object.subclass('users.bert.SqueakJS.vm.Image',
+Object.subclass('users.bert.St78.vm.Image',
 'about', {
     about: function() {
     /*
     Object Format
     =============
-    Each Squeak object is a users.bert.SqueakJS.vm.Object, only SmallIntegers are JS numbers.
+    Each St78 object is a users.bert.St78.vm.Object, only SmallIntegers are JS numbers.
     Instance variables/fields reference other objects directly via the "pointers" property.
     {
-        sqClass: reference to class object
-        format: format integer as in Squeak oop header
-        hash: identity hash integer
+        stClass: reference to class object
         pointers: (optional) Array referencing inst vars + indexable fields
         words: (optional) Array of numbers (words)
         bytes: (optional) Array of numbers (bytes)
@@ -192,7 +190,7 @@ Object.subclass('users.bert.SqueakJS.vm.Image',
         isFalse: (optional) true if this is the false object
         isFloat: (optional) true if this is a Float object
         isFloatClass: (optional) true if this is the Float class
-        id: unique id integer
+        oop: unique integer
         mark: boolean (used only during GC, otherwise false)
         nextObject: linked list of objects in old space (new space objects do not have this yet)
     }
@@ -426,13 +424,13 @@ Object.subclass('users.bert.SqueakJS.vm.Image',
         return this.lastHash & 0xFFF;
     },
     instantiateClass: function(aClass, indexableSize, filler) {
-        var newObject = new users.bert.SqueakJS.vm.Object();
+        var newObject = new users.bert.St78.vm.Object();
         var hash = this.registerObject(newObject);
         newObject.initInstanceOf(aClass, indexableSize, hash, filler);
         return newObject;
     },
     clone: function(object) {
-        var newObject = new users.bert.SqueakJS.vm.Object();
+        var newObject = new users.bert.St78.vm.Object();
         var hash = this.registerObject(newObject);
         newObject.initAsClone(object, hash);
         return newObject;
@@ -512,7 +510,7 @@ Object.subclass('users.bert.SqueakJS.vm.Image',
     },
 });
 
-Object.subclass('users.bert.SqueakJS.vm.Object',
+Object.subclass('users.bert.St78.vm.Object',
 'initialization', {
     initInstanceOf: function(aClass, indexableSize, hash, filler) {
         this.sqClass = aClass;
@@ -783,7 +781,7 @@ Object.subclass('users.bert.SqueakJS.vm.Object',
     },
     methodClassForSuper: function() {//assn found in last literal
         var assn = this.getPointer(this.methodNumLits());
-        return assn.getPointer(Squeak.Assn_value);
+        return assn.getPointer(St78.Assn_value);
     },
     methodNeedsLargeFrame: function() {
         return (this.methodHeader() & 0x20000) > 0; 
@@ -820,31 +818,29 @@ Object.subclass('users.bert.SqueakJS.vm.Object',
 'as context',
 {
     contextHome: function() {
-        return this.contextIsBlock() ? this.pointers[Squeak.BlockContext_home] : this;
     },
     contextIsBlock: function() {
-        return typeof this.pointers[Squeak.BlockContext_argumentCount] === 'number';
+        return typeof this.pointers[St78.BlockContext_argumentCount] === 'number';
     },
     contextMethod: function() {
-        return this.contextHome().pointers[Squeak.Context_method];
     },
     contextSender: function() {
-        return this.pointers[Squeak.Context_sender];
+        return this.pointers[St78.Context_sender];
     },
 });
 
-Object.subclass('users.bert.SqueakJS.vm.Interpreter',
+Object.subclass('users.bert.St78.vm.Interpreter',
 'initialization', {
     initialize: function(image, display) {
-        console.log('squeak: initializing interpreter');
+        console.log('st78: initializing interpreter');
         this.image = image;
         this.image.vm = this;
         this.initConstants();
-        this.primHandler = new users.bert.SqueakJS.vm.Primitives(this, display);
+        this.primHandler = new users.bert.St78.vm.Primitives(this, display);
         this.loadImageState();
         this.initVMState();
         this.loadInitialContext();
-        console.log('squeak: interpreter ready');
+        console.log('st78: interpreter ready');
     },
     initConstants: function() {
         this.minSmallInt = -0x40000000;
@@ -854,10 +850,10 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
     },
     loadImageState: function() {
         this.specialObjects = this.image.specialObjectsArray.pointers;
-        this.specialSelectors = this.specialObjects[Squeak.splOb_SpecialSelectors].pointers;
-        this.nilObj = this.specialObjects[Squeak.splOb_NilObject];
-        this.falseObj = this.specialObjects[Squeak.splOb_FalseObject];
-        this.trueObj = this.specialObjects[Squeak.splOb_TrueObject];
+        this.specialSelectors = this.specialObjects[St78.splOb_SpecialSelectors].pointers;
+        this.nilObj = this.specialObjects[St78.splOb_NilObject];
+        this.falseObj = this.specialObjects[St78.splOb_FalseObject];
+        this.trueObj = this.specialObjects[St78.splOb_TrueObject];
     },
     initVMState: function() {
         this.byteCodeCount = 0;
@@ -893,10 +889,10 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
         this.startupTime = Date.now(); // base for millisecond clock
     },
     loadInitialContext: function() {
-        var schedAssn = this.specialObjects[Squeak.splOb_SchedulerAssociation];
-        var sched = schedAssn.getPointer(Squeak.Assn_value);
-        var proc = sched.getPointer(Squeak.ProcSched_activeProcess);
-        this.activeContext = proc.getPointer(Squeak.Proc_suspendedContext);
+        var schedAssn = this.specialObjects[St78.splOb_SchedulerAssociation];
+        var sched = schedAssn.getPointer(St78.Assn_value);
+        var proc = sched.getPointer(St78.ProcSched_activeProcess);
+        this.activeContext = proc.getPointer(St78.Proc_suspendedContext);
         this.fetchContextRegisters(this.activeContext);
         this.reclaimableContextCount = 0;
     },
@@ -916,7 +912,7 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
             // load temporary variable
             case 16: case 17: case 18: case 19: case 20: case 21: case 22: case 23: 
             case 24: case 25: case 26: case 27: case 28: case 29: case 30: case 31: 
-                this.push(this.homeContext.getPointer(Squeak.Context_tempFrameStart+(b&0xF))); break;
+                this.push(this.homeContext.getPointer(St78.Context_tempFrameStart+(b&0xF))); break;
 
             // loadLiteral
             case 32: case 33: case 34: case 35: case 36: case 37: case 38: case 39: 
@@ -930,13 +926,13 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
             case 72: case 73: case 74: case 75: case 76: case 77: case 78: case 79: 
             case 80: case 81: case 82: case 83: case 84: case 85: case 86: case 87: 
             case 88: case 89: case 90: case 91: case 92: case 93: case 94: case 95: 
-                this.push((this.method.methodGetLiteral(b&0x1F)).getPointer(Squeak.Assn_value)); break;
+                this.push((this.method.methodGetLiteral(b&0x1F)).getPointer(St78.Assn_value)); break;
 
             // storeAndPop rcvr, temp
             case 96: case 97: case 98: case 99: case 100: case 101: case 102: case 103: 
                 this.receiver.setPointer(b&7, this.pop()); break;
             case 104: case 105: case 106: case 107: case 108: case 109: case 110: case 111: 
-                this.homeContext.setPointer(Squeak.Context_tempFrameStart+(b&7), this.pop()); break;
+                this.homeContext.setPointer(St78.Context_tempFrameStart+(b&7), this.pop()); break;
 
             // Quick push
             case 112: this.push(this.receiver); break;
@@ -949,12 +945,12 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
             case 119: this.push(2); break;
 
             // Quick return
-            case 120: this.doReturn(this.receiver, this.homeContext.getPointer(Squeak.Context_sender)); break;
-            case 121: this.doReturn(this.trueObj, this.homeContext.getPointer(Squeak.Context_sender)); break;
-            case 122: this.doReturn(this.falseObj, this.homeContext.getPointer(Squeak.Context_sender)); break;
-            case 123: this.doReturn(this.nilObj, this.homeContext.getPointer(Squeak.Context_sender)); break;
-            case 124: this.doReturn(this.pop(), this.homeContext.getPointer(Squeak.Context_sender)); break;
-            case 125: this.doReturn(this.pop(), this.activeContext.getPointer(Squeak.BlockContext_caller)); break; // blockReturn
+            case 120: this.doReturn(this.receiver, this.homeContext.getPointer(St78.Context_sender)); break;
+            case 121: this.doReturn(this.trueObj, this.homeContext.getPointer(St78.Context_sender)); break;
+            case 122: this.doReturn(this.falseObj, this.homeContext.getPointer(St78.Context_sender)); break;
+            case 123: this.doReturn(this.nilObj, this.homeContext.getPointer(St78.Context_sender)); break;
+            case 124: this.doReturn(this.pop(), this.homeContext.getPointer(St78.Context_sender)); break;
+            case 125: this.doReturn(this.pop(), this.activeContext.getPointer(St78.BlockContext_caller)); break; // blockReturn
             case 126: this.nono(); break;
             case 127: this.nono(); break;
 
@@ -1092,23 +1088,23 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
     	this.lastTick = now; //used to detect wraparound of millisecond clock
         //	if(signalLowSpace) {
         //            signalLowSpace= false; //reset flag
-        //            sema= getSpecialObject(Squeak.splOb_TheLowSpaceSemaphore);
+        //            sema= getSpecialObject(St78.splOb_TheLowSpaceSemaphore);
         //            if(sema != nilObj) synchronousSignal(sema); }
         //	if(now >= nextPollTick) {
         //            ioProcessEvents(); //sets interruptPending if interrupt key pressed
         //            nextPollTick= now + 500; } //msecs to wait before next call to ioProcessEvents"
         if (this.interruptPending) {
             this.interruptPending = false; //reset interrupt flag
-            var sema = this.specialObjects[Squeak.splOb_TheInterruptSemaphore];
+            var sema = this.specialObjects[St78.splOb_TheInterruptSemaphore];
             if (!sema.isNil) this.primHandler.synchronousSignal(sema);
         }
         if ((this.nextWakeupTick !== 0) && (now >= this.nextWakeupTick)) {
             this.nextWakeupTick = 0; //reset timer interrupt
-            var sema = this.specialObjects[Squeak.splOb_TheTimerSemaphore];
+            var sema = this.specialObjects[St78.splOb_TheTimerSemaphore];
             if (!sema.isNil) this.primHandler.synchronousSignal(sema);
         }
         //	if (pendingFinalizationSignals > 0) { //signal any pending finalizations
-        //            sema= getSpecialObject(Squeak.splOb_ThefinalizationSemaphore);
+        //            sema= getSpecialObject(St78.splOb_ThefinalizationSemaphore);
         //            pendingFinalizationSignals= 0;
         //            if(sema != nilObj) primHandler.synchronousSignal(sema); }
         //if (this.semaphoresToSignal.length)
@@ -1120,27 +1116,27 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
         var lobits = nextByte & 63;
         switch (nextByte>>6) {
             case 0: this.push(this.receiver.getPointer(lobits));break;
-            case 1: this.push(this.homeContext.getPointer(Squeak.Context_tempFrameStart+lobits)); break;
+            case 1: this.push(this.homeContext.getPointer(St78.Context_tempFrameStart+lobits)); break;
             case 2: this.push(this.method.methodGetLiteral(lobits)); break;
-            case 3: this.push(this.method.methodGetLiteral(lobits).getPointer(Squeak.Assn_value)); break;
+            case 3: this.push(this.method.methodGetLiteral(lobits).getPointer(St78.Assn_value)); break;
         }
     },
     extendedStore: function( nextByte) {
         var lobits = nextByte & 63;
         switch (nextByte>>6) {
             case 0: this.receiver.setPointer(lobits, this.top()); break;
-            case 1: this.homeContext.setPointer(Squeak.Context_tempFrameStart+lobits, this.top()); break;
+            case 1: this.homeContext.setPointer(St78.Context_tempFrameStart+lobits, this.top()); break;
             case 2: this.nono(); break;
-            case 3: this.method.methodGetLiteral(lobits).setPointer(Squeak.Assn_value, this.top()); break;
+            case 3: this.method.methodGetLiteral(lobits).setPointer(St78.Assn_value, this.top()); break;
         }
     },
     extendedStorePop: function(nextByte) {
         var lobits = nextByte & 63;
         switch (nextByte>>6) {
             case 0: this.receiver.setPointer(lobits, this.pop()); break;
-            case 1: this.homeContext.setPointer(Squeak.Context_tempFrameStart+lobits, this.pop()); break;
+            case 1: this.homeContext.setPointer(St78.Context_tempFrameStart+lobits, this.pop()); break;
             case 2: this.nono(); break;
-            case 3: this.method.methodGetLiteral(lobits).setPointer(Squeak.Assn_value, this.pop()); break;
+            case 3: this.method.methodGetLiteral(lobits).setPointer(St78.Assn_value, this.pop()); break;
         }
     },
     doubleExtendedDoAnything: function(nextByte) {
@@ -1150,10 +1146,10 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
             case 1: this.send(this.method.methodGetSelector(byte3), nextByte&31, true); break;
             case 2: this.push(this.receiver.getPointer(byte3)); break;
             case 3: this.push(this.method.methodGetLiteral(byte3)); break;
-            case 4: this.push(this.method.methodGetLiteral(byte3).getPointer(Squeak.Assn_key)); break;
+            case 4: this.push(this.method.methodGetLiteral(byte3).getPointer(St78.Assn_key)); break;
             case 5: this.receiver.setPointer(byte3, this.top()); break;
             case 6: this.receiver.setPointer(byte3, this.pop()); break;
-            case 7: this.method.methodGetLiteral(byte3).setPointer(Squeak.Assn_key, this.top()); break;
+            case 7: this.method.methodGetLiteral(byte3).setPointer(St78.Assn_key, this.top()); break;
         }
     },
     jumpIfTrue: function(delta) {
@@ -1161,14 +1157,14 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
         if (top.isTrue) {this.pc += delta; return;}
         if (top.isFalse) return;
         this.push(top); //Uh-oh it's not even a boolean (that we know of ;-).  Restore stack...
-        this.send(this.specialObjects[Squeak.splOb_SelectorMustBeBoolean], 1, false);
+        this.send(this.specialObjects[St78.splOb_SelectorMustBeBoolean], 1, false);
     },
     jumpIfFalse: function(delta) {
         var top = this.pop();
         if (top.isFalse) {this.pc += delta; return;}
         if (top.isTrue) return;
         this.push(top); //Uh-oh it's not even a boolean (that we know of ;-).  Restore stack...
-        this.send(this.specialObjects[Squeak.splOb_SelectorMustBeBoolean], 1, false);
+        this.send(this.specialObjects[St78.splOb_SelectorMustBeBoolean], 1, false);
     },
     sendSpecial: function(lobits) {
         this.send(this.specialSelectors[lobits*2],
@@ -1182,7 +1178,7 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
         var lookupClass = this.getClass(newRcvr);
         if (doSuper) {
             lookupClass = this.method.methodClassForSuper();
-            lookupClass = lookupClass.getPointer(Squeak.Class_superclass);
+            lookupClass = lookupClass.getPointer(St78.Class_superclass);
         }
         var entry = this.findSelectorInClass(selector, argCount, lookupClass);
         if (entry.primIndex) {
@@ -1198,7 +1194,7 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
         var currentClass = startingClass;
         var mDict;
         while (!currentClass.isNil) {
-            mDict = currentClass.getPointer(Squeak.Class_mdict);
+            mDict = currentClass.getPointer(St78.Class_mdict);
             if (mDict.isNil) {
 //                ["MethodDict pointer is nil (hopefully due a swapped out stub)
 //                        -- raise exception #cannotInterpret:."
@@ -1215,10 +1211,10 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
                 cacheEntry.argCount = argCount;
                 return cacheEntry;
             }  
-            currentClass = currentClass.getPointer(Squeak.Class_superclass);
+            currentClass = currentClass.getPointer(St78.Class_superclass);
         }
         //Cound not find a normal message -- send #doesNotUnderstand:
-        var dnuSel = this.specialObjects[Squeak.splOb_SelectorDoesNotUnderstand];
+        var dnuSel = this.specialObjects[St78.splOb_SelectorDoesNotUnderstand];
         if (selector === dnuSel) // Cannot find #doesNotUnderstand: -- unrecoverable error.
             throw "Recursive not understood error encountered";
         var dnuMsg = this.createActualMessage(selector, argCount, startingClass); //The argument to doesNotUnderstand:
@@ -1228,20 +1224,20 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
     lookupSelectorInDict: function(mDict, messageSelector) {
         //Returns a method or nilObject
         var dictSize = mDict.pointersSize();
-        var mask = (dictSize - Squeak.MethodDict_selectorStart) - 1;
-        var index = (mask & messageSelector.hash) + Squeak.MethodDict_selectorStart;
+        var mask = (dictSize - St78.MethodDict_selectorStart) - 1;
+        var index = (mask & messageSelector.hash) + St78.MethodDict_selectorStart;
     	// If there are no nils (should always be), then stop looping on second wrap.
     	var hasWrapped = false;
         while (true) {
             var nextSelector = mDict.getPointer(index);
             if (nextSelector === messageSelector) {
-                var methArray = mDict.getPointer(Squeak.MethodDict_array);
-                return methArray.getPointer(index - Squeak.MethodDict_selectorStart);
+                var methArray = mDict.getPointer(St78.MethodDict_array);
+                return methArray.getPointer(index - St78.MethodDict_selectorStart);
             }
             if (nextSelector.isNil) return this.nilObj;
             if (++index === dictSize) {
                 if (hasWrapped) return this.nilObj;
-                index = Squeak.MethodDict_selectorStart;
+                index = St78.MethodDict_selectorStart;
                 hasWrapped = true;
             }
         }
@@ -1254,7 +1250,7 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
             this.breakOnContextChanged = false;
             this.breakOutOfInterpreter = 'break';
         }
-        if (primitiveIndex > 0)
+        if (primitiveIndex>0)
             if (this.tryPrimitive(primitiveIndex, argumentCount, newMethod))
                 return;  //Primitive succeeded -- end of story
         var newContext = this.allocateOrRecycleContext(newMethod.methodNeedsLargeFrame());
@@ -1263,16 +1259,16 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
         var newPC = 0;
     	var tempCount = newMethod.methodTempCount();
         var newSP = tempCount;
-        newSP += Squeak.Context_tempFrameStart - 1; //-1 for z-rel addressing
-        newContext.setPointer(Squeak.Context_method, newMethod);
+        newSP += St78.Context_tempFrameStart - 1; //-1 for z-rel addressing
+        newContext.setPointer(St78.Context_method, newMethod);
         //Following store is in case we alloc without init; all other fields get stored
-        newContext.setPointer(Squeak.BlockContext_initialIP, this.nilObj);
-        newContext.setPointer(Squeak.Context_sender, this.activeContext);
+        newContext.setPointer(St78.BlockContext_initialIP, this.nilObj);
+        newContext.setPointer(St78.Context_sender, this.activeContext);
         //Copy receiver and args to new context
         //Note this statement relies on the receiver slot being contiguous with args...
-        this.arrayCopy(this.activeContext.pointers, this.sp-argumentCount, newContext.pointers, Squeak.Context_tempFrameStart-1, argumentCount+1);
+        this.arrayCopy(this.activeContext.pointers, this.sp-argumentCount, newContext.pointers, St78.Context_tempFrameStart-1, argumentCount+1);
         //...and fill the remaining temps with nil
-        this.arrayFill(newContext.pointers, Squeak.Context_tempFrameStart+argumentCount, Squeak.Context_tempFrameStart+tempCount, this.nilObj);
+        this.arrayFill(newContext.pointers, St78.Context_tempFrameStart+argumentCount, St78.Context_tempFrameStart+tempCount, this.nilObj);
         this.popN(argumentCount+1);
 	    this.reclaimableContextCount++;
         this.storeContextRegisters();
@@ -1285,13 +1281,13 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
         this.pc = newPC;
         this.sp = newSP;
         this.storeContextRegisters(); // not really necessary, I claim
-        this.receiver = newContext.getPointer(Squeak.Context_receiver);
+        this.receiver = newContext.getPointer(St78.Context_receiver);
         if (this.receiver !== newRcvr)
             throw "receivers don't match";
         this.checkForInterrupts();
     },
     doReturn: function(returnValue, targetContext) {
-        if (targetContext.isNil || targetContext.getPointer(Squeak.Context_instructionPointer).isNil)
+        if (targetContext.isNil || targetContext.getPointer(St78.Context_instructionPointer).isNil)
             this.cannotReturn();
         // search up stack for unwind
         var thisContext = this.activeContext;
@@ -1300,7 +1296,7 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
                 this.cannotReturn();
             if (this.isUnwindMarked(thisContext))
                 this.aboutToReturn(returnValue,thisContext);
-            thisContext = thisContext.getPointer(Squeak.Context_sender);
+            thisContext = thisContext.getPointer(St78.Context_sender);
         }
         // no unwind to worry about, just peel back the stack (usually just to sender)
         var nextContext;
@@ -1310,9 +1306,9 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
                 this.breakOnContextReturned = null;
                 this.breakOutOfInterpreter = 'break';
             }
-            nextContext = thisContext.getPointer(Squeak.Context_sender);
-            thisContext.setPointer(Squeak.Context_sender, this.nilObj);
-            thisContext.setPointer(Squeak.Context_instructionPointer, this.nilObj);
+            nextContext = thisContext.getPointer(St78.Context_sender);
+            thisContext.setPointer(St78.Context_sender, this.nilObj);
+            thisContext.setPointer(St78.Context_instructionPointer, this.nilObj);
             if (this.reclaimableContextCount > 0) {
                 this.reclaimableContextCount--;
                 this.recycleIfPossible(thisContext);
@@ -1351,13 +1347,13 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
     },
     createActualMessage: function(selector, argCount, cls) {
         //Bundle up receiver, args and selector as a messageObject
-        var message = this.instantiateClass(this.specialObjects[Squeak.splOb_ClassMessage], 0);
-        var argArray = this.instantiateClass(this.specialObjects[Squeak.splOb_ClassArray], argCount);
+        var message = this.instantiateClass(this.specialObjects[St78.splOb_ClassMessage], 0);
+        var argArray = this.instantiateClass(this.specialObjects[St78.splOb_ClassArray], argCount);
         this.arrayCopy(this.activeContext.pointers, this.sp-argCount+1, argArray.pointers, 0, argCount); //copy args from stack
-        message.setPointer(Squeak.Message_selector, selector);
-        message.setPointer(Squeak.Message_arguments, argArray);
-        if (message.pointers.length > Squeak.Message_lookupClass) //Early versions don't have lookupClass
-            message.setPointer(Squeak.Message_lookupClass, cls);
+        message.setPointer(St78.Message_selector, selector);
+        message.setPointer(St78.Message_arguments, argArray);
+        if (message.pointers.length > St78.Message_lookupClass) //Early versions don't have lookupClass
+            message.setPointer(St78.Message_lookupClass, cls);
         return message;
     },
     primitivePerform: function(argCount) {
@@ -1378,13 +1374,13 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
         var rcvr = this.stackValue(argCount);
         var selector = this.stackValue(argCount - 1);
         var args = this.stackValue(argCount - 2);
-        if (args.sqClass !== this.specialObjects[Squeak.splOb_ClassArray])
+        if (args.sqClass !== this.specialObjects[St78.splOb_ClassArray])
             return false;
         var lookupClass = supered ? this.stackValue(argCount - 3) : this.getClass(rcvr);
         if (supered) { // verify that lookupClass is in fact in superclass chain of receiver;
             var cls = this.getClass(rcvr);
             while (cls !== lookupClass) {
-                cls = cls.pointers[Squeak.Class_superclass];
+                cls = cls.pointers[St78.Class_superclass];
 		        if (cls.isNil) return false;
             }
         }
@@ -1450,12 +1446,12 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
 },
 'contexts', {
     isContext: function(obj) {//either block or methodContext
-        if (obj.sqClass === this.specialObjects[Squeak.splOb_ClassMethodContext]) return true;
-        if (obj.sqClass === this.specialObjects[Squeak.splOb_ClassBlockContext]) return true;
+        if (obj.sqClass === this.specialObjects[St78.splOb_ClassMethodContext]) return true;
+        if (obj.sqClass === this.specialObjects[St78.splOb_ClassBlockContext]) return true;
         return false;
     },
     isMethodContext: function(obj) {
-        if (obj.sqClass === this.specialObjects[Squeak.splOb_ClassMethodContext]) return true;
+        if (obj.sqClass === this.specialObjects[St78.splOb_ClassMethodContext]) return true;
         return false;
     },
     isUnwindMarked: function(ctx) {
@@ -1468,51 +1464,51 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
         this.fetchContextRegisters(newContext);
     },
     fetchContextRegisters: function(ctxt) {
-        var meth = ctxt.getPointer(Squeak.Context_method);
+        var meth = ctxt.getPointer(St78.Context_method);
         if (this.isSmallInt(meth)) { //if the Method field is an integer, activeCntx is a block context
-            this.homeContext = ctxt.getPointer(Squeak.BlockContext_home);
-            meth = this.homeContext.getPointer(Squeak.Context_method);
+            this.homeContext = ctxt.getPointer(St78.BlockContext_home);
+            meth = this.homeContext.getPointer(St78.Context_method);
         } else { //otherwise home==ctxt
             this.homeContext = ctxt;
         }
-        this.receiver = this.homeContext.getPointer(Squeak.Context_receiver);
+        this.receiver = this.homeContext.getPointer(St78.Context_receiver);
         this.method = meth;
         this.methodBytes = meth.bytes;
-        this.pc = this.decodeSqueakPC(ctxt.getPointer(Squeak.Context_instructionPointer), meth);
+        this.pc = this.decodeSt78PC(ctxt.getPointer(St78.Context_instructionPointer), meth);
         if (this.pc < -1)
             throw "error";
-        this.sp = this.decodeSqueakSP(ctxt.getPointer(Squeak.Context_stackPointer));
+        this.sp = this.decodeSt78SP(ctxt.getPointer(St78.Context_stackPointer));
     },
     storeContextRegisters: function() {
         //Save pc, sp into activeContext object, prior to change of context
         //   see fetchContextRegisters for symmetry
         //   expects activeContext, pc, sp, and method state vars to still be valid
-        this.activeContext.setPointer(Squeak.Context_instructionPointer,this.encodeSqueakPC(this.pc, this.method));
-        this.activeContext.setPointer(Squeak.Context_stackPointer,this.encodeSqueakSP(this.sp));
+        this.activeContext.setPointer(St78.Context_instructionPointer,this.encodeSt78PC(this.pc, this.method));
+        this.activeContext.setPointer(St78.Context_stackPointer,this.encodeSt78SP(this.sp));
     },
-    encodeSqueakPC: function(intPC, method) {
-        // Squeak pc is offset by header and literals
+    encodeSt78PC: function(intPC, method) {
+        // St78 pc is offset by header and literals
         // and 1 for z-rel addressing
         return intPC + (((method.methodNumLits()+1)*4) + 1);
     },
-    decodeSqueakPC: function(squeakPC, method) {
-        return squeakPC - (((method.methodNumLits()+1)*4) + 1);
+    decodeSt78PC: function(st78PC, method) {
+        return st78PC - (((method.methodNumLits()+1)*4) + 1);
     },
-    encodeSqueakSP: function(intSP) {
+    encodeSt78SP: function(intSP) {
         // sp is offset by tempFrameStart, -1 for z-rel addressing
-        return intSP - (Squeak.Context_tempFrameStart - 1);
+        return intSP - (St78.Context_tempFrameStart - 1);
     },
-    decodeSqueakSP: function(squeakPC) {
-        return squeakPC + (Squeak.Context_tempFrameStart - 1);
+    decodeSt78SP: function(st78PC) {
+        return st78PC + (St78.Context_tempFrameStart - 1);
     },
     recycleIfPossible: function(ctxt) {
         if (!this.isMethodContext(ctxt)) return;
-        if (ctxt.pointersSize() === (Squeak.Context_tempFrameStart+Squeak.Context_smallFrameSize)) {
+        if (ctxt.pointersSize() === (St78.Context_tempFrameStart+St78.Context_smallFrameSize)) {
             // Recycle small contexts
             ctxt.setPointer(0, this.freeContexts);
             this.freeContexts = ctxt;
         } else { // Recycle large contexts
-            if (ctxt.pointersSize() !== (Squeak.Context_tempFrameStart+Squeak.Context_largeFrameSize))
+            if (ctxt.pointersSize() !== (St78.Context_tempFrameStart+St78.Context_largeFrameSize))
                 return;
             ctxt.setPointer(0, this.freeLargeContexts);
             this.freeLargeContexts = ctxt;
@@ -1529,7 +1525,7 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
                 return freebie;
             }
             this.nAllocatedContexts++;
-            return this.instantiateClass(this.specialObjects[Squeak.splOb_ClassMethodContext], Squeak.Context_largeFrameSize);
+            return this.instantiateClass(this.specialObjects[St78.splOb_ClassMethodContext], St78.Context_largeFrameSize);
         } else {
             if (!this.freeContexts.isNil) {
                 freebie = this.freeContexts;
@@ -1538,7 +1534,7 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
                 return freebie;
             }
             this.nAllocatedContexts++;
-            return this.instantiateClass(this.specialObjects[Squeak.splOb_ClassMethodContext], Squeak.Context_smallFrameSize);
+            return this.instantiateClass(this.specialObjects[St78.splOb_ClassMethodContext], St78.Context_smallFrameSize);
         }
     },
 },
@@ -1581,7 +1577,7 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
 'numbers', {
     getClass: function(obj) {
         if (this.isSmallInt(obj))
-            return this.specialObjects[Squeak.splOb_ClassInteger];
+            return this.specialObjects[St78.splOb_ClassInteger];
         return obj.sqClass;
     },
     canBeSmallInt: function(anInt) {
@@ -1652,7 +1648,7 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
     },
     allMethodsDo: function(callback) {
         // callback(classObj, methodObj, selectorObj) should return true to break out of iteration
-        var globals = this.specialObjects[Squeak.splOb_SmalltalkDictionary].pointers[1].pointers;
+        var globals = this.specialObjects[St78.splOb_SmalltalkDictionary].pointers[1].pointers;
         for (var i = 0; i < globals.length; i++) {
             var assn = globals[i];
             if (!assn.isNil) {
@@ -1683,13 +1679,13 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
         var stack = '';
         while (!ctx.isNil && limit-- > 0) {
             var block = '';
-            var method = ctx.pointers[Squeak.Context_method];
+            var method = ctx.pointers[St78.Context_method];
             if (typeof method === 'number') { // it's a block context, fetch home
-                method = ctx.pointers[Squeak.BlockContext_home].pointers[Squeak.Context_method];
+                method = ctx.pointers[St78.BlockContext_home].pointers[St78.Context_method];
                 block = '[] in ';
             };
             stack = block + this.printMethod(method) + '\n' + stack;
-            ctx = ctx.pointers[Squeak.Context_sender];
+            ctx = ctx.pointers[St78.Context_sender];
         }
         return stack;
     },
@@ -1714,12 +1710,12 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
     printActiveContext: function() {
         // temps and stack in current context
         var ctx = this.activeContext;
-        var isBlock = typeof ctx.pointers[Squeak.BlockContext_argumentCount] === 'number';
-        var homeCtx = isBlock ? ctx.pointers[Squeak.BlockContext_home] : ctx;
-        var tempCount = homeCtx.pointers[Squeak.Context_method].methodTempCount();
-        var stackBottom = this.decodeSqueakSP(0);
+        var isBlock = typeof ctx.pointers[St78.BlockContext_argumentCount] === 'number';
+        var homeCtx = isBlock ? ctx.pointers[St78.BlockContext_home] : ctx;
+        var tempCount = homeCtx.pointers[St78.Context_method].methodTempCount();
+        var stackBottom = this.decodeSt78SP(0);
         var stackTop = isBlock
-            ? this.decodeSqueakSP(homeCtx.pointers[Squeak.Context_stackPointer])
+            ? this.decodeSt78SP(homeCtx.pointers[St78.Context_stackPointer])
             : this.sp;
         var firstTemp = stackBottom + 1;
         var lastTemp = firstTemp + tempCount - 1;
@@ -1735,7 +1731,7 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
         if (isBlock) {
             stack += '\n';
             var nArgs = ctx.pointers[3];
-            var firstArg = this.decodeSqueakSP(1);
+            var firstArg = this.decodeSt78SP(1);
             var lastArg = firstArg + nArgs;
             for (var i = firstArg; i <= this.sp; i++) {
                 var obj = ctx.pointers[i];
@@ -1749,7 +1745,7 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
     },
     printByteCodes: function(aMethod, optionalIndent, optionalHighlight, optionalPC) {
         if (!aMethod) aMethod = this.method;
-        var printer = new users.bert.SqueakJS.vm.InstructionPrinter(aMethod, this);
+        var printer = new users.bert.St78.vm.InstructionPrinter(aMethod, this);
         return printer.printInstructions(optionalIndent, optionalHighlight, optionalPC);
     },
     willSendOrReturn: function() {
@@ -1788,7 +1784,7 @@ Object.subclass('users.bert.SqueakJS.vm.Interpreter',
 
 });
 
-Object.subclass('users.bert.SqueakJS.vm.Primitives',
+Object.subclass('users.bert.St78.vm.Primitives',
 'initialization', {
     initialize: function(vm, display) {
         this.vm = vm;
@@ -1947,7 +1943,7 @@ Object.subclass('users.bert.SqueakJS.vm.Primitives',
             case 76: return false; // primitiveStoreStackp (Blue Book: primitiveAsObject)
             case 77: return this.popNandPushIfOK(1, this.someInstanceOf(this.stackNonInteger(0))); // Class.someInstance
             case 78: return this.popNandPushIfOK(1, this.nextInstanceAfter(this.stackNonInteger(0))); // Object.nextInstance
-            case 79: return this.primitiveNewMethod(argCount); // Compiledmethod.new
+            case 79: return this.primitiveNewMethod(); // Compiledmethod.new
             case 80: return this.popNandPushIfOK(2,this.doBlockCopy()); // blockCopy:
             case 81: return this.primitiveBlockValue(argCount); // BlockContext.value
             case 82: return this.primitiveValueWithArgs(argCount); // BlockContext.valueWithArguments:
@@ -1992,7 +1988,7 @@ Object.subclass('users.bert.SqueakJS.vm.Primitives',
             case 121: return this.popNandPushIfOK(1, this.makeStString("/home/bert/mini.image")); //imageName
             case 122: return this.primitiveReverseDisplay(argCount); // Blue Book: primitiveImageVolume
             case 123: return false; //TODO primitiveValueUninterruptably
-            case 124: return this.popNandPushIfOK(2, this.registerSemaphore(Squeak.splOb_TheLowSpaceSemaphore));
+            case 124: return this.popNandPushIfOK(2, this.registerSemaphore(St78.splOb_TheLowSpaceSemaphore));
             case 125: return this.popNandPushIfOK(2, this.setLowSpaceThreshold());
             case 126: return false; //TODO primitiveDeferDisplayUpdates
     		case 127: return false; //TODO primitiveShowDisplayRect
@@ -2002,7 +1998,7 @@ Object.subclass('users.bert.SqueakJS.vm.Primitives',
             case 131: return this.popNandPushIfOK(1, this.vm.image.partialGC()); // GCmost
             case 132: return this.pop2andPushBoolIfOK(this.pointsTo(this.stackNonInteger(1), this.vm.top())); //Object.pointsTo
             case 133: return false; //TODO primitiveSetInterruptKey
-            case 134: return this.popNandPushIfOK(2, this.registerSemaphore(Squeak.splOb_TheInterruptSemaphore));
+            case 134: return this.popNandPushIfOK(2, this.registerSemaphore(St78.splOb_TheInterruptSemaphore));
             case 135: return this.popNandPushIfOK(1, this.millisecondClockValue());
             case 136: return this.primitiveSignalAtMilliseconds(argCount); //Delay signal:atMs:());
             case 137: return this.popNandPushIfOK(1, this.secondClock()); // seconds since Jan 1, 1901
@@ -2010,7 +2006,7 @@ Object.subclass('users.bert.SqueakJS.vm.Primitives',
             case 139: return this.popNandPushIfOK(1, this.nextObject(this.vm.top())); // Object.nextObject
             case 140: return false; // TODO primitiveBeep
             case 141: return this.primitiveClipboardText(argCount);
-            case 142: return this.popNandPushIfOK(1, this.makeStString("/users/bert/squeakvm/")); //vmPath
+            case 142: return this.popNandPushIfOK(1, this.makeStString("/users/bert/st78vm/")); //vmPath
             case 143: return false; // TODO primitiveShortAt
             case 144: return false; // TODO primitiveShortAtPut
             case 145: return false; // TODO primitiveConstantFill
@@ -2053,7 +2049,7 @@ Object.subclass('users.bert.SqueakJS.vm.Primitives',
         if (firstLiteral.pointersSize() !== 4) return false;
         var moduleName = firstLiteral.pointers[0].bytesAsString();
         var functionName = firstLiteral.pointers[1].bytesAsString();
-        console.log('squeak: named primitive "' + moduleName + '.' + functionName + '"');
+        console.log('st78: named primitive "' + moduleName + '.' + functionName + '"');
         var module = this.loadedModules[moduleName];
         if (!module) {
             if (module !== undefined) return false; // earlier load failed
@@ -2067,7 +2063,7 @@ Object.subclass('users.bert.SqueakJS.vm.Primitives',
         return false;
     },
     loadModule: function(moduleName) {
-        var module = Squeak.externalModules[moduleName] || this.builtinModules[moduleName];
+        var module = this.externalModules[moduleName] || this.builtinModules[moduleName];
         if (!module || !module.exports) return null;
         if (module.exports.initializeModule)
             module.exports.initializeModule(this);
@@ -2106,7 +2102,7 @@ Object.subclass('users.bert.SqueakJS.vm.Primitives',
             this.success = false;
             return 0;
         }
-        if (!this.isA(stackVal, Squeak.splOb_ClassLargePositiveInteger) || stackVal.bytesSize() !== 4) {
+        if (!this.isA(stackVal, St78.splOb_ClassLargePositiveInteger) || stackVal.bytesSize() !== 4) {
             this.success = false;
             return 0;
         }
@@ -2120,7 +2116,7 @@ Object.subclass('users.bert.SqueakJS.vm.Primitives',
         // Return the 32-bit quantity as a positive 32-bit integer
         if (pos32Val >= 0)
             if (this.vm.canBeSmallInt(pos32Val)) return pos32Val;
-        var lgIntClass = this.vm.specialObjects[Squeak.splOb_ClassLargePositiveInteger];
+        var lgIntClass = this.vm.specialObjects[St78.splOb_ClassLargePositiveInteger];
         var lgIntObj = this.vm.instantiateClass(lgIntClass, 4);
         var bytes = lgIntObj.bytes;
         for (var i=0; i<4; i++)
@@ -2192,7 +2188,7 @@ Object.subclass('users.bert.SqueakJS.vm.Primitives',
         var fmt = obj.format;
         if (fmt<2) return -1; //not indexable
         if (fmt===3 && this.vm.isContext(obj))
-            return obj.getPointer(Squeak.Context_stackPointer); // no access beyond top of stack?
+            return obj.getPointer(St78.Context_stackPointer); // no access beyond top of stack?
         if (fmt<6) return obj.pointersSize() - obj.instSize(); // pointers
         if (fmt<8) return obj.wordsSize(); // words
         if (fmt<12) return obj.bytesSize(); // bytes
@@ -2206,32 +2202,32 @@ Object.subclass('users.bert.SqueakJS.vm.Primitives',
         var theClass = this.vm.specialObjects[knownClass];
         while (!classOrSuper.isNil) {
             if (classOrSuper === theClass) return true;
-            classOrSuper = classOrSuper.pointers[Squeak.Class_superclass];
+            classOrSuper = classOrSuper.pointers[St78.Class_superclass];
         }
         return false;
     },
     charFromInt: function(ascii) {
-        var charTable = this.vm.specialObjects[Squeak.splOb_CharacterTable];
+        var charTable = this.vm.specialObjects[St78.splOb_CharacterTable];
         return charTable.getPointer(ascii);
     },
     makeFloat: function(value) {
-        var floatClass = this.vm.specialObjects[Squeak.splOb_ClassFloat];
+        var floatClass = this.vm.specialObjects[St78.splOb_ClassFloat];
         var newFloat = this.vm.instantiateClass(floatClass, 2);
         newFloat.float = value;
         return newFloat;
 	},
     makePointWithXandY: function(x, y) {
-        var pointClass = this.vm.specialObjects[Squeak.splOb_ClassPoint];
+        var pointClass = this.vm.specialObjects[St78.splOb_ClassPoint];
         var newPoint = this.vm.instantiateClass(pointClass, 0);
-        newPoint.setPointer(Squeak.Point_x, x);
-        newPoint.setPointer(Squeak.Point_y, y);
+        newPoint.setPointer(St78.Point_x, x);
+        newPoint.setPointer(St78.Point_y, y);
         return newPoint;
     },
     makeStString: function(jsString) {
         var bytes = [];
         for (var i = 0; i < jsString.length; ++i)
             bytes.push(jsString.charCodeAt(i) & 0xFF);
-        var stString = this.vm.instantiateClass(this.vm.specialObjects[Squeak.splOb_ClassString], bytes.length);
+        var stString = this.vm.instantiateClass(this.vm.specialObjects[St78.splOb_ClassString], bytes.length);
         stString.bytes = bytes;
         return stString;
     },
@@ -2269,7 +2265,7 @@ Object.subclass('users.bert.SqueakJS.vm.Primitives',
         if (array.format<12) // bytes...
             if (info.convertChars) return this.charFromInt(array.bytes[index-1] & 0xFF);
             else return array.bytes[index-1] & 0xFF;
-        // methods (format>=12) must simulate Squeak's method indexing
+        // methods (format>=12) must simulate St78's method indexing
         var offset = array.pointersSize() * 4;
         if (index-1-offset < 0) {this.success = false; return array;} //reading lits as bytes
         return array.bytes[index-1-offset] & 0xFF;
@@ -2309,7 +2305,7 @@ Object.subclass('users.bert.SqueakJS.vm.Primitives',
         if (convertChars) {
             // put a character...
             if (this.vm.isSmallInt(objToPut)) {this.success = false; return objToPut;}
-            if (objToPut.sqClass !== this.vm.specialObjects[Squeak.splOb_ClassCharacter])
+            if (objToPut.sqClass !== this.vm.specialObjects[St78.splOb_ClassCharacter])
                 {this.success = false; return objToPut;}
             intToPut = objToPut.getPointer(0);
             if (!(this.vm.isSmallInt(intToPut))) {this.success = false; return objToPut;}
@@ -2320,7 +2316,7 @@ Object.subclass('users.bert.SqueakJS.vm.Primitives',
         if (intToPut<0 || intToPut>255) {this.success = false; return objToPut;}
         if (array.format<8)  // bytes...
             return array.bytes[index-1] = intToPut;
-        // methods (format>=12) must simulate Squeak's method indexing
+        // methods (format>=12) must simulate St78's method indexing
         var offset = array.pointersSize() * 4;
         if (index-1-offset < 0) {this.success = false; return array;} //writing lits as bytes
         array.bytes[index-1-offset] = intToPut;
@@ -2479,33 +2475,33 @@ Object.subclass('users.bert.SqueakJS.vm.Primitives',
         var homeCtxt = rcvr;
         if(!this.vm.isContext(homeCtxt)) this.success = false;
         if(!this.success) return rcvr;
-        if (this.vm.isSmallInt(homeCtxt.getPointer(Squeak.Context_method)))
+        if (this.vm.isSmallInt(homeCtxt.getPointer(St78.Context_method)))
             // ctxt is itself a block; get the context for its enclosing method
-            homeCtxt = homeCtxt.getPointer(Squeak.BlockContext_home);
+            homeCtxt = homeCtxt.getPointer(St78.BlockContext_home);
         var blockSize = homeCtxt.pointersSize() - homeCtxt.instSize(); // could use a const for instSize
-        var newBlock = this.vm.instantiateClass(this.vm.specialObjects[Squeak.splOb_ClassBlockContext], blockSize);
-        var initialPC = this.vm.encodeSqueakPC(this.vm.pc + 2, this.vm.method); //*** check this...
-        newBlock.setPointer(Squeak.BlockContext_initialIP, initialPC);
-        newBlock.setPointer(Squeak.Context_instructionPointer, initialPC); // claim not needed; value will set it
-        newBlock.setPointer(Squeak.Context_stackPointer, 0);
-        newBlock.setPointer(Squeak.BlockContext_argumentCount, sqArgCount);
-        newBlock.setPointer(Squeak.BlockContext_home, homeCtxt);
-        newBlock.setPointer(Squeak.Context_sender, this.vm.nilObj); // claim not needed; just initialized
+        var newBlock = this.vm.instantiateClass(this.vm.specialObjects[St78.splOb_ClassBlockContext], blockSize);
+        var initialPC = this.vm.encodeSt78PC(this.vm.pc + 2, this.vm.method); //*** check this...
+        newBlock.setPointer(St78.BlockContext_initialIP, initialPC);
+        newBlock.setPointer(St78.Context_instructionPointer, initialPC); // claim not needed; value will set it
+        newBlock.setPointer(St78.Context_stackPointer, 0);
+        newBlock.setPointer(St78.BlockContext_argumentCount, sqArgCount);
+        newBlock.setPointer(St78.BlockContext_home, homeCtxt);
+        newBlock.setPointer(St78.Context_sender, this.vm.nilObj); // claim not needed; just initialized
         return newBlock;
     },
     primitiveBlockValue: function(argCount) {
         var rcvr = this.vm.stackValue(argCount);
-        if (!this.isA(rcvr, Squeak.splOb_ClassBlockContext)) return false;
+        if (!this.isA(rcvr, St78.splOb_ClassBlockContext)) return false;
         var block = rcvr;
-        var blockArgCount = block.getPointer(Squeak.BlockContext_argumentCount);
+        var blockArgCount = block.getPointer(St78.BlockContext_argumentCount);
         if (!this.vm.isSmallInt(blockArgCount)) return false;
         if (blockArgCount != argCount) return false;
-        if (!block.getPointer(Squeak.BlockContext_caller).isNil) return false;
-        this.vm.arrayCopy(this.vm.activeContext.pointers, this.vm.sp-argCount+1, block.pointers, Squeak.Context_tempFrameStart, argCount);
-        var initialIP = block.getPointer(Squeak.BlockContext_initialIP);
-        block.setPointer(Squeak.Context_instructionPointer, initialIP);
-        block.setPointer(Squeak.Context_stackPointer, argCount);
-        block.setPointer(Squeak.BlockContext_caller, this.vm.activeContext);
+        if (!block.getPointer(St78.BlockContext_caller).isNil) return false;
+        this.vm.arrayCopy(this.vm.activeContext.pointers, this.vm.sp-argCount+1, block.pointers, St78.Context_tempFrameStart, argCount);
+        var initialIP = block.getPointer(St78.BlockContext_initialIP);
+        block.setPointer(St78.Context_instructionPointer, initialIP);
+        block.setPointer(St78.Context_stackPointer, argCount);
+        block.setPointer(St78.BlockContext_caller, this.vm.activeContext);
         this.vm.popN(argCount+1);
         this.vm.newActiveContext(block);
         return true;
@@ -2513,17 +2509,17 @@ Object.subclass('users.bert.SqueakJS.vm.Primitives',
     primitiveValueWithArgs: function(argCount) {
         var block = this.vm.stackValue(1);
         var array = this.vm.stackValue(0);
-        if (!this.isA(block, Squeak.splOb_ClassBlockContext)) return false;
-        if (!this.isA(array, Squeak.splOb_ClassArray)) return false;
-        var blockArgCount = block.getPointer(Squeak.BlockContext_argumentCount);
+        if (!this.isA(block, St78.splOb_ClassBlockContext)) return false;
+        if (!this.isA(array, St78.splOb_ClassArray)) return false;
+        var blockArgCount = block.getPointer(St78.BlockContext_argumentCount);
         if (!this.vm.isSmallInt(blockArgCount)) return false;
         if (blockArgCount != array.pointersSize()) return false;
-        if (!block.getPointer(Squeak.BlockContext_caller).isNil) return false;
-        this.vm.arrayCopy(array.pointers, 0, block.pointers, Squeak.Context_tempFrameStart, blockArgCount);
-        var initialIP = block.getPointer(Squeak.BlockContext_initialIP);
-        block.setPointer(Squeak.Context_instructionPointer, initialIP);
-        block.setPointer(Squeak.Context_stackPointer, blockArgCount);
-        block.setPointer(Squeak.BlockContext_caller, this.vm.activeContext);
+        if (!block.getPointer(St78.BlockContext_caller).isNil) return false;
+        this.vm.arrayCopy(array.pointers, 0, block.pointers, St78.Context_tempFrameStart, blockArgCount);
+        var initialIP = block.getPointer(St78.BlockContext_initialIP);
+        block.setPointer(St78.Context_instructionPointer, initialIP);
+        block.setPointer(St78.Context_stackPointer, blockArgCount);
+        block.setPointer(St78.BlockContext_caller, this.vm.activeContext);
         this.vm.popN(argCount+1);
         this.vm.newActiveContext(block);
         return true;
@@ -2536,20 +2532,20 @@ Object.subclass('users.bert.SqueakJS.vm.Primitives',
         return true;
 	},
     primitiveSuspend: function() {
-        var activeProc = this.getScheduler().getPointer(Squeak.ProcSched_activeProcess);
+        var activeProc = this.getScheduler().getPointer(St78.ProcSched_activeProcess);
         if (this.vm.top() !== activeProc) return false;
         this.vm.popNandPush(1, this.vm.nilObj);
         this.transferTo(this.pickTopProcess());
         return true;
     },
     getScheduler: function() {
-        var assn = this.vm.specialObjects[Squeak.splOb_SchedulerAssociation];
-        return assn.getPointer(Squeak.Assn_value);
+        var assn = this.vm.specialObjects[St78.splOb_SchedulerAssociation];
+        return assn.getPointer(St78.Assn_value);
     },
     resume: function(newProc) {
-        var activeProc = this.getScheduler().getPointer(Squeak.ProcSched_activeProcess);
-        var activePriority = activeProc.getPointer(Squeak.Proc_priority);
-        var newPriority = newProc.getPointer(Squeak.Proc_priority);
+        var activeProc = this.getScheduler().getPointer(St78.ProcSched_activeProcess);
+        var activePriority = activeProc.getPointer(St78.Proc_priority);
+        var newPriority = newProc.getPointer(St78.Proc_priority);
         if (newPriority > activePriority) {
             this.putToSleep(activeProc);
             this.transferTo(newProc);
@@ -2559,19 +2555,19 @@ Object.subclass('users.bert.SqueakJS.vm.Primitives',
     },
     putToSleep: function(aProcess) {
         //Save the given process on the scheduler process list for its priority.
-        var priority = aProcess.getPointer(Squeak.Proc_priority);
-        var processLists = this.getScheduler().getPointer(Squeak.ProcSched_processLists);
+        var priority = aProcess.getPointer(St78.Proc_priority);
+        var processLists = this.getScheduler().getPointer(St78.ProcSched_processLists);
         var processList = processLists.getPointer(priority - 1);
         this.linkProcessToList(aProcess, processList);
     },
     transferTo: function(newProc) {
         //Record a process to be awakened on the next interpreter cycle.
         var sched = this.getScheduler();
-        var oldProc = sched.getPointer(Squeak.ProcSched_activeProcess);
-        sched.setPointer(Squeak.ProcSched_activeProcess, newProc);
-        oldProc.setPointer(Squeak.Proc_suspendedContext, this.vm.activeContext);
-        this.vm.newActiveContext(newProc.getPointer(Squeak.Proc_suspendedContext));
-        newProc.setPointer(Squeak.Proc_suspendedContext, this.vm.nilObj);
+        var oldProc = sched.getPointer(St78.ProcSched_activeProcess);
+        sched.setPointer(St78.ProcSched_activeProcess, newProc);
+        oldProc.setPointer(St78.Proc_suspendedContext, this.vm.activeContext);
+        this.vm.newActiveContext(newProc.getPointer(St78.Proc_suspendedContext));
+        newProc.setPointer(St78.Proc_suspendedContext, this.vm.nilObj);
         this.vm.reclaimableContextCount = 0;
         if (this.vm.breakOnContextChanged || this.vm.breakOnContextReturned) {
             this.vm.breakOnContextChanged = false;
@@ -2582,7 +2578,7 @@ Object.subclass('users.bert.SqueakJS.vm.Primitives',
     pickTopProcess: function() { // aka wakeHighestPriority
         //Return the highest priority process that is ready to run.
         //Note: It is a fatal VM error if there is no runnable process.
-        var schedLists = this.getScheduler().getPointer(Squeak.ProcSched_processLists);
+        var schedLists = this.getScheduler().getPointer(St78.ProcSched_processLists);
         var p = schedLists.pointersSize() - 1;  // index of last indexable field
         var processList;
         do {
@@ -2595,34 +2591,34 @@ Object.subclass('users.bert.SqueakJS.vm.Primitives',
         // Add the given process to the given linked list and set the backpointer
         // of process to its new list.
         if (this.isEmptyList(aList))
-            aList.setPointer(Squeak.LinkedList_firstLink, proc);
+            aList.setPointer(St78.LinkedList_firstLink, proc);
         else {
-            var lastLink = aList.getPointer(Squeak.LinkedList_lastLink);
-            lastLink.setPointer(Squeak.Link_nextLink, proc);
+            var lastLink = aList.getPointer(St78.LinkedList_lastLink);
+            lastLink.setPointer(St78.Link_nextLink, proc);
         }
-        aList.setPointer(Squeak.LinkedList_lastLink, proc);
-        proc.setPointer(Squeak.Proc_myList, aList);
+        aList.setPointer(St78.LinkedList_lastLink, proc);
+        proc.setPointer(St78.Proc_myList, aList);
     },
     isEmptyList: function(aLinkedList) {
-        return aLinkedList.getPointer(Squeak.LinkedList_firstLink).isNil;
+        return aLinkedList.getPointer(St78.LinkedList_firstLink).isNil;
     },
     removeFirstLinkOfList: function(aList) {
         //Remove the first process from the given linked list.
-        var first = aList.getPointer(Squeak.LinkedList_firstLink);
-        var last = aList.getPointer(Squeak.LinkedList_lastLink);
+        var first = aList.getPointer(St78.LinkedList_firstLink);
+        var last = aList.getPointer(St78.LinkedList_lastLink);
         if (first === last) {
-            aList.setPointer(Squeak.LinkedList_firstLink, this.vm.nilObj);
-            aList.setPointer(Squeak.LinkedList_lastLink, this.vm.nilObj);
+            aList.setPointer(St78.LinkedList_firstLink, this.vm.nilObj);
+            aList.setPointer(St78.LinkedList_lastLink, this.vm.nilObj);
         } else {
-            var next = first.getPointer(Squeak.Link_nextLink);
-            aList.setPointer(Squeak.LinkedList_firstLink, next);
+            var next = first.getPointer(St78.Link_nextLink);
+            aList.setPointer(St78.LinkedList_firstLink, next);
         }
-        first.setPointer(Squeak.Link_nextLink, this.vm.nilObj);
+        first.setPointer(St78.Link_nextLink, this.vm.nilObj);
         return first;
     },
     registerSemaphore: function(specialObjIndex) {
         var sema = this.vm.top();
-        if (this.isA(sema, Squeak.splOb_ClassSemaphore))
+        if (this.isA(sema, St78.splOb_ClassSemaphore))
             this.vm.specialObjects[specialObjIndex] = sema;
         else
             this.vm.specialObjects[specialObjIndex] = this.vm.nilObj;
@@ -2630,12 +2626,12 @@ Object.subclass('users.bert.SqueakJS.vm.Primitives',
     },
     primitiveWait: function() {
     	var sema = this.vm.top();
-        if (!this.isA(sema, Squeak.splOb_ClassSemaphore)) return false;
-        var excessSignals = sema.getPointer(Squeak.Semaphore_excessSignals);
+        if (!this.isA(sema, St78.splOb_ClassSemaphore)) return false;
+        var excessSignals = sema.getPointer(St78.Semaphore_excessSignals);
         if (excessSignals > 0)
-            sema.setPointer(Squeak.Semaphore_excessSignals, excessSignals - 1);
+            sema.setPointer(St78.Semaphore_excessSignals, excessSignals - 1);
         else {
-            var activeProc = this.getScheduler().getPointer(Squeak.ProcSched_activeProcess);
+            var activeProc = this.getScheduler().getPointer(St78.ProcSched_activeProcess);
             this.linkProcessToList(activeProc, sema);
             this.transferTo(this.pickTopProcess());
         }
@@ -2643,14 +2639,14 @@ Object.subclass('users.bert.SqueakJS.vm.Primitives',
     },
     primitiveSignal: function() {
 	    var sema = this.vm.top();
-        if (!this.isA(sema, Squeak.splOb_ClassSemaphore)) return false;
+        if (!this.isA(sema, St78.splOb_ClassSemaphore)) return false;
         this.synchronousSignal(sema);
         return true;
     },
     synchronousSignal: function(sema) {
     	if (this.isEmptyList(sema)) {
             // no process is waiting on this semaphore
-            sema.pointers[Squeak.Semaphore_excessSignals]++;
+            sema.pointers[St78.Semaphore_excessSignals]++;
         } else
             this.resume(this.removeFirstLinkOfList(sema));
         return;
@@ -2660,11 +2656,11 @@ Object.subclass('users.bert.SqueakJS.vm.Primitives',
         var sema = this.stackNonInteger(1);
         var rcvr = this.stackNonInteger(2);
         if (!this.success) return false;
-        if (this.isA(sema, Squeak.splOb_ClassSemaphore)) {
-            this.vm.specialObjects[Squeak.splOb_TheTimerSemaphore] = sema;
+        if (this.isA(sema, St78.splOb_ClassSemaphore)) {
+            this.vm.specialObjects[St78.splOb_TheTimerSemaphore] = sema;
             this.vm.nextWakeupTick = msTime;
         } else {
-            this.vm.specialObjects[Squeak.splOb_TheTimerSemaphore] = this.vm.nilObj;
+            this.vm.specialObjects[St78.splOb_TheTimerSemaphore] = this.vm.nilObj;
             this.vm.nextWakeupTick = 0;
         }
         this.vm.popN(argCount); // return self
@@ -2685,7 +2681,7 @@ Object.subclass('users.bert.SqueakJS.vm.Primitives',
 		var paramsArraySize = 40;
 		switch (argCount) {
 		    case 0:
-		        var arrayObj = this.vm.instantiateClass(this.vm.specialObjects[Squeak.splOb_ClassArray], paramsArraySize);
+		        var arrayObj = this.vm.instantiateClass(this.vm.specialObjects[St78.splOb_ClassArray], paramsArraySize);
 		        arrayObj.pointers = this.vm.fillArray(paramsArraySize, 0);
 		        return this.popNandPushIfOK(1, arrayObj);
 		    case 1:
@@ -2730,7 +2726,7 @@ Object.subclass('users.bert.SqueakJS.vm.Primitives',
     },
     primitiveBeDisplay: function(argCount) {
         var displayObj = this.vm.stackValue(0);
-        this.vm.specialObjects[Squeak.splOb_TheDisplay] = displayObj;
+        this.vm.specialObjects[St78.splOb_TheDisplay] = displayObj;
         this.vm.popN(argCount); // return self
         return true;
 	},
@@ -2749,12 +2745,12 @@ Object.subclass('users.bert.SqueakJS.vm.Primitives',
 	},
 	primitiveCopyBits: function(argCount) { // no rcvr class check, to allow unknown subclasses (e.g. under Turtle)
         var bitbltObj = this.vm.stackValue(argCount);
-        var bitblt = new users.bert.SqueakJS.vm.BitBlt(this.vm);
+        var bitblt = new users.bert.St78.vm.BitBlt(this.vm);
         if (!bitblt.loadBitBlt(bitbltObj)) return false;
         bitblt.copyBits();
         if (bitblt.combinationRule === 22 || bitblt.combinationRule === 32)
             this.vm.popNandPush(argCount + 1, bitblt.bitCount);
-        else if (bitblt.destForm === this.vm.specialObjects[Squeak.splOb_TheDisplay])
+        else if (bitblt.destForm === this.vm.specialObjects[St78.splOb_TheDisplay])
             this.showOnDisplay(bitblt.dest, bitblt.affectedRect());
         return true;
 	},
@@ -2792,8 +2788,8 @@ Object.subclass('users.bert.SqueakJS.vm.Primitives',
         return true;
     },
     redrawFullDisplay: function() {
-        var displayObj = this.vm.specialObjects[Squeak.splOb_TheDisplay];
-        var display = (new users.bert.SqueakJS.vm.BitBlt()).loadForm(displayObj);
+        var displayObj = this.vm.specialObjects[St78.splOb_TheDisplay];
+        var display = (new users.bert.St78.vm.BitBlt()).loadForm(displayObj);
         var bounds = {x: 0, y: 0, w: display.width, h: display.height};
         this.showOnDisplay(display, bounds);
     },
@@ -2904,7 +2900,7 @@ Object.subclass('users.bert.SqueakJS.vm.Primitives',
         return this.pos32BitIntFor(seconds);
     },
 });
-Object.subclass('users.bert.SqueakJS.vm.BitBlt',
+Object.subclass('users.bert.St78.vm.BitBlt',
 'initialization', {
     initialize: function(vm) {
         this.vm = vm;
@@ -2919,32 +2915,32 @@ Object.subclass('users.bert.SqueakJS.vm.BitBlt',
     loadBitBlt: function(bitbltObj) {
         var bitblt = bitbltObj.pointers;
         this.success = true;
-        this.destForm = bitblt[Squeak.BitBlt_dest];
+        this.destForm = bitblt[St78.BitBlt_dest];
         this.dest = this.loadForm(this.destForm);
         if (!this.dest) return false;
-        this.sourceForm = bitblt[Squeak.BitBlt_source];
+        this.sourceForm = bitblt[St78.BitBlt_source];
         if (!this.sourceForm.isNil) {
             this.source = this.loadForm(this.sourceForm);
             if (!this.source) return false;
         }
-        this.halftone = this.loadHalftone(bitblt[Squeak.BitBlt_halftone]);
-        this.combinationRule = bitblt[Squeak.BitBlt_combinationRule];
-        this.destX = this.intOrFloatIfNil(bitblt[Squeak.BitBlt_destX], 0);
-        this.destY = this.intOrFloatIfNil(bitblt[Squeak.BitBlt_destY], 0);
-        this.width = this.intOrFloatIfNil(bitblt[Squeak.BitBlt_width], this.dest.width);
-        this.height = this.intOrFloatIfNil(bitblt[Squeak.BitBlt_height], this.dest.height);
-        this.clipX = this.intOrFloatIfNil(bitblt[Squeak.BitBlt_clipX], 0);
-        this.clipY = this.intOrFloatIfNil(bitblt[Squeak.BitBlt_clipY], 0);
-        this.clipW = this.intOrFloatIfNil(bitblt[Squeak.BitBlt_clipW], this.dest.width);
-        this.clipH = this.intOrFloatIfNil(bitblt[Squeak.BitBlt_clipH], this.dest.height);
+        this.halftone = this.loadHalftone(bitblt[St78.BitBlt_halftone]);
+        this.combinationRule = bitblt[St78.BitBlt_combinationRule];
+        this.destX = this.intOrFloatIfNil(bitblt[St78.BitBlt_destX], 0);
+        this.destY = this.intOrFloatIfNil(bitblt[St78.BitBlt_destY], 0);
+        this.width = this.intOrFloatIfNil(bitblt[St78.BitBlt_width], this.dest.width);
+        this.height = this.intOrFloatIfNil(bitblt[St78.BitBlt_height], this.dest.height);
+        this.clipX = this.intOrFloatIfNil(bitblt[St78.BitBlt_clipX], 0);
+        this.clipY = this.intOrFloatIfNil(bitblt[St78.BitBlt_clipY], 0);
+        this.clipW = this.intOrFloatIfNil(bitblt[St78.BitBlt_clipW], this.dest.width);
+        this.clipH = this.intOrFloatIfNil(bitblt[St78.BitBlt_clipH], this.dest.height);
         if (!this.success) return false;
         if (!this.source)
             this.sourceX = this.sourceY = 0;
         else {
-            if (!this.loadColorMap(bitblt[Squeak.BitBlt_colorMap])) return false;
+            if (!this.loadColorMap(bitblt[St78.BitBlt_colorMap])) return false;
             //if ((this.cmFlags & 8) == 0) this.setUpColorMasks();
-            this.sourceX = this.intOrFloatIfNil(bitblt[Squeak.BitBlt_sourceX], 0);
-            this.sourceY = this.intOrFloatIfNil(bitblt[Squeak.BitBlt_sourceY], 0);
+            this.sourceX = this.intOrFloatIfNil(bitblt[St78.BitBlt_sourceX], 0);
+            this.sourceY = this.intOrFloatIfNil(bitblt[St78.BitBlt_sourceY], 0);
         }
         this.mergeFn = this.makeMergeFn(this.combinationRule);
         return true;
@@ -2989,10 +2985,10 @@ Object.subclass('users.bert.SqueakJS.vm.BitBlt',
     loadForm: function(formObj) {
         if (formObj.isNil) return null;
         var form = {};
-        form.bits = formObj.pointers[Squeak.Form_bits].words;
-        form.depth = formObj.pointers[Squeak.Form_depth];
-        form.width = formObj.pointers[Squeak.Form_width];
-        form.height = formObj.pointers[Squeak.Form_height];
+        form.bits = formObj.pointers[St78.Form_bits].words;
+        form.depth = formObj.pointers[St78.Form_depth];
+        form.width = formObj.pointers[St78.Form_width];
+        form.height = formObj.pointers[St78.Form_height];
         if (!(form.width >= 0 && form.height >= 0)) return null; // checks for int
         if (!form.bits) return null;    // checks for words
         form.msb = form.depth > 0;
@@ -3451,7 +3447,7 @@ Object.subclass('users.bert.SqueakJS.vm.BitBlt',
     },
 });
 
-Object.subclass('users.bert.SqueakJS.vm.InstructionPrinter',
+Object.subclass('users.bert.St78.vm.InstructionPrinter',
 'initialization', {
     initialize: function(method, vm) {
         this.method = method;
@@ -3465,7 +3461,7 @@ Object.subclass('users.bert.SqueakJS.vm.InstructionPrinter',
         this.highlight = highlight;     // prepend to highlighted line
         this.highlightPC = highlightPC; // PC of highlighted line
         this.result = '';
-        this.scanner = new users.bert.SqueakJS.vm.InstructionStream(this.method, this.vm);
+        this.scanner = new users.bert.St78.vm.InstructionStream(this.method, this.vm);
         this.oldPC = this.scanner.pc;
         var end = this.method.methodEndPC();
     	while (this.scanner.pc < end)
@@ -3553,7 +3549,7 @@ Object.subclass('users.bert.SqueakJS.vm.InstructionPrinter',
     },
 });
 
-Object.subclass('users.bert.SqueakJS.vm.InstructionStream',
+Object.subclass('users.bert.St78.vm.InstructionStream',
 'initialization', {
     initialize: function(method, vm) {
         this.vm = vm;

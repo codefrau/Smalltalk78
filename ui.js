@@ -1,4 +1,4 @@
-module('users.bert.SqueakJS.ui').requires("lively.data.FileUpload").toRun(function() {
+module('users.bert.St78.ui').requires("lively.data.FileUpload").toRun(function() {
 /*
  * Copyright (c) 2013 Bert Freudenberg
  *
@@ -21,9 +21,9 @@ module('users.bert.SqueakJS.ui').requires("lively.data.FileUpload").toRun(functi
  * THE SOFTWARE.
  */
 
-lively.data.FileUpload.Handler.subclass('users.bert.SqueakJS.ui.SqueakLoader', {
+lively.data.FileUpload.Handler.subclass('users.bert.St78.ui.St78Loader', {
     handles: function(file) {
-        return file.type == 'application/squeak-image' || file.name.match(/\.image$/);
+        return file.type == 'application/st78-image' || file.name.match(/\.st78image$/);
     },
     getUploadSpec: function(evt, file) {
         return {readMethod: "asArrayBuffer"}
@@ -32,11 +32,11 @@ lively.data.FileUpload.Handler.subclass('users.bert.SqueakJS.ui.SqueakLoader', {
         this.openImage(this.file.name, this.file.type, evt.target.result, this.pos);
     },
     openImage: function(name, mime, buffer, pos) {
-        var morph = this.findSqueakMorph();
+        var morph = this.findSt78Morph();
         if (morph) return morph.loadImageFromBuffer(buffer, name);
-        alert("Please open a Squeak morph first");
+        alert("Please open an St78 morph first");
     },
-    findSqueakMorph: function() {
+    findSt78Morph: function() {
         return $world.submorphs.detect(function(morph){return !!morph.loadImageFromBuffer});
     },
 });
