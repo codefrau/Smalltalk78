@@ -530,7 +530,6 @@ Object.subclass('users.bert.St78.vm.Object',
         var entry = image.otAt(this.oop);
         var addr = image.dataAddress(this.oop);
         var classOop = image.classOfOop(this.oop);
-        this.otEntry = entry;
         this.stClass = oopMap[classOop];
         var instSize = image.fieldOfObject(3, classOop) >> 1;
         var objBytes = instSize & 0x1000
@@ -589,6 +588,9 @@ Object.subclass('users.bert.St78.vm.Object',
     },
 },
 'as class', {
+    isClass: function() {
+        return this.stClass.oop === St78.OTI_CLCLASS;
+    },
     superclass: function() {
         return this.pointers[5];
     },
@@ -598,6 +600,11 @@ Object.subclass('users.bert.St78.vm.Object',
         return Strings.format('stObj(%s)',
             this.stClass.constructor == users.bert.St78.vm.Object ? this.stInstName() : this.stClass);
     },
+    className: function() {
+        var classNameObj = this.pointers[St78.PI_CLASS_TITLE];
+        if (!classNameObj.stClass) return "???";
+        return classNameObj.bytesAsString();
+    },
     stInstName: function() {
         if (!this.stClass || !this.stClass.pointers) return "???";
         if (this.oop === 0) return "nil";
@@ -605,9 +612,7 @@ Object.subclass('users.bert.St78.vm.Object',
         if (this.oop === 8) return "true";
         if (this.stClass.oop === 0xC0) return "'" + this.bytesAsString() + "'";
         if (this.stClass.oop === 0x340) return "#" + this.bytesAsString();
-        var classNameObj = this.stClass.pointers[0];
-        if (!classNameObj.stClass) return "???";
-        var className = classNameObj.bytesAsString();
+        var className = this.stClass.className();
         return (/^[aeiou]/i.test(className) ? 'an ' : 'a ') + className;
     },
     slotNameAt: function(index) {
@@ -1597,7 +1602,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     printMethod: function(aMethod) {
         // return a 'class>>selector' description for the method
         // in old images this is expensive, we have to search all classes
-        if (!aMethod) aMethod = this.activeContext.contextMethod();
+        if (!aMethod) aMethod = this.method;
         var found;
         this.allMethodsDo(function(classObj, methodObj, selectorObj) {
             if (methodObj === aMethod)
@@ -1607,24 +1612,18 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
     allMethodsDo: function(callback) {
         // callback(classObj, methodObj, selectorObj) should return true to break out of iteration
-        var globals = this.specialObjects[St78.splOb_SmalltalkDictionary].pointers[1].pointers;
+        var globals = this.image.globals.pointers[St78.PI_SYMBOLTABLE_VALUES].pointers;
         for (var i = 0; i < globals.length; i++) {
-            var assn = globals[i];
-            if (!assn.isNil) {
-                var assnVal = assn.pointers[1];
-                if (assnVal.pointers && assnVal.pointers.length >= 9) {
-                    var clsAndMeta = [assnVal, assnVal.sqClass];
-                    for (var c = 0; c < clsAndMeta.length; c++) {
-                        var cls = clsAndMeta[c];
-                        var mdict = cls.pointers[1];
-                        if (!mdict.pointers || !mdict.pointers[1]) continue;
-                        var methods = mdict.pointers[1].pointers;
-                        if (!methods) continue;
-                        var selectors = mdict.pointers;
-                        for (var j = 0; j < methods.length; j++) {
-                            if (callback.call(this, cls, methods[j], selectors[2+j]))
-                                return;
-                        }
+            var objRef = globals[i];
+            if (!objRef.isNil) {
+                var cls = objRef.pointers[St78.PI_OBJECTREFERENCE_VALUE];
+                if (cls.isClass()) {
+                    var mdict = cls.pointers[St78.PI_CLASS_MDICT];
+                    var selectors = mdict.pointers[St78.PI_MESSAGEDICT_OBJECTS].pointers;
+                    var methods = mdict.pointers[St78.PI_MESSAGEDICT_METHODS].pointers;
+                    for (var j = 0; j < methods.length; j++) {
+                        if (callback.call(this, cls, methods[j], selectors[j]))
+                            return;
                     }
                 }
             }
@@ -1635,6 +1634,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         if (typeof ctx == "number") {limit = ctx; ctx = null;}
         if (!ctx) ctx = this.activeContext;
         if (!limit) limit = 100;
+        return 'current method: ' + this.printMethod() + '\n';
         var stack = '';
         while (!ctx.isNil && limit-- > 0) {
             var block = '';
@@ -1668,37 +1668,12 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
     printActiveContext: function() {
         // temps and stack in current context
-        var ctx = this.activeContext;
-        var isBlock = typeof ctx.pointers[St78.BlockContext_argumentCount] === 'number';
-        var homeCtx = isBlock ? ctx.pointers[St78.BlockContext_home] : ctx;
-        var tempCount = homeCtx.pointers[St78.Context_method].methodTempCount();
-        var stackBottom = this.decodeSt78SP(0);
-        var stackTop = isBlock
-            ? this.decodeSt78SP(homeCtx.pointers[St78.Context_stackPointer])
-            : this.sp;
-        var firstTemp = stackBottom + 1;
-        var lastTemp = firstTemp + tempCount - 1;
-        var stack = '';
-        for (var i = stackBottom; i <= stackTop; i++) {
-            var obj = homeCtx.pointers[i];
-            var value = obj.sqInstName ? obj.sqInstName() : obj.toString();
-            var label = '';
-            if (i == stackBottom) label = '=rcvr'; else
-            if (i <= lastTemp) label = '=tmp' + (i - firstTemp);
-            stack += '\nctx[' + i + ']' + label +': ' + value;
-        }
-        if (isBlock) {
-            stack += '\n';
-            var nArgs = ctx.pointers[3];
-            var firstArg = this.decodeSt78SP(1);
-            var lastArg = firstArg + nArgs;
-            for (var i = firstArg; i <= this.sp; i++) {
-                var obj = ctx.pointers[i];
-                var value = obj.sqInstName ? obj.sqInstName() : obj.toString();
-                var label = '';
-                if (i <= lastArg) label = '=arg' + (i - firstArg);
-                stack += '\nblk[' + i + ']' + label +': ' + value;
-            }
+        var stack = Strings.format("\npc: %s\nsp: %s\n", this.pc, this.sp);
+        var ctx = this.activeContextPointers;
+        for (var i = this.sp - 5; i < ctx.length - 3; i++) {
+            var obj = ctx[i];
+            var value = obj.stInstName ? obj.stInstName() : obj;
+            stack += Strings.format('\nctx[%s]: %s', i, value);
         }
         return stack;
     },
@@ -3406,6 +3381,7 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
 },
 'printing', {
     printInstructions: function(indent, highlight, highlightPC) {
+        return "<instruction printing not implemented yet>";
         // all args are optional
         this.indent = indent;           // prepend to every line except if highlighted
         this.highlight = highlight;     // prepend to highlighted line
