@@ -293,6 +293,8 @@ Object.subclass('users.bert.St78.vm.Image',
         this.oldSpaceBytes = 0;
         var reader = new users.bert.St78.vm.ImageReader(objTable, objSpace, dataBias);
         var oopMap = reader.readObjects();
+        this.oopMap = oopMap;  // ***For testing -  don't want to leave this in here
+        this.specialOopsObj = oopMap.specialOopsObj;
         // link all objects into oldspace
         var prevObj;
         for (var oop = 0; oop < objTable.length / 4; oop += 4)
@@ -311,8 +313,22 @@ Object.subclass('users.bert.St78.vm.Image',
         oopMap[St78.OTI_TRUE].isTrue = true;
         oopMap[St78.OTI_FALSE].isFalse = true;
         this.globals = oopMap[St78.OTI_SMALLTALK];
-        this.process = oopMap[St78.OTI_THEPROCESS];
+        this.userProcess = oopMap[St78.OTI_THEPROCESS];
     },
+    mapOopToObject: function(oop) {
+        // find the new object with the given oop
+        return this.oopMap[oop];
+        
+        // For some reason this code does not work
+        // When if works, we can stop saving oopMap as a property in initialize
+        var obj = this.firstOldObject;
+        do {if (obj.oop == oop) return obj;
+            obj = obj.nextObject;
+        }
+        while (obj != null)
+        return null
+    }
+
 },
 'garbage collection', {
     partialGC: function() {
@@ -641,7 +657,8 @@ Object.subclass('users.bert.St78.vm.Object',
         return (this.methodHeader()>>18) & 63; 
     },
     methodGetLiteral: function(zeroBasedIndex) {
-        return this.getPointer(1+zeroBasedIndex); // step over header
+        if (!this.pointers) debugger;  // All methods should be converted before access
+        return this.getPointer(zeroBasedIndex);
     },
     methodGetSelector: function(zeroBasedIndex) {
         return this.getPointer(1+zeroBasedIndex); // step over header 
@@ -699,8 +716,15 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.millisecondClockMask = this.maxSmallInt >> 1; //keeps ms logic in small int range
     },
     loadImageState: function() {
-        this.specialObjects = this.image.specialObjectsArray.pointers;
-        this.specialSelectors = this.specialObjects[St78.splOb_SpecialSelectors].pointers;
+        // The following is an object in the GC space
+        this.specialObjects = this.image.specialOopsVector.pointers;
+        // However the following is an array in the JS space but not accesible to GC
+        this.specialSelectors =
+            [5, 6, 7, 8, 9, 10, 11, 12, 
+            13, 14, 15, 17, 18, 19, 20, 21, 
+            22, 23, 24, 25, 26, 27, 28, 29, 
+            30, 31, 33, 34, 35, 36, 37, 38].map(
+                function(ix) {return this.specialObjects[ix]}, this);
         this.nilObj = this.specialObjects[St78.splOb_NilObject];
         this.falseObj = this.specialObjects[St78.splOb_FalseObject];
         this.trueObj = this.specialObjects[St78.splOb_TrueObject];
@@ -739,13 +763,40 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.startupTime = Date.now(); // base for millisecond clock
     },
     loadInitialContext: function() {
+        this.activeContext = this.image.userProcess;
+        this.activeContextPointers = this.activeContext.pointers;
+        this.currentFrameIndex = (this.activeContextPointers.length - this.activeContextPointers[2]) + 1;
+        this.method = this.activeContextPointers[this.currentFrameIndex + St78.FI_METHOD];
+        this.methodBytes = this.method.bytes;
+        this.ensureLiterals(this.activeContextPointers[this.currentFrameIndex + St78.FI_METHOD]);
+        this.receiver = this.activeContextPointers[this.currentFrameIndex + St78.FI_METHOD];
+        var initialPC = this.methodBytes[1];
+        this.pc = initialPC-2; // must be off by two for header
+        this.sp = this.currentFrameIndex - 1;
+        
+        /* old squeak stuff...
         var schedAssn = this.specialObjects[St78.splOb_SchedulerAssociation];
         var sched = schedAssn.getPointer(St78.Assn_value);
         var proc = sched.getPointer(St78.ProcSched_activeProcess);
         this.activeContext = proc.getPointer(St78.Proc_suspendedContext);
         this.fetchContextRegisters(this.activeContext);
         this.reclaimableContextCount = 0;
+        */
     },
+    ensureLiterals: function(method) {
+        // If this method has literals, make a proper pointer object for them
+        if (this.pointers) return // already converted
+        var byte1 = method.bytes[1];
+        if (byte1 == 128) return;  // quick method
+        var numLits = ((byte1 & 126) - 4) / 2;
+        if (numLits == 0) return; // no literals
+        var lits = new Array(numLits);
+        for (var i=0; i<numLits; i++) {
+            lits[i] = this.image.mapOopToObject(method.bytes[i*2+3]*256 + method.bytes[i*2+2])
+        }
+        method.pointers = lits;
+}
+
 },
 'interpreting', {
     interpretOne: function() {
@@ -776,53 +827,66 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             case 72: case 73: case 74: case 75: case 76: case 77: case 78: case 79: 
             case 80: case 81: case 82: case 83: case 84: case 85: case 86: case 87: 
             case 88: case 89: case 90: case 91: case 92: case 93: case 94: case 95: 
-                this.push((this.method.methodGetLiteral(b&0x1F)).getPointer(St78.Assn_value)); break;
-
-            // storeAndPop rcvr, temp
             case 96: case 97: case 98: case 99: case 100: case 101: case 102: case 103: 
-                this.receiver.setPointer(b&7, this.pop()); break;
             case 104: case 105: case 106: case 107: case 108: case 109: case 110: case 111: 
-                this.homeContext.setPointer(St78.Context_tempFrameStart+(b&7), this.pop()); break;
+                //this.push((this.method.methodGetLiteral(b&0x3F)).getPointer(St78.Assn_value)); break;
+                this.push((this.method.methodGetLiteral(b&0x3F)).getPointer(0)); break;
 
-            // Quick push
-            case 112: this.push(this.receiver); break;
-            case 113: this.push(this.trueObj); break;
-            case 114: this.push(this.falseObj); break;
-            case 115: this.push(this.nilObj); break;
-            case 116: this.push(-1); break;
-            case 117: this.push(0); break;
-            case 118: this.push(1); break;
-            case 119: this.push(2); break;
-
-            // Quick return
-            case 120: this.doReturn(this.receiver, this.homeContext.getPointer(St78.Context_sender)); break;
-            case 121: this.doReturn(this.trueObj, this.homeContext.getPointer(St78.Context_sender)); break;
-            case 122: this.doReturn(this.falseObj, this.homeContext.getPointer(St78.Context_sender)); break;
-            case 123: this.doReturn(this.nilObj, this.homeContext.getPointer(St78.Context_sender)); break;
-            case 124: this.doReturn(this.pop(), this.homeContext.getPointer(St78.Context_sender)); break;
-            case 125: this.doReturn(this.pop(), this.activeContext.getPointer(St78.BlockContext_caller)); break; // blockReturn
-            case 126: this.nono(); break;
-            case 127: this.nono(); break;
+            // Quick loads
+            case 112: this.nono(); break;
+            case 113: this.push(this.receiver); break;
+            case 114: case 115: case 116: case 117: case 118: case 119: 
+                this.nono(); break;
+            // Push constant (-1, 0, 1, 2, 10, nil, false, true)
+            case 120: case 121: case 122: case 123: case 124: case 125: case 126: case 127: 
+                this.push(this.specialObjects[(b&7)+1]); break;
 
             // Sundry
-            case 128: this.extendedPush(this.nextByte()); break;
-            case 129: this.extendedStore(this.nextByte()); break;
-            case 130: this.extendedStorePop(this.nextByte()); break;
-            // singleExtendedSend
-            case 131: b2 = this.nextByte(); this.send(this.method.methodGetSelector(b2&31), b2>>5, false); break;
-            case 132: this.doubleExtendedDoAnything(this.nextByte()); break;
-            // singleExtendedSendToSuper
-            case 133: b2= this.nextByte(); this.send(this.method.methodGetSelector(b2&31), b2>>5, true); break;
-            // secondExtendedSend
-            case 134: b2= this.nextByte(); this.send(this.method.methodGetSelector(b2&63), b2>>6, false); break;
-            case 135: this.pop(); break;	// pop
-            case 136: this.push(this.top()); break;	// dup
-            // thisContext
-            case 137: this.push(this.activeContext); this.reclaimableContextCount = 0; break;
-
-            //Unused...
-            case 138: case 139: case 140: case 141: case 142: case 143: 
-                this.nono(); break;
+			case 128:
+				this.doStore(this.pop(), this.nextByte()); break;  // STOPOP
+			case 129:
+				this.doStore(this.top(), this.nextByte()); break;  // STONP
+			case 130:
+				this.pop(); break;	// POP
+			case 131:	// RETURN
+				reply= pop_();
+				while (fSP < fBP)
+					refd(pop_());		// pop eval stack and temps
+				leave(reply);
+				break;
+			case 132:	// REMLV
+				leave(pop_());			// stack must be otherwise empty
+				break;
+			case 133:	// PUSHCURRENT
+				push(fProcessOop);
+				break;
+			case 134:	// SUPER
+				fNextSendToSuper= true;
+				break; //**continue stepping;		// goto start
+			case 135:	// LSELF (cf. 0x71 above)
+				push(receiver());
+				break;
+			case 136:	// X LDINST
+				push(body(receiver()).getPointer(nextByte()));
+				break;
+			case 137:	// X LDTEMP
+				push(fProcessBody.getPointer(fBP + tempOrArgOffset(nextByte())));
+				break;
+			case 138:	// X LDLIT
+				push(fetchMethodLiteral(nextByte()));
+				break;
+			case 139:	// X LDLITI
+				push(body(fetchMethodLiteral(nextByte())).getPointer(NoteTaker.PI_OBJECTREFERENCE_VALUE));
+				break;
+			case 140:	// X SEND
+				send(fetchMethodLiteral(nextByte()));
+				break;
+			case 141:
+			case 142:
+				nono();			// illegal 0x87..0x8F
+				break;
+			case 143:	// BRKPT
+				throw new BreakpointReached(this);
 
             // Short jmp
             case 144: case 145: case 146: case 147: case 148: case 149: case 150: case 151: 
@@ -895,6 +959,51 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                 this.send(this.method.methodGetSelector(b&0xF), 2, false); break;
         }
     },
+    doStore: function (value, addrByte) {
+		// ** under construction
+		console.log("doStore " + addrByte);
+		// debugger;
+		switch (addrByte >> 4) {
+			case 0x0:	// store inst
+				this.receiver.setPointer(addrByte, value); break;
+			case 0x1:	// store temp
+				var addr= fBP + tempOrArgOffset(addrByte-0x10);  // ** fix me
+				this.activeProcessPointers[addr] = value; break;
+			case 0x2:	// store lit
+			case 0x3:
+				this.nono(); break;
+			case 0x4:	// store lit indirect
+			case 0x5:
+			case 0x6:
+		        // this.method.methodGetLiteral(addrByte&0x3F).setPointer(St78.Assn_value, value); break;
+		        this.method.methodGetLiteral(addrByte&0x3F).setPointer(0, value); break;
+			case 0x8:
+				// handle EXTENDED stores 0x88-0x8c
+				/*  ** under construction
+				int extendedAddr= nextByte();
+				switch (addrByte) {
+					case 0x88:	// STO* X LDINST
+						rcvr= body(receiver());
+						prev= rcvr.getPointer(extendedAddr);
+						rcvr.setPointer(extendedAddr, value);			// transfer refcount from stack
+						break;	
+					case 0x89:	// STO* X LDTEMP
+						addr= fBP + tempOrArgOffset(extendedAddr);
+						prev= fProcessBody.getPointer(addr);
+						fProcessBody.setPointer(addr, value);	// transfer refcount from stack
+						break;
+					case 0x8b:	// STO* X LDLITI
+                        this.method.methodGetLiteral(b&0x3F).setPointer(St78.Assn_value, value); break;
+					default:		// 0x8a (X LDLIT) and 0x8c (X SEND)
+						nono();
+				}
+				break;
+				*/
+            default:
+				nono();
+		}
+	},
+
     interpret: function(forMilliseconds) {
         // run until idle, but at most for a couple milliseconds
         // answer milliseconds to sleep (until next timer wakeup)
@@ -1391,19 +1500,19 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 'stack access', {
     pop: function() {
         //Note leaves garbage above SP.  Serious reclaim should store nils above SP
-        return this.activeContext.pointers[this.sp--];  
+        return this.activeContextPointers[this.sp++];  
     },
     popN: function(nToPop) {
-        this.sp -= nToPop;
+        this.sp += nToPop;
     },
     push: function(oop) {
-        this.activeContext.pointers[++this.sp] = oop;
+        this.activeContextPointers[--this.sp] = oop;
     },
     popNandPush: function(nToPop, oop) {
-        this.activeContext.pointers[this.sp -= nToPop - 1] = oop;
+        this.activeContextPointers[this.sp += nToPop - 1] = oop;
     },
     top: function() {
-        return this.activeContext.pointers[this.sp];
+        return this.activeContextPointers[this.sp];
     },
     stackValue: function(depthIntoStack) {
         return this.activeContext.pointers[this.sp - depthIntoStack];
@@ -3264,16 +3373,7 @@ Object.subclass('users.bert.St78.vm.BitBlt',
 		}
     },
     partitionedANDtonBitsnPartitions: function(word1, word2, nBits, nParts) {
-        /* partition mask starts at the right */
-        var mask = this.maskTable[nBits];
-        var result = 0;
-        for (var i = 1; i <= nParts; i += 1) {
-        	if ((word1 & mask) === mask)
-        		result = result | (word2 & mask);
-        	/* slide left to next partition */
-        	mask = mask << nBits;
-    	}
-        return result;
+        
 	},
 },
 'accessing', {
