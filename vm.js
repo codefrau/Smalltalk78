@@ -22,137 +22,137 @@ module('users.bert.St78.vm').requires().toRun(function() {
  */
 
 
-Squeak = {
-    // object headers
-    HeaderTypeMask: 3,
-    HeaderTypeSizeAndClass: 0, //3-word header
-    HeaderTypeClass: 1,        //2-word header
-    HeaderTypeFree: 2,         //free block
-    HeaderTypeShort: 3,        //1-word header
-    
-    // Indices into SpecialObjects array
-    splOb_NilObject: 0,
-    splOb_FalseObject: 1,
-    splOb_TrueObject: 2,
-    splOb_SchedulerAssociation: 3,
-    splOb_ClassBitmap: 4,
-    splOb_ClassInteger: 5,
-    splOb_ClassString: 6,
-    splOb_ClassArray: 7,
-    splOb_SmalltalkDictionary: 8,
-    splOb_ClassFloat: 9,
-    splOb_ClassMethodContext: 10,
-    splOb_ClassBlockContext: 11,
-    splOb_ClassPoint: 12,
-    splOb_ClassLargePositiveInteger: 13,
-    splOb_TheDisplay: 14,
-    splOb_ClassMessage: 15,
-    splOb_ClassCompiledMethod: 16,
-    splOb_TheLowSpaceSemaphore: 17,
-    splOb_ClassSemaphore: 18,
-    splOb_ClassCharacter: 19,
-    splOb_SelectorDoesNotUnderstand: 20,
-    splOb_SelectorCannotReturn: 21,
-    splOb_TheInputSemaphore: 22,
-    splOb_SpecialSelectors: 23,
-    splOb_CharacterTable: 24,
-    splOb_SelectorMustBeBoolean: 25,
-    splOb_ClassByteArray: 26,
-    splOb_ClassProcess: 27,
-    splOb_CompactClasses: 28,
-    splOb_TheTimerSemaphore: 29,
-    splOb_TheInterruptSemaphore: 30,
-    splOb_FloatProto: 31,
-    splOb_SelectorCannotInterpret: 34,
-    splOb_MethodContextProto: 35,
-    splOb_BlockContextProto: 37,
-    splOb_ExternalObjectsArray: 38,
-    splOb_ClassPseudoContext: 39,
-    splOb_ClassTranslatedMethod: 40,
-    splOb_TheFinalizationSemaphore: 41,
-    splOb_ClassLargeNegativeInteger: 42,
-    splOb_ClassExternalAddress: 43,
-    splOb_ClassExternalStructure: 44,
-    splOb_ClassExternalData: 45,
-    splOb_ClassExternalFunction: 46,
-    splOb_ClassExternalLibrary: 47,
-    splOb_SelectorAboutToReturn: 48,
-    
-    // Class layout:
-    Class_superclass: 0,
-    Class_mdict: 1,
-    Class_format: 2,
-    Class_instVars: null,   // 3 or 4 depending on image, see instVarNames()
-    Class_name: 6,
-    // Context layout:
-    Context_sender: 0,
-    Context_instructionPointer: 1,
-    Context_stackPointer: 2,
-    Context_method: 3,
-    Context_receiver: 5,
-    Context_tempFrameStart: 6,
-    Context_smallFrameSize: 17,
-    Context_largeFrameSize: 57,
-    BlockContext_caller: 0,
-    BlockContext_argumentCount: 3,
-    BlockContext_initialIP: 4,
-    BlockContext_home: 5,
-    // Stream layout:
-    Stream_array: 0,
-    Stream_position: 1,
-    Stream_limit: 2,
-    //ProcessorScheduler layout:
-    ProcSched_processLists: 0,
-    ProcSched_activeProcess: 1,
-    //Link layout:
-    Link_nextLink: 0,
-    //LinkedList layout:
-    LinkedList_firstLink: 0,
-    LinkedList_lastLink: 1,
-    //Semaphore layout:
-    Semaphore_excessSignals: 2,
-    //Process layout:
-    Proc_suspendedContext: 1,
-    Proc_priority: 2,
-    Proc_myList: 3,	
-    // Association layout:
-    Assn_key: 0,
-    Assn_value: 1,
-    // MethodDict layout:
-    MethodDict_array: 1,
-    MethodDict_selectorStart: 2,
-    // Message layout
-    Message_selector: 0,
-    Message_arguments: 1,
-    Message_lookupClass: 2,
-    // Point layout:
-    Point_x: 0,
-    Point_y: 1,
-    // LargetInteger layout:
-    LargeInteger_bytes: 0,
-    LargeInteger_neg: 1,
-    // BitBlt layout:
-    BitBlt_dest: 0,
-    BitBlt_source: 1,
-    BitBlt_halftone: 2,
-    BitBlt_combinationRule: 3,
-    BitBlt_destX: 4,
-    BitBlt_destY: 5,
-    BitBlt_width: 6,
-    BitBlt_height: 7,
-    BitBlt_sourceX: 8,
-    BitBlt_sourceY: 9,
-    BitBlt_clipX: 10,
-    BitBlt_clipY: 11,
-    BitBlt_clipW: 12,
-    BitBlt_clipH: 13,
-    BitBlt_colorMap: 14,
-    // Form layout:
-    Form_bits: 0,
-    Form_width: 1,
-    Form_height: 2,
-    Form_depth: 3,
-    
+St78 = {
+	OTI_NIL: 0,
+	OTI_FALSE: 4,
+	OTI_TRUE: 8,
+	OTI_THEPROCESS: 0xc,
+	OTI_SMALLTALK: 0x10,
+	OTI_FIRST_SEL: 0x14,
+	OTI_LAST_SEL: 0x9c,
+	OTI_USTABLE: 0xa0,
+
+	// known classes
+	OTI_CLCLASS: 0x40,
+	OTI_CLINTEGER: 0x80,	// class of SmallIntegers
+	OTI_CLSTRING: 0xc0,
+	
+	OTI_CLVECTOR: 0x100,
+	OTI_CLSTREAM: 0x140,
+	OTI_CLFLOAT: 0x180,
+	OTI_CLPROCESS: 0x1c0,
+	
+	OTI_CLREMOTECODE: 0x200,
+	OTI_CLPOINT: 0x240,
+	OTI_CLNATURAL: 0x280,
+	OTI_CLLARGEINTEGER: 0x2c0,
+	
+	// CLCLASS layout:
+	PI_CLASS_TITLE: 0,
+	PI_CLASS_MYINSTVARS: 1,
+	PI_CLASS_INSTSIZE: 2,
+	PI_CLASS_MDICT: 3,
+	PI_CLASS_CLASSVARS: 4,
+	PI_CLASS_SUPERCLASS: 5,
+	PI_CLASS_ENVIRONMENT: 6,
+	
+	// CLSTREAM layout:
+	PI_STREAM_ARRAY: 0,
+	PI_STREAM_POSITION: 1,
+	PI_STREAM_LIMIT: 2,
+	
+	// CLPROCESS layout:
+	PI_PROCESS_MINSIZE: 0,		// THEPROCESS: 128
+	PI_PROCESS_HWM: 1,			// THEPROCESS: 0
+	PI_PROCESS_TOP: 2,			// THEPROCESS: 7
+	PI_PROCESS_RESTARTCODE: 3,	// THEPROCESS: NIL
+	PI_PROCESS_STACK: 4,		// THEPROCESS: NIL
+	PN_PROCESS: 5,   	    	// number of fixed pointers
+	
+	// CLREMOTECODE layout:
+	PI_RCODE_FRAMEOFFSET: 0,
+	PI_RCODE_STARTINGPC: 1,
+	PI_RCODE_PROCESS: 2,
+	PI_RCODE_STACKOFFSET: 3,
+	
+	// CLHASHSET layout:
+	PI_HASHSET_OBJECTS: 0,
+	
+	// CLDICTIONARY layout:
+	PI_DICTIONARY_OBJECTS: 0,
+	PI_DICTIONARY_VALUES: 1,
+	
+	// CLSYMBOLTABLE layout:
+	PI_SYMBOLTABLE_OBJECTS: 0,
+	PI_SYMBOLTABLE_VALUES: 1,
+	
+	// CLMESSAGEDICT layout:
+	PI_MESSAGEDICT_OBJECTS: 0,
+	PI_MESSAGEDICT_METHODS: 1,
+	
+	// CLOBJECTREFERENCE layout:
+	PI_OBJECTREFERENCE_VALUE: 0,
+	
+	// CLCOMPILEDMETHOD layout:
+	BI_COMPILEDMETHOD_FIRSTLITERAL: 2,	// past method header
+	
+	// CLPOINT layout:
+	PI_POINT_X: 0,
+	PI_POINT_Y: 1,
+	
+	// CLLARGEINTEGER layout:
+	PI_LARGEINTEGER_BYTES: 0,
+	PI_LARGEINTEGER_NEG: 1,
+	
+	// CLBITBLT layout:
+	PI_BITBLT_FUNCTION: 0,
+	PI_BITBLT_GRAY: 1,
+	PI_BITBLT_DESTBITS: 2,
+	PI_BITBLT_DESTRASTER: 3,
+	PI_BITBLT_DESTX: 4,
+	PI_BITBLT_DESTY: 5,
+	PI_BITBLT_WIDTH: 6,
+	PI_BITBLT_HEIGHT: 7,
+	PI_BITBLT_SOURCEBITS: 8,
+	PI_BITBLT_SOURCERASTER: 9,
+	PI_BITBLT_SOURCEX: 10,
+	PI_BITBLT_SOURCEY: 11,
+	PI_BITBLT_CLIPX: 12,
+	PI_BITBLT_CLIPY: 13,
+	PI_BITBLT_CLIPWIDTH: 14,
+	PI_BITBLT_CLIPHEIGHT: 15,
+	PI_BITBLT_SOURCEFIELD: 16,
+	PI_BITBLT_DESTFIELD: 17,
+	PI_BITBLT_SOURCE: 18,
+	PI_BITBLT_DEST: 19,
+	
+	// CLFORM layout:
+	PI_FORM_EXTENT: 0,
+	PI_FORM_BITS: 1,
+	// also: offset figure ground
+	
+	// runtime indices and offsets:
+	
+	// process frame layout (off BP):
+	FI_FIRST_TEMP: -1,
+	// nominal stack frame contains six items, as follow:
+	FI_SAVED_BP: 0,
+	FI_CALLER_PC: 1,
+	FI_NUMARGS: 2,
+	FI_METHOD: 3,
+	FI_MCLASS: 4,
+	FI_RECEIVER: 5,	// top stack item in previous frame
+	// 
+	FI_LAST_ARG: 6,	// stack item in previous frame
+	//
+	F_FRAMESIZE: 5,	// don't count args nor receiver...
+	
+	// Class instSize format (assuming tagged integer!):
+	FMT_HASPOINTERS: 0x8000,
+	FMT_HASWORDS: 0x4000,
+	FMT_ISVARIABLE: 0x2000,
+	FMT_BYTELENGTH: 0x0ffe,
+
     // Event constants
     Mouse_Blue: 1,
     Mouse_Yellow: 2,
@@ -163,13 +163,94 @@ Squeak = {
     Keyboard_Cmd: 64,
     Mouse_All: 1 + 2 + 4,
     Keyboard_All: 8 + 16 + 32 + 64,
-    
-    // External modules
-    externalModules: {},
-    registerExternalModule: function(name, module) {
-        this.externalModules[name] = module;
-    },
 };
+
+Object.subclass('users.bert.St78.vm.ImageReader',
+'about', {
+    aboout: function() {
+/*
+ot is the object table, a sequence of 4-byte entries, retrievable by this.otAt(oop), where oop is an object pointer with the bottom two bits = 0.  The entry encodes the data address, along with some other bits including a reference count that we can now ignore.  The method dataAddress(oop) will retrieve the address, also taking into account the "dataBias" which I won't explain.
+
+data is the object data space, a sequence of 2-byte words, retrievable by this.fieldOfObject(i, oop), where oop is an object pointer with the bottom two bits = 0, and i is the instance field number, with 1 being the index of the first field.  An index of 0 would retrieve the class pointer of an object, but this must be masked by 0xFFC0 because the bottom 6 bits of the class word are used for the object's size in bytes.  The method classOfOop will do this for you.  This implies that all class oops have zero in the bottom 6 bits.  This worked out nicely for OOZE's zones, but we will drop all that and go to the Squeak object format or whatever Bert is using internally.  Note that if the size field is zero, then there is a word before the class with a 16-bit length.  The method lengthBitsAt decodes this for you.  It appears that the size field is the size in bytes, including the class(and size), so a string of length 1 has size=3, and a Point would have a size = 6.  
+
+The format of classes is (quoting from the system itself...
+    title	"<String> for identification, printing"
+    myinstvars "<String> partnames for compiling, printing"
+    instsize "<Integer> for storage management"
+    messagedict "<MessageDict> for communication, compiling"
+    classvars "<Dictionary/nil> compiler checks here"
+    superclass "<Class> for execution of inherited behavior"
+    environment "<Vector of SymbolTables> for external refs"
+    fieldtype
+The instsize is an integer (ie low bit = 1) with the following interpretation:
+    0x8000 - fields are pointers, else not
+    0x4000 - fields are words, else bytes
+    0x2000 - instances are variable length
+    0x0FFE - instance size in words including class
+    Thus Point has instsize = 0x8006 and Float has instsize = 04008 (nasty 3-word binary format)
+*/
+    },
+},
+'initialize', {
+    initialize: function(objTable, objSpace, bias) {
+        this.ot = objTable;
+        this.data = objSpace;
+        this.dataBias = bias;
+    }
+},
+'reading', {
+    readObjects: function() {
+        // create js objects for the st78 objects in ot+data
+        var oopMap = {};
+        for (var oop = 0; oop < this.ot.length; oop += 4)
+            if (this.refCountOf(oop))
+                oopMap[oop] = new users.bert.St78.vm.Object(oop);
+        for (var oop in oopMap)
+            oopMap[oop].installFromImage(this, oopMap);
+        return oopMap;
+    }
+}, 
+'object access', {
+    otAt: function(oop) {
+        // Return the OT entry for the given oop
+        // Decode two two-byte numbers into one 32-bit number
+        var i = oop;
+        var val = 0;
+        val = this.ot[i+1];
+        val = val*256 + this.ot[i];
+        val = val*256 + this.ot[i+3];
+        val = val*256 + this.ot[i+2];
+        return val;
+    },
+    dataAddress: function(oop) {
+        var entry = this.otAt(oop);
+        return (entry&0xFFFF) * 16 + ((entry>>16)&0x1E) - this.dataBias;
+    },
+    fieldOfObject: function(i, oop) { 
+        // i = 1 for first field after class
+    	var addr = this.dataAddress(oop);
+    	var a = addr+(2*i);
+    	return this.data[a+1]*256 + this.data[a];
+    },
+    classOfOop: function(oop) {
+        return this.fieldOfObject(0, oop) & 0xFFC0;
+    },
+    refCountOf: function (oop) {
+        return this.otAt(oop) >>> 24;
+    },
+    integerValueOf: function(oop) {
+        var val = oop>>1;
+        return (val&0x4000)*-1 + (val&0x3FFF)
+    },
+    isInteger: function(oop) {
+        return oop & 1;
+    },
+    lengthBitsAtAddr: function(addr) {
+    	var len = this.data[addr] & 0x3F;
+    	if (len > 0) return len;
+    	return this.data[addr-1] * 256 + this.data[addr-2];
+    },
+});
 
 Object.subclass('users.bert.St78.vm.Image',
 'about', {
@@ -203,121 +284,35 @@ Object.subclass('users.bert.St78.vm.Image',
     }
 },
 'initializing', {
-    initialize: function(arraybuffer, name) {
-        this.totalMemory = 100000000; 
+    initialize: function(objTable, objSpace, dataBias, name) {
         this.name = name;
-        this.readFromBuffer(arraybuffer);
-    },
-    readFromBuffer: function(arraybuffer) {
-        var data = new DataView(arraybuffer),
-            littleEndian = false,
-            pos = 0;
-        var readWord = function() {
-            var int = data.getUint32(pos, littleEndian);
-            pos += 4;
-            return int;
-        };
-        var readWords = function(n) {
-            var words = [];
-            for (var j = 0; j < n; j++)
-                words.push(readWord());
-            return words;
-        };
-        // read version
-        var version = readWord();
-        if (version != 6502) {
-            littleEndian = true; pos = 0;
-            version = readWord();
-            if (version != 6502) throw "bad image version";
-        }
-        // read header
-        var headerSize = readWord();
-        var endOfMemory = readWord(); //first unused location in heap
-        var oldBaseAddr = readWord(); //object memory base address of image
-        var specialObjectsOopInt = readWord(); //oop of array of special oops
-        this.lastHash = readWord(); //Should be loaded from, and saved to the image header
-        var savedWindowSize = readWord();
-        var fullScreenFlag = readWord();
-        var extraVMMemory = readWord();
-        pos += headerSize - (9 * 4); //skip to end of header
-        // read objects
+        this.totalMemory = 1000000; 
         this.gcCount = 0;
         this.oldSpaceCount = 0;
         this.newSpaceCount = 0;
-        this.lastId = 0;
+        this.oldSpaceBytes = 0;
+        var reader = new users.bert.St78.vm.ImageReader(objTable, objSpace, dataBias);
+        var oopMap = reader.readObjects();
+        // link all objects into oldspace
         var prevObj;
-        var oopMap = {};
-        console.log('squeak: reading objects');
-        for (var ptr = 0; ptr < endOfMemory; ) {
-            var nWords = 0;
-            var classInt = 0;
-            var header = readWord();
-            switch (header & Squeak.HeaderTypeMask) {
-                case Squeak.HeaderTypeSizeAndClass:
-                    nWords = header >> 2;
-                    classInt = readWord();
-                    header = readWord();
-                    ptr += 12;
-                    break;
-                case Squeak.HeaderTypeClass:
-                    classInt = header - Squeak.HeaderTypeClass;
-                    header = readWord();
-                    nWords = (header >> 2) & 63;
-                    ptr += 8;
-                    break;
-                case Squeak.HeaderTypeShort:
-                    nWords = (header >> 2) & 63;
-                    classInt = (header >> 12) & 31; //compact class index
-                    //Note classInt<32 implies compact class index
-                    ptr += 4;
-                    break;
-                case Squeak.HeaderTypeFree:
-                    throw "Unexpected free block";
+        for (var oop = 0; oop < objTable.length / 4; oop += 4)
+            if (oopMap[oop]) {
+                this.oldSpaceCount++;
+                this.oldSpaceBytes += oopMap[oop].totalBytes();
+                if (prevObj) prevObj.nextObject = oopMap[oop];
+                prevObj = oopMap[oop];
             }
-            var baseAddr = ptr - 4; //0-rel byte oop of this object (base header)
-            nWords--;  //length includes base header which we have already read
-            var format = ((header>>8) & 15);
-            var hash = ((header>>17) & 4095);
-            var bits = readWords(nWords);
-            ptr += nWords * 4;
-
-            var object = new users.bert.SqueakJS.vm.Object();
-            object.initFromImage(classInt, format, hash, bits);
-            this.registerObject(object);
-            if (prevObj) prevObj.nextObject = object;
-            prevObj = object;
-            //oopMap is from old oops to new objects
-            oopMap[oldBaseAddr + baseAddr] = object;
-        }
-        //create proper objects
-        var splObs         = oopMap[specialObjectsOopInt];
-        var compactClasses = oopMap[splObs.bits[Squeak.splOb_CompactClasses]].bits;
-        var floatClass     = oopMap[splObs.bits[Squeak.splOb_ClassFloat]];
-        console.log('squeak: mapping oops');
-        for (var oop in oopMap)
-            oopMap[oop].installFromImage(oopMap, compactClasses, floatClass, littleEndian);
-        this.specialObjectsArray = splObs;
-        this.decorateKnownObjects();
-        this.firstOldObject = oopMap[oldBaseAddr+4];
+        this.firstOldObject = oopMap[0];
         this.lastOldObject = prevObj;
-        this.oldSpaceCount = this.newSpaceCount;
-        this.newSpaceCount = 0; 
-        this.oldSpaceBytes = endOfMemory;
-     },
-    decorateKnownObjects: function() {
-        var splObjs = this.specialObjectsArray.pointers;
-        splObjs[Squeak.splOb_NilObject].isNil = true;
-        splObjs[Squeak.splOb_TrueObject].isTrue = true;
-        splObjs[Squeak.splOb_FalseObject].isFalse = true;
-        splObjs[Squeak.splOb_ClassFloat].isFloatClass = true;
-        this.compactClasses = this.specialObjectsArray.pointers[Squeak.splOb_CompactClasses].pointers;
-        if (!Number.prototype.sqInstName)
-            Object.defineProperty(Number.prototype, 'sqInstName', {
-                enumerable: false,
-                value: function() { return this.toString() }
-            });
-    }
-
+        this.initKnownObjects(oopMap);
+    },
+    initKnownObjects: function(oopMap) {
+        oopMap[St78.OTI_NIL].isNil = true;
+        oopMap[St78.OTI_TRUE].isTrue = true;
+        oopMap[St78.OTI_FALSE].isFalse = true;
+        this.globals = oopMap[St78.OTI_SMALLTALK];
+        this.process = oopMap[St78.OTI_THEPROCESS];
+    },
 },
 'garbage collection', {
     partialGC: function() {
@@ -512,192 +507,39 @@ Object.subclass('users.bert.St78.vm.Image',
 
 Object.subclass('users.bert.St78.vm.Object',
 'initialization', {
-    initInstanceOf: function(aClass, indexableSize, hash, filler) {
-        this.sqClass = aClass;
-        this.hash = hash;
-        var instSpec = aClass.getPointer(Squeak.Class_format);
-        var instSize = ((instSpec>>1) & 0x3F) + ((instSpec>>10) & 0xC0) - 1; //0-255
-        this.format = (instSpec>>7) & 0xF; //This is the 0-15 code
-
-        if (this.format < 8) {
-            if (this.format != 6) {
-                if (instSize + indexableSize > 0)
-                    this.pointers = this.fillArray(instSize + indexableSize, filler);
-            } else // Words
-                if (indexableSize > 0)
-                    if (aClass.isFloatClass) {
-                        this.isFloat = true;
-                        this.float = 0.0;
-                    } else
-                        this.words = this.fillArray(indexableSize, 0); 
-        } else // Bytes
-            if (indexableSize > 0)
-                this.bytes = this.fillArray(indexableSize, 0); //Methods require further init of pointers
-
-//      Definition of Squeak's format code...
-//
-//      Pointers only...
-//        0      no fields
-//        1      fixed fields only (all containing pointers)
-//        2      indexable fields only (all containing pointers)
-//        3      both fixed and indexable fields (all containing pointers)
-//        4      both fixed and indexable weak fields (all containing pointers).
-//        5      unused
-//      Bits only...
-//        6      indexable word fields only (no pointers)
-//        7      unused
-//        8-11   indexable byte fields only (no pointers) (low 2 bits are low 2 bits of size)
-//      Pointer and bits (CompiledMethods only)...
-//       12-15   compiled methods:
-//               # of literal oops specified in method header,
-//               followed by indexable bytes (same interpretation of low 2 bits as above)
+    initialize: function(oop) {
+        this.oop = oop;
     },
-    initAsClone: function(original, hash) {
-        this.sqClass = original.sqClass;
-        this.hash = hash;
-        this.format = original.format;
-        if (original.isFloat) {
-            this.isFloat = original.isFloat;
-            this.float = original.float;
-        } else {
-            if (original.pointers) this.pointers = original.pointers.slice(0);   // copy
-            if (original.words) this.words = original.words.slice(0);            // copy
-            if (original.bytes) this.bytes = original.bytes.slice(0);            // copy
+    installFromImage: function(image, oopMap) {
+        var entry = image.otAt(this.oop);
+        var addr = image.dataAddress(this.oop);
+        var classOop = image.classOfOop(this.oop);
+        this.otEntry = entry;
+        this.stClass = oopMap[classOop];
+        var instSize = image.fieldOfObject(3, classOop) >> 1;
+        var objBytes = instSize & 0x1000
+            ? image.lengthBitsAtAddr(addr) : instSize & 0x3FF;
+        if (objBytes <= 2) return; // only class
+        if (instSize & 0x4000) { // pointers
+            this.pointers = [];
+            for (var i = 1; i < objBytes/2; i++) {
+                var oop = image.fieldOfObject(i, this.oop);
+                var obj = image.isInteger(oop) ? image.integerValueOf(oop) : oopMap[oop];
+                this.pointers.push(obj);
+            }
+        } else if (instSize & 0x2000) { // words
+            this.words = [];
+            for (var i = 1; i < objBytes/2; i++) {
+                var word = image.fieldOfObject(i, this.oop);
+                this.words.push(word);
+            }
+        } else { // bytes
+            this.bytes = [];
+            for (var i = 2; i < objBytes; i++) {
+                var byte = image.data[addr + i];
+                this.bytes.push(byte);
+            }
         }
-    },
-    initFromImage: function(cls, fmt, hsh, data) {
-        // initial creation from Image, with unmapped data
-        this.sqClass = cls;
-        this.format = fmt;
-        this.hash = hsh;
-        this.bits = data;
-    },
-    installFromImage: function(oopMap, ccArray, floatClass, littleEndian) {
-        //Install this object by decoding format, and rectifying pointers
-        var ccInt = this.sqClass;
-        // map compact classes
-        if ((ccInt>0) && (ccInt<32))
-            this.sqClass = oopMap[ccArray[ccInt-1]];
-        else
-            this.sqClass = oopMap[ccInt];
-        var nWords = this.bits.length;
-        if (this.format < 5) {
-            //Formats 0...4 -- Pointer fields
-            if (nWords > 0)
-                this.pointers = this.decodePointers(nWords, this.bits, oopMap);
-        } else if (this.format >= 12) {
-            //Formats 12-15 -- CompiledMethods both pointers and bits
-            var methodHeader = this.bits[0];
-            var numLits = (methodHeader>>10) & 255;
-            this.isCompiledMethod = true;
-            this.pointers = this.decodePointers(numLits+1, this.bits, oopMap); //header+lits
-            this.bytes = this.decodeBytes(nWords-(numLits+1), this.bits, numLits+1, this.format & 3, littleEndian);
-        } else if (this.format >= 8) {
-            //Formats 8..11 -- ByteArrays (and ByteStrings)
-            if (nWords > 0)
-                this.bytes = this.decodeBytes(nWords, this.bits, 0, this.format & 3, littleEndian);
-        } else if (this.sqClass == floatClass) {
-            //Floats need two ints to be converted to double
-            this.isFloat = true;
-            this.float = this.decodeFloat(this.bits);
-        } else {
-            if (nWords > 0)
-                this.words = this.decodeWords(nWords, this.bits);
-        }
-        delete this.bits;
-        this.mark = false; // for GC
-    },
-    decodePointers: function(nWords, theBits, oopMap) {
-        //Convert small ints and look up object pointers in oopMap
-        var ptrs = [];
-        for (var i = 0; i < nWords; i++) {
-            var oldOop = theBits[i];
-            if ((oldOop&1) == 1)
-                ptrs[i] = oldOop >> 1;      // SmallInteger
-            else
-                ptrs[i] = oopMap[oldOop];   // Object
-        }
-        return ptrs;        
-    },
-    decodeWords: function(nWords, theBits) {
-        return theBits;
-    },
-    decodeBytes: function (nWords, theBits, wordOffset, fmtLowBits, littleEndian) {
-        //Adjust size for low bits and extract bytes from ints
-        var nBytes = (nWords * 4) - fmtLowBits;
-        var bytes = [];
-        var wordIx = wordOffset;
-        var fourBytes = 0;
-        for (var i = 0; i < nBytes; i++) {
-            if ((i & 3) === 0)
-                fourBytes = theBits[wordIx++];
-            bytes[i] = littleEndian
-                ? (fourBytes>>(8*(i&3)))&255        // little endian
-                : (fourBytes>>(8*(3-(i&3))))&255;   // big endian
-        }
-        return bytes;
-    },
-
-    decodeFloat: function(theBits) {
-        var buffer = new ArrayBuffer(8);
-        var data = new DataView(buffer);
-        data.setUint32(0, theBits[0], false);
-        data.setUint32(4, theBits[1], false);
-        var float = data.getFloat64(0, false);
-        return float;
-    },
-    floatData: function() {
-        var buffer = new ArrayBuffer(8);
-        var data = new DataView(buffer);
-        data.setFloat64(0, this.float, false);
-        //1st word is data.getUint32(0, false);
-        //2nd word is data.getUint32(4, false);
-        return data;
-    },
-    fillArray: function(length, filler) {
-        for (var array = [], i = 0; i < length; i++)
-            array[i] = filler;
-        return array;
-    },
-},
-'printing', {
-    toString: function() {
-        return Strings.format('sqObj(%s)',
-            this.sqClass.constructor == users.bert.SqueakJS.vm.Object ? this.sqInstName() : this.sqClass);
-    },
-    bytesAsString: function() {
-        if (!this.bytes) return '';
-        return this.bytes.map(function(char) { return String.fromCharCode(char); }).join('');
-    },
-    assnKeyAsString: function() {
-        return this.getPointer(Squeak.Assn_key).bytesAsString();  
-    },
-    slotNameAt: function(index) {
-        // one-based index
-        var instSize = this.instSize();
-        if (index <= instSize)
-            return this.sqClass.allInstVarNames()[index - 1];
-        else
-            return (index - instSize).toString();
-    },
-    sqInstName: function() {
-        if (this.isNil) return "nil";
-        if (this.isTrue) return "true";
-        if (this.isFalse) return "false";
-        var className = this.sqClass.className();
-        if (/ /.test(className))
-            return 'the ' + className;
-        var inst = '';
-        switch (className) {
-            case 'String':
-            case 'ByteString':
-            case 'WideString':
-            case 'Symbol':
-            case 'WideSymbol':
-            case 'ByteSymbol':
-                inst = ' "'+this.bytesAsString()+'"'; break;            
-        }
-        return  (/^[aeiou]/i.test(className) ? 'an ' + className : 'a ' + className) + inst;
     },
 },
 'accessing', {
@@ -714,53 +556,59 @@ Object.subclass('users.bert.St78.vm.Object',
         return this.bytes ? this.bytes.length : 0;
     },
     wordsSize: function() {
-        return this.words ? this.words.length : this.isFloat ? 2 : 0;
+        return this.words ? this.words.length : 0;
     },
-    instSize: function() {//same as class.classInstSize, but faster from format
-        if (this.format>4 || this.format==2) return 0; //indexable fields only
-        if (this.format<2) return this.pointers.length; //indexable fields only
-        return this.sqClass.classInstSize(); //0-255
+    bytesAsString: function() {
+        if (!this.bytes) return '';
+        return this.bytes.map(function(char) {
+            return String.fromCharCode(char); }).join('');
     },
-    totalBytes: function(compactClasses) { // size in bytes this object would take up in image snapshot
+    totalBytes: function() { // size in bytes this object would take up in image snapshot
         var nWords =
             this.words ? this.words.length :
-            this.isFloat ? 2 :
             this.pointers ? this.pointers.length : 0;
-        if (this.bytes) nWords += (this.bytes.length + 3) / 4 | 0; 
-        var headerWords = nWords > 63 ? 3 : compactClasses.indexOf(this.sqClass) >= 0 ? 1 : 2;
-        return (headerWords + nWords) * 4;
+        if (this.bytes) nWords += (this.bytes.length + 1) / 2 | 0; 
+        var headerWords = 3; // class + size if variable?
+        return (headerWords + nWords) * 2;
     },
 },
 'as class', {
-    classInstSize: function() {
-        // this is a class, answer number of named inst vars
-        var format = this.getPointer(Squeak.Class_format);
-        return ((format >> 10) & 0xC0) + ((format >> 1) & 0x3F) - 1;
+    superclass: function() {
+        return this.pointers[5];
     },
-    instVarNames: function() {
-        var index = this.pointers.length > 9 ? 3 : 4; // index changed in newer images
-        return (this.pointers[index].pointers || []).map(function(each) {
-            return each.bytesAsString();
-        });
+},
+'debugging', {
+    toString: function() {
+        return Strings.format('stObj(%s)',
+            this.stClass.constructor == users.bert.St78.vm.Object ? this.stInstName() : this.stClass);
+    },
+    stInstName: function() {
+        if (!this.stClass || !this.stClass.pointers) return "???";
+        if (this.oop === 0) return "nil";
+        if (this.oop === 4) return "false";
+        if (this.oop === 8) return "true";
+        if (this.stClass.oop === 0xC0) return "'" + this.bytesAsString() + "'";
+        if (this.stClass.oop === 0x340) return "#" + this.bytesAsString();
+        var classNameObj = this.stClass.pointers[0];
+        if (!classNameObj.stClass) return "???";
+        var className = classNameObj.bytesAsString();
+        return (/^[aeiou]/i.test(className) ? 'an ' : 'a ') + className;
+    },
+    slotNameAt: function(index) {
+        // one-based index
+        var vars = this.stClass.allInstVarNames();
+        return index <= vars.length ? vars[index - 1] : index.toString();
     },
     allInstVarNames: function() {
         var superclass = this.superclass();
-        if (superclass.isNil)
-            return this.instVarNames();
-        else
-            return superclass.allInstVarNames().concat(this.instVarNames());
-    },
-    superclass: function() {
-        return this.pointers[0];
-    },
-    className: function() {
-        var size = this.pointers.length;
-        var isMeta = size < 9;
-        var cls = isMeta ? this.pointers[size - 1] : this;
-        var nameObj = cls.pointers[Squeak.Class_name];
-        var name = nameObj.bytesAsString();
-        return isMeta ? name + " class" : name;
-    }
+        var vars = superclass.isNil ? [] : superclass.allInstVarNames();
+        var string = this.pointers[1].bytesAsString();
+        // remove comments, make comma-separated
+        string = string.replace(/"[^"]*"/g, ' ').replace(/\s+/g, ',');
+        if (string.length)
+            vars = vars.concat(string.split(','));
+        return vars;
+    } 
 },
 'as method', {
     methodHeader: function() {
@@ -818,11 +666,13 @@ Object.subclass('users.bert.St78.vm.Object',
 'as context',
 {
     contextHome: function() {
+        return this.contextIsBlock() ? this.pointers[St78.BlockContext_home] : this;
     },
     contextIsBlock: function() {
         return typeof this.pointers[St78.BlockContext_argumentCount] === 'number';
     },
     contextMethod: function() {
+        return this.contextHome().pointers[St78.Context_method];
     },
     contextSender: function() {
         return this.pointers[St78.Context_sender];
