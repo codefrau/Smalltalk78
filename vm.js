@@ -833,9 +833,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             case 88: case 89: case 90: case 91: case 92: case 93: case 94: case 95: 
             case 96: case 97: case 98: case 99: case 100: case 101: case 102: case 103: 
             case 104: case 105: case 106: case 107: case 108: case 109: case 110: case 111: 
-                // FIXME - need to define St78.Assn_value = 0
-                //this.push((this.method.methodGetLiteral(b&0x3F)).getPointer(St78.Assn_value)); break;
-                this.push((this.method.methodGetLiteral(b&0x3F)).getPointer(0)); break;
+                this.push(this.method.methodGetLiteral(b&0x3F).pointers[St78.PI_OBJECTREFERENCE_VALUE]); break;
 
             // Quick loads
             case 112: this.nono(); break;
