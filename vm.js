@@ -561,12 +561,6 @@ Object.subclass('users.bert.St78.vm.Object',
     },
 },
 'accessing', {
-    getPointer: function(zeroBasedIndex){
-        return this.pointers[zeroBasedIndex];
-    },
-    setPointer: function(zeroBasedIndex, value){
-        return this.pointers[zeroBasedIndex] = value;
-    },
     pointersSize: function() {
     	return this.pointers ? this.pointers.length : 0;
     },
@@ -636,7 +630,7 @@ Object.subclass('users.bert.St78.vm.Object',
 },
 'as method', {
     methodHeader: function() {
-        return this.getPointer(0);
+        return this.pointers[0];
     },
     methodNumLits: function() {
         return (this.methodHeader()>>9) & 0xFF;
@@ -652,8 +646,8 @@ Object.subclass('users.bert.St78.vm.Object',
             return primBits;
     },
     methodClassForSuper: function() {//assn found in last literal
-        var assn = this.getPointer(this.methodNumLits());
-        return assn.getPointer(St78.Assn_value);
+        var assn = this.pointers[this.methodNumLits()];
+        return assn.pointers[St78.Assn_value];
     },
     methodNeedsLargeFrame: function() {
         return (this.methodHeader() & 0x20000) > 0; 
@@ -666,13 +660,13 @@ Object.subclass('users.bert.St78.vm.Object',
     },
     methodGetLiteral: function(zeroBasedIndex) {
         if (!this.pointers) debugger;  // All methods should be converted before access
-        return this.getPointer(zeroBasedIndex);
+        return this.pointers[zeroBasedIndex];
     },
     methodGetSelector: function(zeroBasedIndex) {
-        return this.getPointer(1+zeroBasedIndex); // step over header 
+        return this.pointers[1+zeroBasedIndex]; // step over header 
     },
     methodSetLiteral: function(zeroBasedIndex, value) {
-        this.setPointer(1+zeroBasedIndex, value); // step over header
+        this.pointers[1+zeroBasedIndex] = value; // step over header
     },
     methodEndPC: function() {
     	// index after the last bytecode
@@ -780,9 +774,9 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         
         /* old squeak stuff...
         var schedAssn = this.specialObjects[St78.splOb_SchedulerAssociation];
-        var sched = schedAssn.getPointer(St78.Assn_value);
-        var proc = sched.getPointer(St78.ProcSched_activeProcess);
-        this.activeContext = proc.getPointer(St78.Proc_suspendedContext);
+        var sched = schedAssn.pointers[St78.Assn_value];
+        var proc = sched.pointers[St78.ProcSched_activeProcess];
+        this.activeContext = proc.pointers[St78.Proc_suspendedContext];
         this.fetchContextRegisters(this.activeContext);
         this.reclaimableContextCount = 0;
         */
@@ -812,12 +806,12 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             // load receiver variable
             case 0: case 1: case 2: case 3: case 4: case 5: case 6: case 7: 
             case 8: case 9: case 10: case 11: case 12: case 13: case 14: case 15: 
-                this.push(this.receiver.getPointer(b&0xF)); break;
+                this.push(this.receiver.pointers[b&0xF]); break;
 
             // load temporary variable
             case 16: case 17: case 18: case 19: case 20: case 21: case 22: case 23: 
             case 24: case 25: case 26: case 27: case 28: case 29: case 30: case 31: 
-                this.push(this.homeContext.getPointer(St78.Context_tempFrameStart+(b&0xF))); break;
+                this.push(this.homeContext.pointers[St78.Context_tempFrameStart+(b&0xF)]); break;
 
             // loadLiteral
             case 32: case 33: case 34: case 35: case 36: case 37: case 38: case 39: 
@@ -870,16 +864,16 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 				push(receiver());
 				break;
 			case 136:	// X LDINST
-				push(body(receiver()).getPointer(nextByte()));
+				push(body(receiver()).pointers[nextByte()]);
 				break;
 			case 137:	// X LDTEMP
-				push(fProcessBody.getPointer(fBP + tempOrArgOffset(nextByte())));
+				push(fProcessBody.pointers[fBP + tempOrArgOffset(nextByte())]);
 				break;
 			case 138:	// X LDLIT
 				push(fetchMethodLiteral(nextByte()));
 				break;
 			case 139:	// X LDLITI
-				push(body(fetchMethodLiteral(nextByte())).getPointer(NoteTaker.PI_OBJECTREFERENCE_VALUE));
+				push(body(fetchMethodLiteral(nextByte())).pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE]);
 				break;
 			case 140:	// X SEND
 				send(fetchMethodLiteral(nextByte()));
@@ -968,7 +962,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 		// debugger;
 		switch (addrByte >> 4) {
 			case 0x0:	// store inst
-				this.receiver.setPointer(addrByte, value); break;
+				this.receiver.pointers[addrByte] = value; break;
 			case 0x1:	// store temp
 				var addr= fBP + tempOrArgOffset(addrByte-0x10);  // ** fix me
 				this.activeProcessPointers[addr] = value; break;
@@ -978,8 +972,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 			case 0x4:	// store lit indirect
 			case 0x5:
 			case 0x6:
-		        // this.method.methodGetLiteral(addrByte&0x3F).setPointer(St78.Assn_value, value); break;
-		        this.method.methodGetLiteral(addrByte&0x3F).setPointer(0, value); break;
+		        // this.method.methodGetLiteral(addrByte&0x3F).pointers[St78.Assn_value] = value; break;
+		        this.method.methodGetLiteral(addrByte&0x3F).pointers[0] = value; break;
 			case 0x8:
 				// handle EXTENDED stores 0x88-0x8c
 				/*  ** under construction
@@ -987,16 +981,16 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 				switch (addrByte) {
 					case 0x88:	// STO* X LDINST
 						rcvr= body(receiver());
-						prev= rcvr.getPointer(extendedAddr);
-						rcvr.setPointer(extendedAddr, value);			// transfer refcount from stack
+						prev= rcvr.pointers[extendedAddr];
+						rcvr.pointers[extendedAddr] = value;			// transfer refcount from stack
 						break;	
 					case 0x89:	// STO* X LDTEMP
 						addr= fBP + tempOrArgOffset(extendedAddr);
-						prev= fProcessBody.getPointer(addr);
-						fProcessBody.setPointer(addr, value);	// transfer refcount from stack
+						prev= fProcessBody.pointers[addr];
+						fProcessBody.pointers[addr] = value;	// transfer refcount from stack
 						break;
 					case 0x8b:	// STO* X LDLITI
-                        this.method.methodGetLiteral(b&0x3F).setPointer(St78.Assn_value, value); break;
+                        this.method.methodGetLiteral(b&0x3F).pointers[St78.Assn_value] = value; break;
 					default:		// 0x8a (X LDLIT) and 0x8c (X SEND)
 						nono();
 				}
@@ -1077,28 +1071,28 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     extendedPush: function(nextByte) {
         var lobits = nextByte & 63;
         switch (nextByte>>6) {
-            case 0: this.push(this.receiver.getPointer(lobits));break;
-            case 1: this.push(this.homeContext.getPointer(St78.Context_tempFrameStart+lobits)); break;
+            case 0: this.push(this.receiver.pointers[lobits]);break;
+            case 1: this.push(this.homeContext.pointers[St78.Context_tempFrameStart+lobits]); break;
             case 2: this.push(this.method.methodGetLiteral(lobits)); break;
-            case 3: this.push(this.method.methodGetLiteral(lobits).getPointer(St78.Assn_value)); break;
+            case 3: this.push(this.method.methodGetLiteral(lobits).pointers[St78.Assn_value]); break;
         }
     },
     extendedStore: function( nextByte) {
         var lobits = nextByte & 63;
         switch (nextByte>>6) {
-            case 0: this.receiver.setPointer(lobits, this.top()); break;
-            case 1: this.homeContext.setPointer(St78.Context_tempFrameStart+lobits, this.top()); break;
+            case 0: this.receiver.pointers[lobits] = this.top(); break;
+            case 1: this.homeContext.pointers[St78.Context_tempFrameStart+lobits] = this.top(); break;
             case 2: this.nono(); break;
-            case 3: this.method.methodGetLiteral(lobits).setPointer(St78.Assn_value, this.top()); break;
+            case 3: this.method.methodGetLiteral(lobits).pointers[St78.Assn_value] = this.top(); break;
         }
     },
     extendedStorePop: function(nextByte) {
         var lobits = nextByte & 63;
         switch (nextByte>>6) {
-            case 0: this.receiver.setPointer(lobits, this.pop()); break;
-            case 1: this.homeContext.setPointer(St78.Context_tempFrameStart+lobits, this.pop()); break;
+            case 0: this.receiver.pointers[lobits] = this.pop(); break;
+            case 1: this.homeContext.pointers[St78.Context_tempFrameStart+lobits] = this.pop(); break;
             case 2: this.nono(); break;
-            case 3: this.method.methodGetLiteral(lobits).setPointer(St78.Assn_value, this.pop()); break;
+            case 3: this.method.methodGetLiteral(lobits).pointers[St78.Assn_value] = this.pop(); break;
         }
     },
     doubleExtendedDoAnything: function(nextByte) {
@@ -1106,12 +1100,12 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         switch (nextByte>>5) {
             case 0: this.send(this.method.methodGetSelector(byte3), nextByte&31, false); break;
             case 1: this.send(this.method.methodGetSelector(byte3), nextByte&31, true); break;
-            case 2: this.push(this.receiver.getPointer(byte3)); break;
+            case 2: this.push(this.receiver.pointers[byte3]); break;
             case 3: this.push(this.method.methodGetLiteral(byte3)); break;
-            case 4: this.push(this.method.methodGetLiteral(byte3).getPointer(St78.Assn_key)); break;
-            case 5: this.receiver.setPointer(byte3, this.top()); break;
-            case 6: this.receiver.setPointer(byte3, this.pop()); break;
-            case 7: this.method.methodGetLiteral(byte3).setPointer(St78.Assn_key, this.top()); break;
+            case 4: this.push(this.method.methodGetLiteral(byte3).pointers[St78.Assn_key]); break;
+            case 5: this.receiver.pointers[byte3] = this.top(); break;
+            case 6: this.receiver.pointers[byte3] = this.pop(); break;
+            case 7: this.method.methodGetLiteral(byte3).pointers[St78.Assn_key] = this.top(); break;
         }
     },
     jumpIfTrue: function(delta) {
@@ -1140,7 +1134,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         var lookupClass = this.getClass(newRcvr);
         if (doSuper) {
             lookupClass = this.method.methodClassForSuper();
-            lookupClass = lookupClass.getPointer(St78.Class_superclass);
+            lookupClass = lookupClass.pointers[St78.Class_superclass];
         }
         var entry = this.findSelectorInClass(selector, argCount, lookupClass);
         if (entry.primIndex) {
@@ -1156,7 +1150,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         var currentClass = startingClass;
         var mDict;
         while (!currentClass.isNil) {
-            mDict = currentClass.getPointer(St78.Class_mdict);
+            mDict = currentClass.pointers[St78.Class_mdict];
             if (mDict.isNil) {
 //                ["MethodDict pointer is nil (hopefully due a swapped out stub)
 //                        -- raise exception #cannotInterpret:."
@@ -1173,7 +1167,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                 cacheEntry.argCount = argCount;
                 return cacheEntry;
             }  
-            currentClass = currentClass.getPointer(St78.Class_superclass);
+            currentClass = currentClass.pointers[St78.Class_superclass];
         }
         //Cound not find a normal message -- send #doesNotUnderstand:
         var dnuSel = this.specialObjects[St78.splOb_SelectorDoesNotUnderstand];
@@ -1191,10 +1185,10 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     	// If there are no nils (should always be), then stop looping on second wrap.
     	var hasWrapped = false;
         while (true) {
-            var nextSelector = mDict.getPointer(index);
+            var nextSelector = mDict.pointers[index];
             if (nextSelector === messageSelector) {
-                var methArray = mDict.getPointer(St78.MethodDict_array);
-                return methArray.getPointer(index - St78.MethodDict_selectorStart);
+                var methArray = mDict.pointers[St78.MethodDict_array];
+                return methArray.pointers[index - St78.MethodDict_selectorStart];
             }
             if (nextSelector.isNil) return this.nilObj;
             if (++index === dictSize) {
@@ -1222,10 +1216,10 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     	var tempCount = newMethod.methodTempCount();
         var newSP = tempCount;
         newSP += St78.Context_tempFrameStart - 1; //-1 for z-rel addressing
-        newContext.setPointer(St78.Context_method, newMethod);
+        newContext.pointers[St78.Context_method] = newMethod;
         //Following store is in case we alloc without init; all other fields get stored
-        newContext.setPointer(St78.BlockContext_initialIP, this.nilObj);
-        newContext.setPointer(St78.Context_sender, this.activeContext);
+        newContext.pointers[St78.BlockContext_initialIP] = this.nilObj;
+        newContext.pointers[St78.Context_sender] = this.activeContext;
         //Copy receiver and args to new context
         //Note this statement relies on the receiver slot being contiguous with args...
         this.arrayCopy(this.activeContext.pointers, this.sp-argumentCount, newContext.pointers, St78.Context_tempFrameStart-1, argumentCount+1);
@@ -1243,13 +1237,13 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.pc = newPC;
         this.sp = newSP;
         this.storeContextRegisters(); // not really necessary, I claim
-        this.receiver = newContext.getPointer(St78.Context_receiver);
+        this.receiver = newContext.pointers[St78.Context_receiver];
         if (this.receiver !== newRcvr)
             throw "receivers don't match";
         this.checkForInterrupts();
     },
     doReturn: function(returnValue, targetContext) {
-        if (targetContext.isNil || targetContext.getPointer(St78.Context_instructionPointer).isNil)
+        if (targetContext.isNil || targetContext.pointers[St78.Context_instructionPointer].isNil)
             this.cannotReturn();
         // search up stack for unwind
         var thisContext = this.activeContext;
@@ -1258,7 +1252,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                 this.cannotReturn();
             if (this.isUnwindMarked(thisContext))
                 this.aboutToReturn(returnValue,thisContext);
-            thisContext = thisContext.getPointer(St78.Context_sender);
+            thisContext = thisContext.pointers[St78.Context_sender];
         }
         // no unwind to worry about, just peel back the stack (usually just to sender)
         var nextContext;
@@ -1268,9 +1262,9 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                 this.breakOnContextReturned = null;
                 this.breakOutOfInterpreter = 'break';
             }
-            nextContext = thisContext.getPointer(St78.Context_sender);
-            thisContext.setPointer(St78.Context_sender, this.nilObj);
-            thisContext.setPointer(St78.Context_instructionPointer, this.nilObj);
+            nextContext = thisContext.pointers[St78.Context_sender];
+            thisContext.pointers[St78.Context_sender] = this.nilObj;
+            thisContext.pointers[St78.Context_instructionPointer] = this.nilObj;
             if (this.reclaimableContextCount > 0) {
                 this.reclaimableContextCount--;
                 this.recycleIfPossible(thisContext);
@@ -1288,7 +1282,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     tryPrimitive: function(primIndex, argCount, newMethod) {
         if ((primIndex > 255) && (primIndex < 520)) {
             if (primIndex >= 264) {//return instvars
-                this.popNandPush(1, this.top().getPointer(primIndex - 264));
+                this.popNandPush(1, this.top().pointers[primIndex - 264]);
                 return true;
             }
             switch (primIndex) {
@@ -1312,10 +1306,10 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         var message = this.instantiateClass(this.specialObjects[St78.splOb_ClassMessage], 0);
         var argArray = this.instantiateClass(this.specialObjects[St78.splOb_ClassArray], argCount);
         this.arrayCopy(this.activeContext.pointers, this.sp-argCount+1, argArray.pointers, 0, argCount); //copy args from stack
-        message.setPointer(St78.Message_selector, selector);
-        message.setPointer(St78.Message_arguments, argArray);
+        message.pointers[St78.Message_selector] = selector;
+        message.pointers[St78.Message_arguments] = argArray;
         if (message.pointers.length > St78.Message_lookupClass) //Early versions don't have lookupClass
-            message.setPointer(St78.Message_lookupClass, cls);
+            message.pointers[St78.Message_lookupClass] = cls;
         return message;
     },
     primitivePerform: function(argCount) {
@@ -1426,27 +1420,27 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.fetchContextRegisters(newContext);
     },
     fetchContextRegisters: function(ctxt) {
-        var meth = ctxt.getPointer(St78.Context_method);
+        var meth = ctxt.pointers[St78.Context_method];
         if (this.isSmallInt(meth)) { //if the Method field is an integer, activeCntx is a block context
-            this.homeContext = ctxt.getPointer(St78.BlockContext_home);
-            meth = this.homeContext.getPointer(St78.Context_method);
+            this.homeContext = ctxt.pointers[St78.BlockContext_home];
+            meth = this.homeContext.pointers[St78.Context_method];
         } else { //otherwise home==ctxt
             this.homeContext = ctxt;
         }
-        this.receiver = this.homeContext.getPointer(St78.Context_receiver);
+        this.receiver = this.homeContext.pointers[St78.Context_receiver];
         this.method = meth;
         this.methodBytes = meth.bytes;
-        this.pc = this.decodeSt78PC(ctxt.getPointer(St78.Context_instructionPointer), meth);
+        this.pc = this.decodeSt78PC(ctxt.pointers[St78.Context_instructionPointer], meth);
         if (this.pc < -1)
             throw "error";
-        this.sp = this.decodeSt78SP(ctxt.getPointer(St78.Context_stackPointer));
+        this.sp = this.decodeSt78SP(ctxt.pointers[St78.Context_stackPointer]);
     },
     storeContextRegisters: function() {
         //Save pc, sp into activeContext object, prior to change of context
         //   see fetchContextRegisters for symmetry
         //   expects activeContext, pc, sp, and method state vars to still be valid
-        this.activeContext.setPointer(St78.Context_instructionPointer,this.encodeSt78PC(this.pc, this.method));
-        this.activeContext.setPointer(St78.Context_stackPointer,this.encodeSt78SP(this.sp));
+        this.activeContext.pointers[St78.Context_instructionPointer] = this.encodeSt78PC(this.pc, this.method);
+        this.activeContext.pointers[St78.Context_stackPointer] = this.encodeSt78SP(this.sp);
     },
     encodeSt78PC: function(intPC, method) {
         // St78 pc is offset by header and literals
@@ -1467,12 +1461,12 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         if (!this.isMethodContext(ctxt)) return;
         if (ctxt.pointersSize() === (St78.Context_tempFrameStart+St78.Context_smallFrameSize)) {
             // Recycle small contexts
-            ctxt.setPointer(0, this.freeContexts);
+            ctxt.pointers[0] = this.freeContexts;
             this.freeContexts = ctxt;
         } else { // Recycle large contexts
             if (ctxt.pointersSize() !== (St78.Context_tempFrameStart+St78.Context_largeFrameSize))
                 return;
-            ctxt.setPointer(0, this.freeLargeContexts);
+            ctxt.pointers[0] = this.freeLargeContexts;
             this.freeLargeContexts = ctxt;
         }
     },
@@ -1482,7 +1476,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         if (needsLarge) {
             if (!this.freeLargeContexts.isNil) {
                 freebie = this.freeLargeContexts;
-                this.freeLargeContexts = freebie.getPointer(0);
+                this.freeLargeContexts = freebie.pointers[0];
                 this.nRecycledContexts++;
                 return freebie;
             }
@@ -1491,7 +1485,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         } else {
             if (!this.freeContexts.isNil) {
                 freebie = this.freeContexts;
-                this.freeContexts = freebie.getPointer(0);
+                this.freeContexts = freebie.pointers[0];
                 this.nRecycledContexts++;
                 return freebie;
             }
@@ -2136,7 +2130,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var fmt = obj.format;
         if (fmt<2) return -1; //not indexable
         if (fmt===3 && this.vm.isContext(obj))
-            return obj.getPointer(St78.Context_stackPointer); // no access beyond top of stack?
+            return obj.pointers[St78.Context_stackPointer]; // no access beyond top of stack?
         if (fmt<6) return obj.pointersSize() - obj.instSize(); // pointers
         if (fmt<8) return obj.wordsSize(); // words
         if (fmt<12) return obj.bytesSize(); // bytes
@@ -2156,7 +2150,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
     charFromInt: function(ascii) {
         var charTable = this.vm.specialObjects[St78.splOb_CharacterTable];
-        return charTable.getPointer(ascii);
+        return charTable.pointers[ascii];
     },
     makeFloat: function(value) {
         var floatClass = this.vm.specialObjects[St78.splOb_ClassFloat];
@@ -2167,8 +2161,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
     makePointWithXandY: function(x, y) {
         var pointClass = this.vm.specialObjects[St78.splOb_ClassPoint];
         var newPoint = this.vm.instantiateClass(pointClass, 0);
-        newPoint.setPointer(St78.Point_x, x);
-        newPoint.setPointer(St78.Point_y, y);
+        newPoint.pointers[St78.Point_x] = x;
+        newPoint.pointers[St78.Point_y] = y;
         return newPoint;
     },
     makeStString: function(jsString) {
@@ -2255,7 +2249,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             if (this.vm.isSmallInt(objToPut)) {this.success = false; return objToPut;}
             if (objToPut.sqClass !== this.vm.specialObjects[St78.splOb_ClassCharacter])
                 {this.success = false; return objToPut;}
-            intToPut = objToPut.getPointer(0);
+            intToPut = objToPut.pointers[0];
             if (!(this.vm.isSmallInt(intToPut))) {this.success = false; return objToPut;}
         } else { // put a byte...
             if(!(this.vm.isSmallInt(objToPut))) {this.success = false; return objToPut;}
@@ -2423,33 +2417,33 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var homeCtxt = rcvr;
         if(!this.vm.isContext(homeCtxt)) this.success = false;
         if(!this.success) return rcvr;
-        if (this.vm.isSmallInt(homeCtxt.getPointer(St78.Context_method)))
+        if (this.vm.isSmallInt(homeCtxt.pointers[St78.Context_method]))
             // ctxt is itself a block; get the context for its enclosing method
-            homeCtxt = homeCtxt.getPointer(St78.BlockContext_home);
+            homeCtxt = homeCtxt.pointers[St78.BlockContext_home];
         var blockSize = homeCtxt.pointersSize() - homeCtxt.instSize(); // could use a const for instSize
         var newBlock = this.vm.instantiateClass(this.vm.specialObjects[St78.splOb_ClassBlockContext], blockSize);
         var initialPC = this.vm.encodeSt78PC(this.vm.pc + 2, this.vm.method); //*** check this...
-        newBlock.setPointer(St78.BlockContext_initialIP, initialPC);
-        newBlock.setPointer(St78.Context_instructionPointer, initialPC); // claim not needed; value will set it
-        newBlock.setPointer(St78.Context_stackPointer, 0);
-        newBlock.setPointer(St78.BlockContext_argumentCount, sqArgCount);
-        newBlock.setPointer(St78.BlockContext_home, homeCtxt);
-        newBlock.setPointer(St78.Context_sender, this.vm.nilObj); // claim not needed; just initialized
+        newBlock.pointers[St78.BlockContext_initialIP] = initialPC;
+        newBlock.pointers[St78.Context_instructionPointer] = initialPC; // claim not needed; value will set it
+        newBlock.pointers[St78.Context_stackPointer] = 0;
+        newBlock.pointers[St78.BlockContext_argumentCount] = sqArgCount;
+        newBlock.pointers[St78.BlockContext_home] = homeCtxt;
+        newBlock.pointers[St78.Context_sender] = this.vm.nilObj; // claim not needed; just initialized
         return newBlock;
     },
     primitiveBlockValue: function(argCount) {
         var rcvr = this.vm.stackValue(argCount);
         if (!this.isA(rcvr, St78.splOb_ClassBlockContext)) return false;
         var block = rcvr;
-        var blockArgCount = block.getPointer(St78.BlockContext_argumentCount);
+        var blockArgCount = block.pointers[St78.BlockContext_argumentCount];
         if (!this.vm.isSmallInt(blockArgCount)) return false;
         if (blockArgCount != argCount) return false;
-        if (!block.getPointer(St78.BlockContext_caller).isNil) return false;
+        if (!block.pointers[St78.BlockContext_caller].isNil) return false;
         this.vm.arrayCopy(this.vm.activeContext.pointers, this.vm.sp-argCount+1, block.pointers, St78.Context_tempFrameStart, argCount);
-        var initialIP = block.getPointer(St78.BlockContext_initialIP);
-        block.setPointer(St78.Context_instructionPointer, initialIP);
-        block.setPointer(St78.Context_stackPointer, argCount);
-        block.setPointer(St78.BlockContext_caller, this.vm.activeContext);
+        var initialIP = block.pointers[St78.BlockContext_initialIP];
+        block.pointers[St78.Context_instructionPointer] = initialIP;
+        block.pointers[St78.Context_stackPointer] = argCount;
+        block.pointers[St78.BlockContext_caller] = this.vm.activeContext;
         this.vm.popN(argCount+1);
         this.vm.newActiveContext(block);
         return true;
@@ -2459,15 +2453,15 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var array = this.vm.stackValue(0);
         if (!this.isA(block, St78.splOb_ClassBlockContext)) return false;
         if (!this.isA(array, St78.splOb_ClassArray)) return false;
-        var blockArgCount = block.getPointer(St78.BlockContext_argumentCount);
+        var blockArgCount = block.pointers[St78.BlockContext_argumentCount];
         if (!this.vm.isSmallInt(blockArgCount)) return false;
         if (blockArgCount != array.pointersSize()) return false;
-        if (!block.getPointer(St78.BlockContext_caller).isNil) return false;
+        if (!block.pointers[St78.BlockContext_caller].isNil) return false;
         this.vm.arrayCopy(array.pointers, 0, block.pointers, St78.Context_tempFrameStart, blockArgCount);
-        var initialIP = block.getPointer(St78.BlockContext_initialIP);
-        block.setPointer(St78.Context_instructionPointer, initialIP);
-        block.setPointer(St78.Context_stackPointer, blockArgCount);
-        block.setPointer(St78.BlockContext_caller, this.vm.activeContext);
+        var initialIP = block.pointers[St78.BlockContext_initialIP];
+        block.pointers[St78.Context_instructionPointer] = initialIP;
+        block.pointers[St78.Context_stackPointer] = blockArgCount;
+        block.pointers[St78.BlockContext_caller] = this.vm.activeContext;
         this.vm.popN(argCount+1);
         this.vm.newActiveContext(block);
         return true;
@@ -2480,7 +2474,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return true;
 	},
     primitiveSuspend: function() {
-        var activeProc = this.getScheduler().getPointer(St78.ProcSched_activeProcess);
+        var activeProc = this.getScheduler().pointers[St78.ProcSched_activeProcess];
         if (this.vm.top() !== activeProc) return false;
         this.vm.popNandPush(1, this.vm.nilObj);
         this.transferTo(this.pickTopProcess());
@@ -2488,12 +2482,12 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
     getScheduler: function() {
         var assn = this.vm.specialObjects[St78.splOb_SchedulerAssociation];
-        return assn.getPointer(St78.Assn_value);
+        return assn.pointers[St78.Assn_value];
     },
     resume: function(newProc) {
-        var activeProc = this.getScheduler().getPointer(St78.ProcSched_activeProcess);
-        var activePriority = activeProc.getPointer(St78.Proc_priority);
-        var newPriority = newProc.getPointer(St78.Proc_priority);
+        var activeProc = this.getScheduler().pointers[St78.ProcSched_activeProcess];
+        var activePriority = activeProc.pointers[St78.Proc_priority];
+        var newPriority = newProc.pointers[St78.Proc_priority];
         if (newPriority > activePriority) {
             this.putToSleep(activeProc);
             this.transferTo(newProc);
@@ -2503,19 +2497,19 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
     putToSleep: function(aProcess) {
         //Save the given process on the scheduler process list for its priority.
-        var priority = aProcess.getPointer(St78.Proc_priority);
-        var processLists = this.getScheduler().getPointer(St78.ProcSched_processLists);
-        var processList = processLists.getPointer(priority - 1);
+        var priority = aProcess.pointers[St78.Proc_priority];
+        var processLists = this.getScheduler().pointers[St78.ProcSched_processLists];
+        var processList = processLists.pointers[priority - 1];
         this.linkProcessToList(aProcess, processList);
     },
     transferTo: function(newProc) {
         //Record a process to be awakened on the next interpreter cycle.
         var sched = this.getScheduler();
-        var oldProc = sched.getPointer(St78.ProcSched_activeProcess);
-        sched.setPointer(St78.ProcSched_activeProcess, newProc);
-        oldProc.setPointer(St78.Proc_suspendedContext, this.vm.activeContext);
-        this.vm.newActiveContext(newProc.getPointer(St78.Proc_suspendedContext));
-        newProc.setPointer(St78.Proc_suspendedContext, this.vm.nilObj);
+        var oldProc = sched.pointers[St78.ProcSched_activeProcess];
+        sched.pointers[St78.ProcSched_activeProcess] = newProc;
+        oldProc.pointers[St78.Proc_suspendedContext] = this.vm.activeContext;
+        this.vm.newActiveContext(newProc.pointers[St78.Proc_suspendedContext]);
+        newProc.pointers[St78.Proc_suspendedContext] = this.vm.nilObj;
         this.vm.reclaimableContextCount = 0;
         if (this.vm.breakOnContextChanged || this.vm.breakOnContextReturned) {
             this.vm.breakOnContextChanged = false;
@@ -2526,12 +2520,12 @@ Object.subclass('users.bert.St78.vm.Primitives',
     pickTopProcess: function() { // aka wakeHighestPriority
         //Return the highest priority process that is ready to run.
         //Note: It is a fatal VM error if there is no runnable process.
-        var schedLists = this.getScheduler().getPointer(St78.ProcSched_processLists);
+        var schedLists = this.getScheduler().pointers[St78.ProcSched_processLists];
         var p = schedLists.pointersSize() - 1;  // index of last indexable field
         var processList;
         do {
             if (p < 0) throw "scheduler could not find a runnable process";
-            processList = schedLists.getPointer(p--);
+            processList = schedLists.pointers[p--];
         } while (this.isEmptyList(processList));
         return this.removeFirstLinkOfList(processList);
 	},    
@@ -2539,29 +2533,29 @@ Object.subclass('users.bert.St78.vm.Primitives',
         // Add the given process to the given linked list and set the backpointer
         // of process to its new list.
         if (this.isEmptyList(aList))
-            aList.setPointer(St78.LinkedList_firstLink, proc);
+            aList.pointers[St78.LinkedList_firstLink] = proc;
         else {
-            var lastLink = aList.getPointer(St78.LinkedList_lastLink);
-            lastLink.setPointer(St78.Link_nextLink, proc);
+            var lastLink = aList.pointers[St78.LinkedList_lastLink];
+            lastLink.pointers[St78.Link_nextLink] = proc;
         }
-        aList.setPointer(St78.LinkedList_lastLink, proc);
-        proc.setPointer(St78.Proc_myList, aList);
+        aList.pointers[St78.LinkedList_lastLink] = proc;
+        proc.pointers[St78.Proc_myList] = aList;
     },
     isEmptyList: function(aLinkedList) {
-        return aLinkedList.getPointer(St78.LinkedList_firstLink).isNil;
+        return aLinkedList.pointers[St78.LinkedList_firstLink].isNil;
     },
     removeFirstLinkOfList: function(aList) {
         //Remove the first process from the given linked list.
-        var first = aList.getPointer(St78.LinkedList_firstLink);
-        var last = aList.getPointer(St78.LinkedList_lastLink);
+        var first = aList.pointers[St78.LinkedList_firstLink];
+        var last = aList.pointers[St78.LinkedList_lastLink];
         if (first === last) {
-            aList.setPointer(St78.LinkedList_firstLink, this.vm.nilObj);
-            aList.setPointer(St78.LinkedList_lastLink, this.vm.nilObj);
+            aList.pointers[St78.LinkedList_firstLink] = this.vm.nilObj;
+            aList.pointers[St78.LinkedList_lastLink] = this.vm.nilObj;
         } else {
-            var next = first.getPointer(St78.Link_nextLink);
-            aList.setPointer(St78.LinkedList_firstLink, next);
+            var next = first.pointers[St78.Link_nextLink];
+            aList.pointers[St78.LinkedList_firstLink] = next;
         }
-        first.setPointer(St78.Link_nextLink, this.vm.nilObj);
+        first.pointers[St78.Link_nextLink] = this.vm.nilObj;
         return first;
     },
     registerSemaphore: function(specialObjIndex) {
@@ -2575,11 +2569,11 @@ Object.subclass('users.bert.St78.vm.Primitives',
     primitiveWait: function() {
     	var sema = this.vm.top();
         if (!this.isA(sema, St78.splOb_ClassSemaphore)) return false;
-        var excessSignals = sema.getPointer(St78.Semaphore_excessSignals);
+        var excessSignals = sema.pointers[St78.Semaphore_excessSignals];
         if (excessSignals > 0)
-            sema.setPointer(St78.Semaphore_excessSignals, excessSignals - 1);
+            sema.pointers[St78.Semaphore_excessSignals] = excessSignals - 1;
         else {
-            var activeProc = this.getScheduler().getPointer(St78.ProcSched_activeProcess);
+            var activeProc = this.getScheduler().pointers[St78.ProcSched_activeProcess];
             this.linkProcessToList(activeProc, sema);
             this.transferTo(this.pickTopProcess());
         }
