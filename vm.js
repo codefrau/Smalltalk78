@@ -1668,6 +1668,16 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         var printer = new users.bert.St78.vm.InstructionPrinter(aMethod || this.method, this);
         return printer.printInstructions(optionalIndent, optionalHighlight, optionalPC);
     },
+    printGlobal: function(objRef) {
+        var globalNames = this.image.globals.pointers[NoteTaker.PI_SYMBOLTABLE_OBJECTS].pointers,
+            globalValues = this.image.globals.pointers[NoteTaker.PI_SYMBOLTABLE_VALUES].pointers;
+        debugger;
+        for (var i = 0; i < globalNames.length; i++) {
+            if (objRef === globalValues[i])
+                return globalNames[i].bytesAsString()
+        }
+        return "object ref " + objRef.oop;
+    },    
     willSendOrReturn: function() {
         // Answer whether the next bytecode corresponds to a Smalltalk
         // message send or return
@@ -3421,12 +3431,11 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
 	    this.print('push: thisContext');
     },
     pushConstant: function(obj) {
-        debugger;
     	this.print('pushConst: ' + (obj.stInstName ? obj.stInstName() : obj));
     },
     pushLiteralVariable: function(index) {
         var objRef = this.method.methodGetLiteral(index);
-    	this.print('pushLitRef[' + index +']: ' + objRef.pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE].stInstName());
+    	this.print('pushLitRef: ' + this.vm.printGlobal(objRef));
     },
 	pushReceiver: function() {
 	    this.print('push: self');
@@ -3441,7 +3450,8 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
     	this.print( 'send: #' + (selector.bytesAsString ? selector.bytesAsString() : selector));
     },
     storeIntoLiteralVariable: function(index, doPop) {
-    	this.print((doPop ? 'pop' : 'store') + 'IntoLitRef[' + index + ']');
+        var objRef = this.method.methodGetLiteral(index);
+    	this.print((doPop ? 'pop' : 'store') + 'IntoLitRef: ' + this.vm.printGlobal(objRef));
     },
     storeIntoReceiverVariable: function(offset, doPop) { 
     	this.print((doPop ? 'pop' : 'store') + 'IntoInstVar: ' + offset);
