@@ -293,7 +293,6 @@ Object.subclass('users.bert.St78.vm.Image',
         this.oldSpaceBytes = 0;
         var reader = new users.bert.St78.vm.ImageReader(objTable, objSpace, dataBias);
         var oopMap = reader.readObjects();
-        this.specialOopsObj = oopMap.specialOopsObj;
         // link all objects into oldspace
         var prevObj;
         for (var oop = 0; oop < objTable.length; oop += 4)
@@ -313,6 +312,16 @@ Object.subclass('users.bert.St78.vm.Image',
         oopMap[St78.OTI_FALSE].isFalse = true;
         this.globals = oopMap[St78.OTI_SMALLTALK];
         this.userProcess = oopMap[St78.OTI_THEPROCESS];
+        this.specialOopsVector = this.globalNamed('SpecialOops');
+    },
+    globalNamed: function(name) {
+        var globalNames = this.globals.pointers[St78.PI_SYMBOLTABLE_OBJECTS].pointers,
+            globalValues = this.globals.pointers[St78.PI_SYMBOLTABLE_VALUES].pointers;
+        for (var i = 0; i < globalNames.length; i++) {
+            if (globalNames[i].isNil) continue;
+            if (name == globalNames[i].bytesAsString())
+                return globalValues[i].pointers[St78.PI_OBJECTREFERENCE_VALUE];
+        }
     },
     objectWithOop: function(oop) {
         // find the object with the given oop - looks only in oldSpace for now!
