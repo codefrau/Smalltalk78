@@ -293,7 +293,6 @@ Object.subclass('users.bert.St78.vm.Image',
         this.oldSpaceBytes = 0;
         var reader = new users.bert.St78.vm.ImageReader(objTable, objSpace, dataBias);
         var oopMap = reader.readObjects();
-        this.oopMap = oopMap;  // FIXME - need to fix mapOopToObject
         this.specialOopsObj = oopMap.specialOopsObj;
         // link all objects into oldspace
         var prevObj;
@@ -315,20 +314,15 @@ Object.subclass('users.bert.St78.vm.Image',
         this.globals = oopMap[St78.OTI_SMALLTALK];
         this.userProcess = oopMap[St78.OTI_THEPROCESS];
     },
-    mapOopToObject: function(oop) {
-        // find the new object with the given oop
-        return this.oopMap[oop];  // FIXME - should use code below so don't hold onto oopMap
-        
-        // For some reason this code does not work...
-        // When if works, we can stop saving oopMap as a property in initialize
+    objectWithOop: function(oop) {
+        // find the object with the given oop - looks only in oldSpace for now!
         var obj = this.firstOldObject;
-        do {if (obj.oop == oop) return obj;
+        do {
+            if (oop === obj.oop) return obj;
             obj = obj.nextObject;
-        }
-        while (obj != null)
-        return null
-    }
-
+        } while (obj);
+        return null;
+    },
 },
 'garbage collection', {
     partialGC: function() {
@@ -793,7 +787,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         if (numLits == 0) return; // no literals
         var lits = new Array(numLits);
         for (var i=0; i<numLits; i++) {
-            lits[i] = this.image.mapOopToObject(method.bytes[i*2+3]*256 + method.bytes[i*2+2])
+            lits[i] = this.image.objectWithOop(method.bytes[i*2+3]*256 + method.bytes[i*2+2])
         }
         method.pointers = lits;
 }
