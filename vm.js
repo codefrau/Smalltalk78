@@ -297,7 +297,7 @@ Object.subclass('users.bert.St78.vm.Image',
         this.specialOopsObj = oopMap.specialOopsObj;
         // link all objects into oldspace
         var prevObj;
-        for (var oop = 0; oop < objTable.length / 4; oop += 4)
+        for (var oop = 0; oop < objTable.length; oop += 4)
             if (oopMap[oop]) {
                 this.oldSpaceCount++;
                 this.oldSpaceBytes += oopMap[oop].totalBytes();
