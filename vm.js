@@ -770,7 +770,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.method = this.activeContextPointers[this.currentFrameIndex + NoteTaker.FI_METHOD];
         this.methodBytes = this.method.bytes;
         this.ensureLiterals(this.activeContextPointers[this.currentFrameIndex + NoteTaker.FI_METHOD]);
-        this.receiver = this.activeContextPointers[this.currentFrameIndex + NoteTaker.FI_METHOD];
+        this.receiver = this.activeContextPointers[this.currentFrameIndex + NoteTaker.FI_RECEIVER];
         var initialPC = this.methodBytes[1];
         this.pc = initialPC-2; // must be off by two for header
         this.sp = this.currentFrameIndex - 1;
@@ -1666,7 +1666,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         var ctx = this.activeContextPointers;
         for (var i = this.sp - 5; i < ctx.length - 3; i++) {
             var obj = ctx[i];
-            var value = obj.stInstName ? obj.stInstName() : obj;
+            var value = typeof obj === 'number' ? obj : obj.stInstName();
             stack += Strings.format('\nctx[%s]: %s%s', i, value, this.sp == i ? ' <== SP': '');
         }
         return stack;
