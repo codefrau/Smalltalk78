@@ -724,6 +724,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.nilObj = this.image.objectFromOop(NoteTaker.OTI_NIL);
         this.falseObj = this.image.objectFromOop(NoteTaker.OTI_FALSE);
         this.trueObj = this.image.objectFromOop(NoteTaker.OTI_TRUE);
+        this.integerClass = this.image.objectFromOop(NoteTaker.OTI_CLINTEGER);
     },
     initVMState: function() {
         this.byteCodeCount = 0;
@@ -1531,8 +1532,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 'numbers', {
     getClass: function(obj) {
         if (this.isSmallInt(obj))
-            return this.specialObjects[Squeak.splOb_ClassInteger];
-        return obj.sqClass;
+            return this.integerClass;
+        return obj.stClass;
     },
     canBeSmallInt: function(anInt) {
         return (anInt >= this.minSmallInt) && (anInt <= this.maxSmallInt);
