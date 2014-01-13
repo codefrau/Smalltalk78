@@ -1671,7 +1671,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         for (var i = this.sp - 5; i < ctx.length - 3; i++) {
             var obj = ctx[i];
             var value = obj.stInstName ? obj.stInstName() : obj;
-            stack += Strings.format('\nctx[%s]: %s', i, value);
+            stack += Strings.format('\nctx[%s]: %s%s', i, value, this.sp == i ? ' <== SP': '');
         }
         return stack;
     },
@@ -3495,12 +3495,13 @@ Object.subclass('users.bert.St78.vm.InstructionStream',
         this.vm = vm;
         this.method = method;
         this.pc = 0;
-        this.specialConstants = ['true', 'false', 'nil', '-1', '0', '1', '2'];
+        this.specialConstants = ['-1', '0', '1', '2', '10', 'nil', 'false', 'true'];
         this.specialSelectors = ['+', '-', '<', '>', '<=', '>=', '=', '~=', '*', '/', '\\', '@',
-            'bitShift:', '//', 'bitAnd:', 'bitOr:', 'at:', 'at:put:', 'size', 'next', 'nextPut:',
-            'atEnd', '==', 'class', 'blockCopy:', 'value', 'value:', 'do:', 'new', 'new:', 'x', 'y'];
-        this.specialSelectorsNArgs = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 0, 0, 1,
-            0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0];
+        'lshift:', 'lxor:', 'land:', 'lor:', '◦', '◦_', 'next', 'next_', 'length', '==',
+        'is:', 'append:', 'class', 'remoteCopy', 'eval', 'new', 'new:', 'x', 'y', 'asStream'];
+        this.specialSelectorsNArgs = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1, 2, 0, 1, 0, 1,
+            1, 1, 0, 0, 0, 0, 1, 0, 0, 0];
     },
 },
 'decoding',
@@ -3509,7 +3510,7 @@ Object.subclass('users.bert.St78.vm.InstructionStream',
     	// Send to the argument, client, a message that specifies the type of the next instruction.
     	var method = this.method;
     	var byte = method.bytes[this.pc++];
-    	var type = (byte / 16) | 0;  
+    	var type = (byte / 16) | 0;
     	var offset = byte % 16;
     	if (type === 0) return client.pushReceiverVariable(offset);
     	if (type === 1) return client.pushTemporaryVariable(offset);
@@ -3517,26 +3518,20 @@ Object.subclass('users.bert.St78.vm.InstructionStream',
     	if (type === 3) return client.pushConstant(method.methodGetLiteral(offset + 16));
     	if (type === 4) return client.pushLiteralVariable(method.methodGetLiteral(offset));
     	if (type === 5) return client.pushLiteralVariable(method.methodGetLiteral(offset + 16));
-    	if (type === 6)
-    		if (offset<8) return client.popIntoReceiverVariable(offset)
-    		else return client.popIntoTemporaryVariable(offset-8);
+    	if (type === 6) return client.pushLiteralVariable(method.methodGetLiteral(offset + 32));
     	if (type === 7) {
-            if (offset===0) return client.pushReceiver()
-			if (offset < 8) return client.pushConstant(this.specialConstants[offset - 1])
-			if (offset===8) return client.methodReturnReceiver();
-			if (offset < 12) return client.methodReturnConstant(this.specialConstants[offset - 9]);
-			if (offset===12) return client.methodReturnTop();
-			if (offset===13) return client.blockReturnTop();
-			if (offset > 13) throw "unusedBytecode";
+            if (offset===1) return client.pushReceiver()
+			if (offset < 8) throw "unusedBytecode";
+			return client.pushConstant(this.specialConstants[offset - 8]);
     	}
     	if (type === 8) return this.interpretExtension(offset, method, client);
     	if (type === 9) // short jumps
-    			if (offset<8) return client.jump(offset+1);
-    			else return client.jumpIf(false, offset-8+1);
+    		if (offset<8) return client.jump(offset+1);
+    		else return client.jumpIf(false, offset-8+1);
     	if (type === 10) {// long jumps
     		byte = this.method.bytes[this.pc++];
-			if (offset<8) return client.jump((offset-4)*256 + byte);
-			else return client.jumpIf(offset<12, (offset & 3)*256 + byte);
+			if (offset<8) return client.jump(((offset&7)<<8)+byte - 0x400);
+			else return client.jumpIf(false, ((offset&7)<<8)+byte - 0x400);
     	}
     	if (type === 11)
             return client.send(this.specialSelectors[offset], 
@@ -3546,8 +3541,9 @@ Object.subclass('users.bert.St78.vm.InstructionStream',
             return client.send(this.specialSelectors[offset+16], 
 				this.specialSelectorsNArgs[offset+16],
 				false);
-    	if (type > 12)
-    		return client.send(method.methodGetLiteral(offset), type-13, false);
+    	if (type === 13) return client.send(method.methodGetLiteral(offset), null, false);
+    	if (type === 14) return client.send(method.methodGetLiteral(offset + 16), null, false);
+    	if (type === 15) return client.send(method.methodGetLiteral(offset + 32), null, false);
     },
     interpretExtension: function(offset, method, client) {
     	if (offset <= 6) { // Extended op codes 128-134
@@ -3598,7 +3594,7 @@ Object.subclass('users.bert.St78.vm.InstructionStream',
     	if (offset === 8) return client.doDup();
     	if (offset === 9) return client.pushActiveContext();
     	throw "unusedBytecode";
-    }
+    },
 });
 
 }) // end of module
