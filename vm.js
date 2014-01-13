@@ -36,17 +36,16 @@ NoteTaker = {
 	OTI_CLCLASS: 0x40,
 	OTI_CLINTEGER: 0x80,	// class of SmallIntegers
 	OTI_CLSTRING: 0xc0,
-	
 	OTI_CLVECTOR: 0x100,
 	OTI_CLSTREAM: 0x140,
 	OTI_CLFLOAT: 0x180,
 	OTI_CLPROCESS: 0x1c0,
-	
 	OTI_CLREMOTECODE: 0x200,
 	OTI_CLPOINT: 0x240,
 	OTI_CLNATURAL: 0x280,
 	OTI_CLLARGEINTEGER: 0x2c0,
-	 
+    OTI_CLUNIQUESTRING: 0x340,
+
 	// CLCLASS layout:
 	PI_CLASS_TITLE: 0,
 	PI_CLASS_MYINSTVARS: 1,
@@ -589,7 +588,7 @@ Object.subclass('users.bert.St78.vm.Object',
         return this.stClass.oop === NoteTaker.OTI_CLCLASS;
     },
     superclass: function() {
-        return this.pointers[5];
+        return this.pointers[NoteTaker.PI_CLASS_SUPERCLASS];
     },
 },
 'debugging', {
@@ -604,11 +603,12 @@ Object.subclass('users.bert.St78.vm.Object',
     },
     stInstName: function() {
         if (!this.stClass || !this.stClass.pointers) return "???";
-        if (this.oop === 0) return "nil";
-        if (this.oop === 4) return "false";
-        if (this.oop === 8) return "true";
-        if (this.stClass.oop === 0xC0) return "'" + this.bytesAsString() + "'";
-        if (this.stClass.oop === 0x340) return "#" + this.bytesAsString();
+        if (this.oop === NoteTaker.OTI_NIL) return "nil";
+        if (this.oop === NoteTaker.OTI_FALSE) return "false";
+        if (this.oop === NoteTaker.OTI_TRUE) return "true";
+        if (this.stClass.oop === NoteTaker.OTI_CLCLASS) return "the " + this.className() + " class";
+        if (this.stClass.oop === NoteTaker.OTI_CLSTRING) return "'" + this.bytesAsString() + "'";
+        if (this.stClass.oop === NoteTaker.OTI_CLUNIQUESTRING) return "#" + this.bytesAsString();
         var className = this.stClass.className();
         return (/^[aeiou]/i.test(className) ? 'an ' : 'a ') + className;
     },
@@ -721,9 +721,9 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.specialObjects = this.image.specialOopsVector.pointers;
         this.specialSelectors = range(9, 40).map(
             function(ix) {return this.specialObjects[ix]}, this);
-        this.nilObj = this.image.objectWithOop(0);
-        this.falseObj = this.image.objectWithOop(4);
-        this.trueObj = this.image.objectWithOop(8);
+        this.nilObj = this.image.objectFromOop(NoteTaker.OTI_NIL);
+        this.falseObj = this.image.objectFromOop(NoteTaker.OTI_FALSE);
+        this.trueObj = this.image.objectFromOop(NoteTaker.OTI_TRUE);
     },
     initVMState: function() {
         this.byteCodeCount = 0;
