@@ -46,7 +46,7 @@ St78 = {
 	OTI_CLPOINT: 0x240,
 	OTI_CLNATURAL: 0x280,
 	OTI_CLLARGEINTEGER: 0x2c0,
-	
+	 
 	// CLCLASS layout:
 	PI_CLASS_TITLE: 0,
 	PI_CLASS_MYINSTVARS: 1,
@@ -293,7 +293,7 @@ Object.subclass('users.bert.St78.vm.Image',
         this.oldSpaceBytes = 0;
         var reader = new users.bert.St78.vm.ImageReader(objTable, objSpace, dataBias);
         var oopMap = reader.readObjects();
-        this.oopMap = oopMap;  // ***For testing -  don't want to leave this in here
+        this.oopMap = oopMap;  // FIXME - need to fix mapOopToObject
         this.specialOopsObj = oopMap.specialOopsObj;
         // link all objects into oldspace
         var prevObj;
@@ -317,9 +317,9 @@ Object.subclass('users.bert.St78.vm.Image',
     },
     mapOopToObject: function(oop) {
         // find the new object with the given oop
-        return this.oopMap[oop];
+        return this.oopMap[oop];  // FIXME - should use code below so don't hold onto oopMap
         
-        // For some reason this code does not work
+        // For some reason this code does not work...
         // When if works, we can stop saving oopMap as a property in initialize
         var obj = this.firstOldObject;
         do {if (obj.oop == oop) return obj;
@@ -724,11 +724,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         // The following is an object in the GC space
         this.specialObjects = this.image.specialOopsVector.pointers;
         // However the following is an array in the JS space but not accesible to GC
-        this.specialSelectors =
-            [5, 6, 7, 8, 9, 10, 11, 12, 
-            13, 14, 15, 17, 18, 19, 20, 21, 
-            22, 23, 24, 25, 26, 27, 28, 29, 
-            30, 31, 33, 34, 35, 36, 37, 38].map(
+        this.specialSelectors = range(9, 40).map(
                 function(ix) {return this.specialObjects[ix]}, this);
         this.nilObj = this.specialObjects[St78.splOb_NilObject];
         this.falseObj = this.specialObjects[St78.splOb_FalseObject];
@@ -834,6 +830,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             case 88: case 89: case 90: case 91: case 92: case 93: case 94: case 95: 
             case 96: case 97: case 98: case 99: case 100: case 101: case 102: case 103: 
             case 104: case 105: case 106: case 107: case 108: case 109: case 110: case 111: 
+                // FIXME - need to define St78.Assn_value = 0
                 //this.push((this.method.methodGetLiteral(b&0x3F)).getPointer(St78.Assn_value)); break;
                 this.push((this.method.methodGetLiteral(b&0x3F)).getPointer(0)); break;
 
@@ -1678,6 +1675,22 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         return stack;
     },
     printByteCodes: function(aMethod, optionalIndent, optionalHighlight, optionalPC) {
+        // FIXME - I know Bert has something nicer in mind here...
+        var str = '';
+        var limit = Math.min(aMethod.bytes.length, optionalPC+5);
+        for (var i=optionalPC; i<limit; i++) {
+            var byte = aMethod.bytes[i];
+            var type = ['loadInst', 'loadTemp', 'loadLit', 'loadLit16', 'loadLitInd', 'loadLitInd16', 'loadLitInd32', 'loadConst', 'sundry', 'shortJump', 'longJump', 'quickSendArith', 'quickSend', 'sendLit', 'sendLit16', 'sendLit32'][byte>>4];
+            if (type == 'sundry') type = ['storePop', 'storeNoPop', 'pop', 'return', 'remoteReturn', 'pushCurrent', 'super', 'pushRcvr', 'longLoadInst', 'longLoadTemp', 'longLoadLit', 'longLoadLitInd', 'longSend', 'nono', 'nono', 'brkpt'][byte&0xF];
+            if (type == 'sundry') type = ['storePop', 'storeNoPop', 'pop', 'return', 'remoteReturn', 'pushCurrent', 'super', 'pushRcvr', 'longLoadInst', 'longLoadTemp', 'longLoadLit', 'longLoadLitInd', 'longSend', 'nono', 'nono', 'brkpt'][byte&0xF];
+            if (type == 'loadConst') type += " " + ['nono', 'self', 'nono', 'nono', 'nono', 'nono', 'nono', 'nono', '-1', '0', '1', '2', '10', 'nil', 'false', 'true'][byte&0xF];
+            if (type == 'quickSendArith') type += " " + this.specialSelectors[byte&0xF].bytesAsString();
+            if (type == 'quickSend') type += " " + this.specialSelectors[16+(byte&0xF)].bytesAsString();
+            str += i.toString() + ": " + byte + " ["  + (byte>>4) + '|' + (byte&0xF) + "] " + type + "\n"
+        };
+        return str;
+        
+        // ---
         if (!aMethod) aMethod = this.method;
         var printer = new users.bert.St78.vm.InstructionPrinter(aMethod, this);
         return printer.printInstructions(optionalIndent, optionalHighlight, optionalPC);
