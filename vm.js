@@ -322,7 +322,11 @@ Object.subclass('users.bert.St78.vm.Image',
                 return globalValues[i].pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE];
         }
     },
-    objectWithOop: function(oop) {
+    objectFromOop: function(oop) {
+        if (oop & 1) {
+            var val = oop>>1;
+            return (val&0x4000)*-1 + (val&0x3FFF)
+        }
         // find the object with the given oop - looks only in oldSpace for now!
         var obj = this.firstOldObject;
         do {
@@ -788,9 +792,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         var numLits = ((byte1 & 126) - 4) / 2;
         if (numLits == 0) return; // no literals
         var lits = new Array(numLits);
-        for (var i=0; i<numLits; i++) {
-            lits[i] = this.image.objectWithOop(method.bytes[i*2+3]*256 + method.bytes[i*2+2])
-        }
+        for (var i=0; i<numLits; i++)
+            lits[i] = this.image.objectFromOop(method.bytes[i*2+3]*256 + method.bytes[i*2+2])
         method.pointers = lits;
 }
 
