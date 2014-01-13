@@ -718,14 +718,12 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.millisecondClockMask = this.maxSmallInt >> 1; //keeps ms logic in small int range
     },
     loadImageState: function() {
-        // The following is an object in the GC space
         this.specialObjects = this.image.specialOopsVector.pointers;
-        // However the following is an array in the JS space but not accesible to GC
         this.specialSelectors = range(9, 40).map(
-                function(ix) {return this.specialObjects[ix]}, this);
-        this.nilObj = this.specialObjects[Squeak.splOb_NilObject];
-        this.falseObj = this.specialObjects[Squeak.splOb_FalseObject];
-        this.trueObj = this.specialObjects[Squeak.splOb_TrueObject];
+            function(ix) {return this.specialObjects[ix]}, this);
+        this.nilObj = this.image.objectWithOop(0);
+        this.falseObj = this.image.objectWithOop(4);
+        this.trueObj = this.image.objectWithOop(8);
     },
     initVMState: function() {
         this.byteCodeCount = 0;
