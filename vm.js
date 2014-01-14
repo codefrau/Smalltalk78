@@ -633,30 +633,36 @@ Object.subclass('users.bert.St78.vm.Object',
     } 
 },
 'as method', {
-    methodHeader: function() {
-        return this.bytes[1] * 256 + this.bytes[0];
+    methodIsQuick: function() {
+        return this.bytes[1] === 128;
     },
     methodNumLits: function() {
-        var byte1 = this.bytes[1];
-        if (byte1 == 128) return 0;  // quick method
-        return ((byte1 & 126) - 4) / 2;
+        if (this.methodIsQuick()) return 0;
+        return ((this.bytes[1] & 126) - 4) / 2;
     },
     methodNumArgs: function() {
-        throw "not implemented yet"
+        return this.bytes[0] & 15;
+    },
+    methodNumTemps: function() {
+        if (this.methodIsQuick()) return 0;
+        return ((this.bytes[1] & 1) << 4) + (this.bytes[0] >> 4);
     },
     methodPrimitiveIndex: function() {
-        if (this.bytes[1] != 128) return 0;  // not quick method
-        return this.bytes[0];
+        if (!this.methodIsQuick()) return 0;
+        if (!this.pointers) debugger;  // All methods should be converted before access
+        return this.pointers[this.methodNumLiterals() - 1];
     },
     methodGetLiteral: function(zeroBasedIndex) {
         if (!this.pointers) debugger;  // All methods should be converted before access
         return this.pointers[zeroBasedIndex];
     },
     methodStartPC: function() {
-    	return this.bytes[1] - 2;
+        if (this.methodIsQuick()) return 0; 
+        return (this.bytes[1] & 126) - 2; // zero-based
     },
     methodEndPC: function() {
-    	return this.bytes.length;
+        if (this.methodIsQuick()) return 0; 
+        return this.bytes.length;
     },
 });
 
