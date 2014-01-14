@@ -728,8 +728,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.activeContextPointers = this.activeContext.pointers;
         this.currentFrame = (this.activeContextPointers.length - this.activeContextPointers[NoteTaker.PI_PROCESS_TOP]) + 1;
         this.method = this.activeContextPointers[this.currentFrame + NoteTaker.FI_METHOD];
-        this.methodBytes = this.method.bytes;
         this.ensureLiterals(this.method);
+        this.methodBytes = this.method.bytes;
         this.receiver = this.activeContextPointers[this.currentFrame + NoteTaker.FI_RECEIVER];
         // FIXME:  [DI] I don't understand the saved pc in the image, but I do know that it
         // starts by setting the global Notetaker to true.  
@@ -1100,7 +1100,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             this.verifyAtSelector = selector;
             this.verifyAtClass = lookupClass;
         }
-        this.executeNewMethod(newRcvr, entry.method, entry.argCount, entry.primIndex);
+        this.executeNewMethod(newRcvr, entry.method, entry.methodClass, entry.argCount, entry.primIndex);
     },
     findSelectorInClass: function(selector, argCount, startingClass) {
         var cacheEntry = this.findMethodCacheEntry(selector, startingClass);
@@ -1114,6 +1114,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             if (!newMethod.isNil) {
                 //load cache entry here and return
                 cacheEntry.method = newMethod;
+                cacheEntry.methodClass = currentClass;
                 cacheEntry.primIndex = newMethod.methodPrimitiveIndex();
                 cacheEntry.argCount = argCount;
                 return cacheEntry;
@@ -1137,7 +1138,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                 return methods[i];
         return this.nilObj;
     },
-    executeNewMethod: function(newRcvr, newMethod, argumentCount, primitiveIndex) {
+    executeNewMethod: function(newRcvr, newMethod, newMethodClass, argumentCount, primitiveIndex) {
         this.sendCount++;
         if (newMethod === this.breakOnMethod) this.breakOutOfInterpreter = 'break';
         if (this.logSends) console.log(this.sendCount + ' ' + this.printMethod(newMethod));
@@ -1149,35 +1150,21 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             if (this.tryPrimitive(primitiveIndex, argumentCount, newMethod))
                 return;  //Primitive succeeded -- end of story
         debugger;
-        var newContext = this.allocateOrRecycleContext(newMethod.methodNeedsLargeFrame());
-        var methodNumLits = this.method.methodNumLits();
-        //The stored IP should be 1-based index of *next* instruction, offset by hdr and lits
-        var newPC = 0;
-    	var tempCount = newMethod.methodTempCount();
-        var newSP = tempCount;
-        newSP += Squeak.Context_tempFrameStart - 1; //-1 for z-rel addressing
-        newContext.pointers[Squeak.Context_method] = newMethod;
-        //Following store is in case we alloc without init; all other fields get stored
-        newContext.pointers[Squeak.BlockContext_initialIP] = this.nilObj;
-        newContext.pointers[Squeak.Context_sender] = this.activeContext;
-        //Copy receiver and args to new context
-        //Note this statement relies on the receiver slot being contiguous with args...
-        this.arrayCopy(this.activeContext.pointers, this.sp-argumentCount, newContext.pointers, Squeak.Context_tempFrameStart-1, argumentCount+1);
-        //...and fill the remaining temps with nil
-        this.arrayFill(newContext.pointers, Squeak.Context_tempFrameStart+argumentCount, Squeak.Context_tempFrameStart+tempCount, this.nilObj);
-        this.popN(argumentCount+1);
-	    this.reclaimableContextCount++;
-        this.storeContextRegisters();
+        // sp points to new receiver, so this is where we base the new frame off
+        var newFrame = this.sp - NoteTaker.FI_RECEIVER;
+        this.activeContextPointers[newFrame + NoteTaker.FI_SAVED_BP] = this.currentFrame;
+        this.activeContextPointers[newFrame + NoteTaker.FI_CALLER_PC] = this.pc;
+        this.activeContextPointers[newFrame + NoteTaker.FI_NUMARGS] = argumentCount;
+        this.activeContextPointers[newFrame + NoteTaker.FI_METHOD] = newMethod;
+        this.activeContextPointers[newFrame + NoteTaker.FI_MCLASS] = newMethodClass;
         /////// Woosh //////
-        this.activeContext = newContext; //We're off and running...
-        //Following are more efficient than fetchContextRegisters() in newActiveContext()
-        this.homeContext = newContext;
+        this.currentFrame = newFrame; //We're off and running...
+        this.ensureLiterals(newMethod);
         this.method = newMethod;
         this.methodBytes = newMethod.bytes;
-        this.pc = newPC;
-        this.sp = newSP;
-        this.storeContextRegisters(); // not really necessary, I claim
-        this.receiver = newContext.pointers[Squeak.Context_receiver];
+        this.pc = newMethod.methodStartPC();
+        this.sp = newFrame;
+        this.receiver = this.activeContextPointers[this.currentFrame + NoteTaker.FI_RECEIVER];
         if (this.receiver !== newRcvr)
             throw "receivers don't match";
         this.checkForInterrupts();
@@ -1263,7 +1250,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.arrayCopy(stack, selectorIndex+1, stack, selectorIndex, trueArgCount);
         this.sp--; // adjust sp accordingly
         var entry = this.findSelectorInClass(selector, trueArgCount, this.getClass(rcvr));
-        this.executeNewMethod(rcvr, entry.method, entry.argCount, entry.primIndex);
+        this.executeNewMethod(rcvr, entry.method, entry.methodClass, entry.argCount, entry.primIndex);
         return true;
     },
     primitivePerformWithArgs: function(argCount, supered) {
@@ -1285,7 +1272,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.arrayCopy(args.pointers, 0, stack, this.sp - 1, trueArgCount);
         this.sp += trueArgCount - argCount; //pop selector and array then push args
         var entry = this.findSelectorInClass(selector, trueArgCount, lookupClass);
-        this.executeNewMethod(rcvr, entry.method, entry.argCount, entry.primIndex);
+        this.executeNewMethod(rcvr, entry.method, entry.methodClass, entry.argCount, entry.primIndex);
         return true;
     },
     findMethodCacheEntry: function(selector, lkupClass) {
@@ -1549,7 +1536,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             var objRef = globals[i];
             if (!objRef.isNil) {
                 var cls = objRef.pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE];
-                if (cls.isClass()) {
+                if (typeof cls === 'object' && cls.isClass()) {
                     var mdict = cls.pointers[NoteTaker.PI_CLASS_MDICT];
                     var selectors = mdict.pointers[NoteTaker.PI_MESSAGEDICT_OBJECTS].pointers;
                     var methods = mdict.pointers[NoteTaker.PI_MESSAGEDICT_METHODS].pointers;
@@ -1615,7 +1602,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                 this.currentFrame + NoteTaker.FI_METHOD == i ? ' (frame.method)' :
                 this.currentFrame + NoteTaker.FI_MCLASS == i ? ' (frame.mclass)' :
                 this.currentFrame + NoteTaker.FI_RECEIVER == i ? ' (frame.receiver)' :
-                this.currentFrame + NoteTaker.FI_RECEIVER < i ? ' (frame.arg' + (i - this.currentFrame + NoteTaker.FI_RECEIVER) + ')' :
+                this.currentFrame + NoteTaker.FI_RECEIVER < i ? ' (frame.arg' + (i - this.currentFrame - NoteTaker.FI_RECEIVER - 1) + ')' :
                 this.sp == i ? ' <== sp' : 
                 '');
         }
