@@ -718,14 +718,20 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.specialObjects = this.image.specialOopsVector.pointers;
         this.specialSelectors = range(9, 40).map(
             function(ix) {return this.specialObjects[ix]}, this);
+        // Note this could be computed by counting non-alpha characters in each selector...
+        this.specialNargs = [
+            1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 
+            1, 2, 0, 1, 0, 1, 1, 1,   0, 0, 0, 0, 1, 0, 0, 0 ];
         this.nilObj = this.image.objectFromOop(NoteTaker.OTI_NIL);
         this.falseObj = this.image.objectFromOop(NoteTaker.OTI_FALSE);
         this.trueObj = this.image.objectFromOop(NoteTaker.OTI_TRUE);
         this.integerClass = this.image.objectFromOop(NoteTaker.OTI_CLINTEGER);
+        this.classClass = this.image.objectFromOop(NoteTaker.OTI_CLCLASS);
     },
     initVMState: function() {
         this.byteCodeCount = 0;
         this.sendCount = 0;
+        this.doSuper = false;
         this.interruptCheckCounter = 0;
         this.interruptCheckCounterFeedBackReset = 1000;
         this.interruptChecksEveryNms = 3;
@@ -759,14 +765,21 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     loadInitialContext: function() {
         this.activeContext = this.image.userProcess;
         this.activeContextPointers = this.activeContext.pointers;
-        this.currentFrameIndex = (this.activeContextPointers.length - this.activeContextPointers[2]) + 1;
-        this.method = this.activeContextPointers[this.currentFrameIndex + NoteTaker.FI_METHOD];
+        this.currentFrame = (this.activeContextPointers.length - this.activeContextPointers[2]) + 1;
+        this.method = this.activeContextPointers[this.currentFrame + NoteTaker.FI_METHOD];
         this.methodBytes = this.method.bytes;
-        this.ensureLiterals(this.activeContextPointers[this.currentFrameIndex + NoteTaker.FI_METHOD]);
-        this.receiver = this.activeContextPointers[this.currentFrameIndex + NoteTaker.FI_RECEIVER];
-        var initialPC = this.methodBytes[1];
-        this.pc = initialPC-2; // must be off by two for header
-        this.sp = this.currentFrameIndex - 1;
+        this.ensureLiterals(this.activeContextPointers[this.currentFrame + NoteTaker.FI_METHOD]);
+        this.receiver = this.activeContextPointers[this.currentFrame + NoteTaker.FI_RECEIVER];
+        // FIXME:  [DI] I don't understand the saved pc in the image, but I do know that it
+        // starts by setting the global Notetaker to true.  
+        this.pc = this.method.methodStartPC(); // Loc of Notetaker <- true.
+        // So far all the references to the Notetaker global seem to be about byte ordering, 
+        // and I believe that we do not want the intel swapping,  So by skipping 3 bytes forward, 
+        // Notetaker will remain false and byte access will benormal
+        // Sadly the call on notetakerize will still cause trouble, so we'll have to patch that out
+        this.methodBytes[77] = 144;  // Patches over "DefaultTextStyle NoteTakerize."
+        this.pc += 3; // Loc beyond Notetaker <- true.
+        this.sp = this.currentFrame - 1;
         
         /* old squeak stuff...
         var schedAssn = this.specialObjects[Squeak.splOb_SchedulerAssociation];
@@ -853,7 +866,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 				push(fProcessOop);
 				break;
 			case 134:	// SUPER
-				fNextSendToSuper= true;
+				this.doSuper = true;
 				break; //**continue stepping;		// goto start
 			case 135:	// LSELF (cf. 0x71 above)
 				push(receiver());
@@ -935,20 +948,21 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 
             // at:, at:put:, size, next, nextPut:, ...
             case 192: case 193: case 194: case 195: case 196: case 197: case 198: case 199: 
-            case 200: case 201: case 202: case 203: case 204: case 205: case 206: case 207: 
-                if (!this.primHandler.quickSendOther(this.receiver, b&0xF))
+            case 200: case 201: case 202: case 203: case 204: case 205: case 206: case 207:
+                // FIXME: For now we just run a full send (for testing)
+                if (true | !this.primHandler.quickSendOther(this.receiver, b&0xF))
                     this.sendSpecial((b&0xF)+16); break;
 
             // Send Literal Selector with 0, 1, and 2 args
             case 208: case 209: case 210: case 211: case 212: case 213: case 214: case 215: 
             case 216: case 217: case 218: case 219: case 220: case 221: case 222: case 223: 
-                this.send(this.method.methodGetSelector(b&0xF), 0, false); break;
+                this.send(this.method.methodGetSelector(b&0xF), 0); break;
             case 224: case 225: case 226: case 227: case 228: case 229: case 230: case 231: 
             case 232: case 233: case 234: case 235: case 236: case 237: case 238: case 239: 
-                this.send(this.method.methodGetSelector(b&0xF), 1, false); break;
+                this.send(this.method.methodGetSelector(b&0xF), 1); break;
             case 240: case 241: case 242: case 243: case 244: case 245: case 246: case 247: 
             case 248: case 249: case 250: case 251: case 252: case 253: case 254: case 255:
-                this.send(this.method.methodGetSelector(b&0xF), 2, false); break;
+                this.send(this.method.methodGetSelector(b&0xF), 2); break;
         }
     },
     doStore: function (value, addrByte) {
@@ -1118,16 +1132,16 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.send(this.specialObjects[Squeak.splOb_SelectorMustBeBoolean], 1, false);
     },
     sendSpecial: function(lobits) {
-        this.send(this.specialSelectors[lobits*2],
-            this.specialSelectors[(lobits*2)+1],
-            false);  //specialSelectors is  {...sel,nArgs,sel,nArgs,...)
+        this.send(this.specialSelectors[lobits], this.specialNargs[lobits]); 
     },
 },
 'sending', {
-    send: function(selector, argCount, doSuper) {
-        var newRcvr = this.stackValue(argCount);
+    send: function(selector, argCount) {
+        console.log("sending " + selector + ", super= " + this.doSuper);
+        var newRcvr = this.top();
         var lookupClass = this.getClass(newRcvr);
-        if (doSuper) {
+        console.log("rcvr " + newRcvr + ", lookupClass= " + lookupClass);
+        if (this.doSuper) {
             lookupClass = this.method.methodClassForSuper();
             lookupClass = lookupClass.pointers[Squeak.Class_superclass];
         }
@@ -1145,7 +1159,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         var currentClass = startingClass;
         var mDict;
         while (!currentClass.isNil) {
-            mDict = currentClass.pointers[Squeak.Class_mdict];
+            mDict = currentClass.pointers[NoteTaker.PI_CLASS_MDICT];
             if (mDict.isNil) {
 //                ["MethodDict pointer is nil (hopefully due a swapped out stub)
 //                        -- raise exception #cannotInterpret:."
@@ -1162,7 +1176,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                 cacheEntry.argCount = argCount;
                 return cacheEntry;
             }  
-            currentClass = currentClass.pointers[Squeak.Class_superclass];
+            currentClass = currentClass.pointers[NoteTaker.PI_CLASS_SUPERCLASS];
         }
         //Cound not find a normal message -- send #doesNotUnderstand:
         var dnuSel = this.specialObjects[Squeak.splOb_SelectorDoesNotUnderstand];
@@ -1775,20 +1789,20 @@ Object.subclass('users.bert.St78.vm.Primitives',
         switch (lobits) {
             case 0x0: return this.popNandPushIfOK(2, this.objectAt(true,true,false)); // at:
             case 0x1: return this.popNandPushIfOK(3, this.objectAtPut(true,true,false)); // at:put:
-            case 0x2: return this.popNandPushIfOK(1, this.objectSize(0)); // size
-            //case 0x3: return false; // next
-            //case 0x4: return false; // nextPut:
-            //case 0x5: return false; // atEnd
-            case 0x6: return this.pop2andPushBoolIfOK(this.vm.stackValue(1) === this.vm.stackValue(0)); // ==
-            case 0x7: return this.popNandPushIfOK(1,this.vm.getClass(this.vm.top())); // class
-            case 0x8: return this.popNandPushIfOK(2,this.doBlockCopy()); // blockCopy:
-            case 0x9: return this.primitiveBlockValue(0); // value
-            case 0xA: return this.primitiveBlockValue(1); // value:
-            //case 0xB: return false; // do:
-            //case 0xC: return false; // new
-            //case 0xD: return false; // new:
-            //case 0xE: return false; // x
-            //case 0xF: return false; // y
+            //case 0x2: return false; // next
+            //case 0x3: return false; // nextPut:
+            case 0x4: return this.popNandPushIfOK(1, this.objectSize(0)); // size
+            case 0x5: return this.pop2andPushBoolIfOK(this.vm.stackValue(1) === this.vm.stackValue(0)); // ==
+            //case 0x6: return false; // is:
+            //case 0x7: return false; // append:
+            case 0x8: return this.popNandPushIfOK(1,this.vm.getClass(this.vm.top())); // class
+            case 0x9: return this.popNandPushIfOK(2,this.doBlockCopy()); // remoteCopy:
+            case 0xA: return this.primitiveBlockValue(0); // eval
+            //case 0xB: return false; // new
+            //case 0xC: return false; // new:
+            //case 0xD: return false; // x
+            //case 0xE: return false; // y
+            //case 0xF: return false; // asStream
         }
         return false;
     },
