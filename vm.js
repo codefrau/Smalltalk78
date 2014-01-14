@@ -634,64 +634,25 @@ Object.subclass('users.bert.St78.vm.Object',
 },
 'as method', {
     methodHeader: function() {
-        return this.pointers[0];
+        return this.bytes[1] * 256 + this.bytes[0];
     },
     methodNumLits: function() {
-        return (this.methodHeader()>>9) & 0xFF;
+        var byte1 = this.bytes[1];
+        if (byte1 == 128) return 0;  // quick method
+        return ((byte1 & 126) - 4) / 2;
     },
     methodNumArgs: function() {
-        return (this.methodHeader()>>24) & 0xF;
+        throw "not implemented yet"
     },
     methodPrimitiveIndex: function() {
-        var primBits = (this.methodHeader()) & 0x300001FF;
-        if (primBits > 0x1FF)
-            return (primBits & 0x1FF) + (primBits >> 19);
-        else
-            return primBits;
-    },
-    methodClassForSuper: function() {//assn found in last literal
-        var assn = this.pointers[this.methodNumLits()];
-        return assn.pointers[Squeak.Assn_value];
-    },
-    methodNeedsLargeFrame: function() {
-        return (this.methodHeader() & 0x20000) > 0; 
-    },
-    methodAddPointers: function(headerAndLits) {
-        this.pointers = headerAndLits; 
-    },
-    methodTempCount: function() {
-        return (this.methodHeader()>>18) & 63; 
-    },
-    methodGetLiteral: function(zeroBasedIndex) {
-        if (!this.pointers) debugger;  // All methods should be converted before access
-        return this.pointers[zeroBasedIndex];
-    },
-    methodGetSelector: function(zeroBasedIndex) {
-        return this.pointers[1+zeroBasedIndex]; // step over header 
-    },
-    methodSetLiteral: function(zeroBasedIndex, value) {
-        this.pointers[1+zeroBasedIndex] = value; // step over header
+        if (this.bytes[1] != 128) return 0;  // not quick method
+        return this.bytes[0];
     },
     methodStartPC: function() {
     	return this.bytes[1] - 2;
     },
     methodEndPC: function() {
     	return this.bytes.length;
-    },
-},
-'as context',
-{
-    contextHome: function() {
-        return this.contextIsBlock() ? this.pointers[Squeak.BlockContext_home] : this;
-    },
-    contextIsBlock: function() {
-        return typeof this.pointers[Squeak.BlockContext_argumentCount] === 'number';
-    },
-    contextMethod: function() {
-        return this.contextHome().pointers[Squeak.Context_method];
-    },
-    contextSender: function() {
-        return this.pointers[Squeak.Context_sender];
     },
 });
 
@@ -784,10 +745,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     ensureLiterals: function(method) {
         // If this method has literals, make a proper pointer object for them
         if (this.pointers) return // already converted
-        var byte1 = method.bytes[1];
-        if (byte1 == 128) return;  // quick method
-        var numLits = ((byte1 & 126) - 4) / 2;
-        if (numLits == 0) return; // no literals
+        var numLits = method.methodNumLits();
         var lits = new Array(numLits);
         for (var i=0; i<numLits; i++)
             lits[i] = this.image.objectFromOop(method.bytes[i*2+3]*256 + method.bytes[i*2+2])
@@ -941,7 +899,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             case 192: case 193: case 194: case 195: case 196: case 197: case 198: case 199: 
             case 200: case 201: case 202: case 203: case 204: case 205: case 206: case 207:
                 // FIXME: For now we just run a full send (for testing)
-                if (true | !this.primHandler.quickSendOther(this.receiver, b&0xF))
+                //if (!this.primHandler.quickSendOther(this.receiver, b&0xF))
                     this.sendSpecial((b&0xF)+16); break;
 
             // Send Literal Selector with 0, 1, and 2 args
@@ -1128,7 +1086,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 },
 'sending', {
     send: function(selector, argCount) {
-        console.log("sending " + selector + ", super= " + this.doSuper);
+        console.log("sending " + selector.stInstName() + ", super= " + this.doSuper);
         var newRcvr = this.top();
         var lookupClass = this.getClass(newRcvr);
         console.log("rcvr " + newRcvr + ", lookupClass= " + lookupClass);
@@ -1151,14 +1109,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         var mDict;
         while (!currentClass.isNil) {
             mDict = currentClass.pointers[NoteTaker.PI_CLASS_MDICT];
-            if (mDict.isNil) {
-//                ["MethodDict pointer is nil (hopefully due a swapped out stub)
-//                        -- raise exception #cannotInterpret:."
-//                self createActualMessageTo: class.
-//                messageSelector _ self splObj: SelectorCannotInterpret.
-//                ^ self lookupMethodInClass: (self superclassOf: currentClass)]
-                throw "cannotInterpret";
-            }
+            if (mDict.isNil) throw "cannotInterpret";
             var newMethod = this.lookupSelectorInDict(mDict, selector);
             if (!newMethod.isNil) {
                 //load cache entry here and return
@@ -1179,24 +1130,12 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
     lookupSelectorInDict: function(mDict, messageSelector) {
         //Returns a method or nilObject
-        var dictSize = mDict.pointersSize();
-        var mask = (dictSize - Squeak.MethodDict_selectorStart) - 1;
-        var index = (mask & messageSelector.hash) + Squeak.MethodDict_selectorStart;
-    	// If there are no nils (should always be), then stop looping on second wrap.
-    	var hasWrapped = false;
-        while (true) {
-            var nextSelector = mDict.pointers[index];
-            if (nextSelector === messageSelector) {
-                var methArray = mDict.pointers[Squeak.MethodDict_array];
-                return methArray.pointers[index - Squeak.MethodDict_selectorStart];
-            }
-            if (nextSelector.isNil) return this.nilObj;
-            if (++index === dictSize) {
-                if (hasWrapped) return this.nilObj;
-                index = Squeak.MethodDict_selectorStart;
-                hasWrapped = true;
-            }
-        }
+        var selectors = mDict.pointers[NoteTaker.PI_MESSAGEDICT_OBJECTS].pointers;
+        var methods = mDict.pointers[NoteTaker.PI_MESSAGEDICT_METHODS].pointers;
+        for (var i = 0; i < selectors.length; i++)
+            if (selectors[i] === messageSelector)
+                return methods[i];
+        return this.nilObj;
     },
     executeNewMethod: function(newRcvr, newMethod, argumentCount, primitiveIndex) {
         this.sendCount++;
@@ -1209,6 +1148,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         if (primitiveIndex>0)
             if (this.tryPrimitive(primitiveIndex, argumentCount, newMethod))
                 return;  //Primitive succeeded -- end of story
+        debugger;
         var newContext = this.allocateOrRecycleContext(newMethod.methodNeedsLargeFrame());
         var methodNumLits = this.method.methodNumLits();
         //The stored IP should be 1-based index of *next* instruction, offset by hdr and lits
@@ -1357,13 +1297,13 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         //will not keep dislodging each other
         var entry;
         this.methodCacheRandomish = (this.methodCacheRandomish + 1) & 3;
-        var firstProbe = (selector.hash ^ lkupClass.hash) & this.methodCacheMask;
+        var firstProbe = ((selector.oop ^ lkupClass.oop) >> 1) & this.methodCacheMask;
         var probe = firstProbe;
         for (var i = 0; i < 4; i++) { // 4 reprobes for now
             entry = this.methodCache[probe];
             if (entry.selector === selector && entry.lkupClass === lkupClass) return entry;
             if (i === this.methodCacheRandomish) firstProbe = probe;
-            probe = (probe + selector.hash) & this.methodCacheMask;
+            probe = (probe + selector.oop) & this.methodCacheMask;
         }
         entry = this.methodCache[firstProbe];
         entry.lkupClass = lkupClass;
