@@ -1682,14 +1682,27 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         var printer = new users.bert.St78.vm.InstructionPrinter(aMethod || this.method, this);
         return printer.printInstructions(optionalIndent, optionalHighlight, optionalPC);
     },
-    printGlobal: function(objRef) {
+    printObjectRef: function(objRef, startIndex) {
+        // if cached, use it
+        if (objRef.hasOwnProperty('stInstName')) return objRef.stInstName();
+        // look up in global symbol table 
         var globalNames = this.image.globals.pointers[NoteTaker.PI_SYMBOLTABLE_OBJECTS].pointers,
             globalValues = this.image.globals.pointers[NoteTaker.PI_SYMBOLTABLE_VALUES].pointers;
-        debugger;
-        for (var i = 0; i < globalNames.length; i++) {
-            if (objRef === globalValues[i])
-                return globalNames[i].bytesAsString()
+        for (var i = startIndex || 0; i < globalNames.length; i++) {
+            if (objRef === globalValues[i]) {
+                // cache in stInstName() function
+                (function(globals, index){
+                    objRef.stInstName = function() {
+                        if (this === globals.pointers[NoteTaker.PI_SYMBOLTABLE_VALUES].pointers[i])
+                            return 'global ' + globals.pointers[NoteTaker.PI_SYMBOLTABLE_OBJECTS].pointers[i].bytesAsString();
+                        delete this.stInstName; // cache is invalid
+                        return "object ref " + this.oop;
+                    };
+                })(this.image.globals, i);
+                return objRef.stInstName();
+            }
         }
+        // not found, maybe just created? Look it up again next time.
         return "object ref " + objRef.oop;
     },    
     willSendOrReturn: function() {
@@ -3448,8 +3461,9 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
     	this.print('pushConst: ' + (obj.stInstName ? obj.stInstName() : obj));
     },
     pushLiteralVariable: function(index) {
-        var objRef = this.method.methodGetLiteral(index);
-    	this.print('pushLitRef: ' + this.vm.printGlobal(objRef));
+        var objRef = this.method.methodGetLiteral(index),
+            refName = this.vm.printObjectRef(objRef);
+        this.print('pushLitRef: ' + index + ' (' + refName + ')');
     },
 	pushReceiver: function() {
 	    this.print('push: self');
@@ -3464,8 +3478,9 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
     	this.print( 'send: #' + (selector.bytesAsString ? selector.bytesAsString() : selector));
     },
     storeIntoLiteralVariable: function(index, doPop) {
-        var objRef = this.method.methodGetLiteral(index);
-    	this.print((doPop ? 'pop' : 'store') + 'IntoLitRef: ' + this.vm.printGlobal(objRef));
+        var objRef = this.method.methodGetLiteral(index),
+            refName = this.vm.printObjectRef(objRef);
+        this.print((doPop ? 'pop' : 'store') + 'IntoLitRef: ' + index + ' (' + refName + ')');
     },
     storeIntoReceiverVariable: function(offset, doPop) { 
     	this.print((doPop ? 'pop' : 'store') + 'IntoInstVar: ' + offset);
