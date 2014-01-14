@@ -765,10 +765,10 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     loadInitialContext: function() {
         this.activeContext = this.image.userProcess;
         this.activeContextPointers = this.activeContext.pointers;
-        this.currentFrame = (this.activeContextPointers.length - this.activeContextPointers[2]) + 1;
+        this.currentFrame = (this.activeContextPointers.length - this.activeContextPointers[NoteTaker.PI_PROCESS_TOP]) + 1;
         this.method = this.activeContextPointers[this.currentFrame + NoteTaker.FI_METHOD];
         this.methodBytes = this.method.bytes;
-        this.ensureLiterals(this.activeContextPointers[this.currentFrame + NoteTaker.FI_METHOD]);
+        this.ensureLiterals(this.method);
         this.receiver = this.activeContextPointers[this.currentFrame + NoteTaker.FI_RECEIVER];
         // FIXME:  [DI] I don't understand the saved pc in the image, but I do know that it
         // starts by setting the global Notetaker to true.  
@@ -779,16 +779,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         // Sadly the call on notetakerize will still cause trouble, so we'll have to patch that out
         this.methodBytes[77] = 144;  // Patches over "DefaultTextStyle NoteTakerize."
         this.pc += 3; // Loc beyond Notetaker <- true.
-        this.sp = this.currentFrame - 1;
-        
-        /* old squeak stuff...
-        var schedAssn = this.specialObjects[Squeak.splOb_SchedulerAssociation];
-        var sched = schedAssn.pointers[Squeak.Assn_value];
-        var proc = sched.pointers[Squeak.ProcSched_activeProcess];
-        this.activeContext = proc.pointers[Squeak.Proc_suspendedContext];
-        this.fetchContextRegisters(this.activeContext);
-        this.reclaimableContextCount = 0;
-        */
+        this.sp = this.currentFrame;
     },
     ensureLiterals: function(method) {
         // If this method has literals, make a proper pointer object for them
@@ -1669,12 +1660,24 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
     printActiveContext: function() {
         // temps and stack in current context
-        var stack = Strings.format("\npc: %s\nsp: %s\n", this.pc, this.sp);
         var ctx = this.activeContextPointers;
-        for (var i = this.sp - 5; i < ctx.length - 3; i++) {
+        var numArgs = ctx[this.currentFrame + NoteTaker.FI_NUMARGS];
+        var stack = Strings.format("\npc: %s\nsp: %s\nframe: %s\nnumArgs: %s\n",
+            this.pc, this.sp, this.currentFrame, numArgs);
+
+        for (var i = this.sp; i <= this.currentFrame + NoteTaker.FI_RECEIVER + numArgs; i++) {
             var obj = ctx[i];
             var value = typeof obj === 'number' ? obj : obj.stInstName();
-            stack += Strings.format('\nctx[%s]: %s%s', i, value, this.sp == i ? ' <== SP': '');
+            stack += Strings.format('\nctx[%s]: %s%s', i, value,
+                this.currentFrame + NoteTaker.FI_SAVED_BP == i ? ' (frame.savedBP)' :
+                this.currentFrame + NoteTaker.FI_CALLER_PC == i ? ' (frame.callerPC)' :
+                this.currentFrame + NoteTaker.FI_NUMARGS == i ? ' (frame.numArgs)' :
+                this.currentFrame + NoteTaker.FI_METHOD == i ? ' (frame.method)' :
+                this.currentFrame + NoteTaker.FI_MCLASS == i ? ' (frame.mclass)' :
+                this.currentFrame + NoteTaker.FI_RECEIVER == i ? ' (frame.receiver)' :
+                this.currentFrame + NoteTaker.FI_RECEIVER < i ? ' (frame.arg' + (i - this.currentFrame + NoteTaker.FI_RECEIVER) + ')' :
+                this.sp == i ? ' <== sp' : 
+                '');
         }
         return stack;
     },
