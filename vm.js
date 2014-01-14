@@ -634,7 +634,7 @@ Object.subclass('users.bert.St78.vm.Object',
 },
 'as method', {
     methodIsQuick: function() {
-        return this.bytes[1] & 128;
+        return this.bytes[1] === 128;
     },
     methodNumLits: function() {
         return ((this.bytes[1] & 126) - 4) / 2;
@@ -647,7 +647,7 @@ Object.subclass('users.bert.St78.vm.Object',
         return ((this.bytes[1] & 1) << 4) + (this.bytes[0] >> 4);
     },
     methodPrimitiveIndex: function() {
-        if (!this.methodIsQuick()) return 0;
+        if (this.bytes[1] <= 128) return 0;
         return this.pointers[this.methodNumLits() - 1];
     },
     methodGetLiteral: function(zeroBasedIndex) {
