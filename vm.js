@@ -648,6 +648,10 @@ Object.subclass('users.bert.St78.vm.Object',
         if (this.bytes[1] != 128) return 0;  // not quick method
         return this.bytes[0];
     },
+    methodGetLiteral: function(zeroBasedIndex) {
+        if (!this.pointers) debugger;  // All methods should be converted before access
+        return this.pointers[zeroBasedIndex];
+    },
     methodStartPC: function() {
     	return this.bytes[1] - 2;
     },
