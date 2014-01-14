@@ -634,10 +634,9 @@ Object.subclass('users.bert.St78.vm.Object',
 },
 'as method', {
     methodIsQuick: function() {
-        return this.bytes[1] === 128;
+        return this.bytes[1] & 128;
     },
     methodNumLits: function() {
-        if (this.methodIsQuick()) return 0;
         return ((this.bytes[1] & 126) - 4) / 2;
     },
     methodNumArgs: function() {
@@ -649,8 +648,7 @@ Object.subclass('users.bert.St78.vm.Object',
     },
     methodPrimitiveIndex: function() {
         if (!this.methodIsQuick()) return 0;
-        if (!this.pointers) debugger;  // All methods should be converted before access
-        return this.pointers[this.methodNumLiterals() - 1];
+        return this.pointers[this.methodNumLits() - 1];
     },
     methodGetLiteral: function(zeroBasedIndex) {
         if (!this.pointers) debugger;  // All methods should be converted before access
@@ -1119,6 +1117,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             var newMethod = this.lookupSelectorInDict(mDict, selector);
             if (!newMethod.isNil) {
                 //load cache entry here and return
+                this.ensureLiterals(newMethod);
                 cacheEntry.method = newMethod;
                 cacheEntry.methodClass = currentClass;
                 cacheEntry.primIndex = newMethod.methodPrimitiveIndex();
@@ -1155,7 +1154,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         if (primitiveIndex>0)
             if (this.tryPrimitive(primitiveIndex, argumentCount, newMethod))
                 return;  //Primitive succeeded -- end of story
-        debugger;
         // sp points to new receiver, so this is where we base the new frame off
         var newFrame = this.sp - NoteTaker.FI_RECEIVER;
         this.activeContextPointers[newFrame + NoteTaker.FI_SAVED_BP] = this.currentFrame;
@@ -1165,7 +1163,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.activeContextPointers[newFrame + NoteTaker.FI_MCLASS] = newMethodClass;
         /////// Woosh //////
         this.currentFrame = newFrame; //We're off and running...
-        this.ensureLiterals(newMethod);
         this.method = newMethod;
         this.methodBytes = newMethod.bytes;
         this.methodNumArgs = argumentCount;
@@ -1214,6 +1211,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         }
     },
     tryPrimitive: function(primIndex, argCount, newMethod) {
+        debugger;
         if ((primIndex > 255) && (primIndex < 520)) {
             if (primIndex >= 264) {//return instvars
                 this.popNandPush(1, this.top().pointers[primIndex - 264]);
