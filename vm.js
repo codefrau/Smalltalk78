@@ -729,6 +729,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.method = this.activeContextPointers[this.currentFrame + NoteTaker.FI_METHOD];
         this.ensureLiterals(this.method);
         this.methodBytes = this.method.bytes;
+        this.methodNumArgs = 0;
         this.receiver = this.activeContextPointers[this.currentFrame + NoteTaker.FI_RECEIVER];
         // FIXME:  [DI] I don't understand the saved pc in the image, but I do know that it
         // starts by setting the global Notetaker to true.  
@@ -1161,6 +1162,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.ensureLiterals(newMethod);
         this.method = newMethod;
         this.methodBytes = newMethod.bytes;
+        this.methodNumArgs = argumentCount;
         this.pc = newMethod.methodStartPC();
         this.sp = newFrame;
         this.receiver = this.activeContextPointers[this.currentFrame + NoteTaker.FI_RECEIVER];
