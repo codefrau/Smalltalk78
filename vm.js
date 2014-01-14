@@ -704,11 +704,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         //this.semaphoresToSignal = [];
         //this.deferDisplayUpdates = false;
         //this.pendingFinalizationSignals = 0;
-        this.freeContexts = this.nilObj;
-        this.freeLargeContexts = this.nilObj;
-        this.reclaimableContextCount = 0;
-        this.nRecycledContexts = 0;
-        this.nAllocatedContexts = 0;
         this.methodCacheSize = 1024;
         this.methodCacheMask = this.methodCacheSize - 1;
         this.methodCacheRandomish = 0;
@@ -768,7 +763,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             // load temporary variable
             case 16: case 17: case 18: case 19: case 20: case 21: case 22: case 23: 
             case 24: case 25: case 26: case 27: case 28: case 29: case 30: case 31: 
-                this.push(this.homeContext.pointers[Squeak.Context_tempFrameStart+(b&0xF)]); break;
+                this.push(this.activeContextPointers[this.currentFrameTempOrArg(b&0xF)]); break;
 
             // loadLiteral
             case 32: case 33: case 34: case 35: case 36: case 37: case 38: case 39: 
@@ -1327,99 +1322,12 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.flushMethodCache();
     },
 },
-'contexts', {
-    isContext: function(obj) {//either block or methodContext
-        if (obj.sqClass === this.specialObjects[Squeak.splOb_ClassMethodContext]) return true;
-        if (obj.sqClass === this.specialObjects[Squeak.splOb_ClassBlockContext]) return true;
-        return false;
-    },
-    isMethodContext: function(obj) {
-        if (obj.sqClass === this.specialObjects[Squeak.splOb_ClassMethodContext]) return true;
-        return false;
-    },
-    isUnwindMarked: function(ctx) {
-        return false;
-    },
-    newActiveContext: function(newContext) {
-        // Note: this is inlined in executeNewMethod() and doReturn()
-        this.storeContextRegisters();
-        this.activeContext = newContext; //We're off and running...
-        this.fetchContextRegisters(newContext);
-    },
-    fetchContextRegisters: function(ctxt) {
-        var meth = ctxt.pointers[Squeak.Context_method];
-        if (this.isSmallInt(meth)) { //if the Method field is an integer, activeCntx is a block context
-            this.homeContext = ctxt.pointers[Squeak.BlockContext_home];
-            meth = this.homeContext.pointers[Squeak.Context_method];
-        } else { //otherwise home==ctxt
-            this.homeContext = ctxt;
-        }
-        this.receiver = this.homeContext.pointers[Squeak.Context_receiver];
-        this.method = meth;
-        this.methodBytes = meth.bytes;
-        this.pc = this.decodeSqueakPC(ctxt.pointers[Squeak.Context_instructionPointer], meth);
-        if (this.pc < -1)
-            throw "error";
-        this.sp = this.decodeSqueakSP(ctxt.pointers[Squeak.Context_stackPointer]);
-    },
-    storeContextRegisters: function() {
-        //Save pc, sp into activeContext object, prior to change of context
-        //   see fetchContextRegisters for symmetry
-        //   expects activeContext, pc, sp, and method state vars to still be valid
-        this.activeContext.pointers[Squeak.Context_instructionPointer] = this.encodeSqueakPC(this.pc, this.method);
-        this.activeContext.pointers[Squeak.Context_stackPointer] = this.encodeSqueakSP(this.sp);
-    },
-    encodeSqueakPC: function(intPC, method) {
-        // Squeak pc is offset by header and literals
-        // and 1 for z-rel addressing
-        return intPC + (((method.methodNumLits()+1)*4) + 1);
-    },
-    decodeSqueakPC: function(st78PC, method) {
-        return st78PC - (((method.methodNumLits()+1)*4) + 1);
-    },
-    encodeSqueakSP: function(intSP) {
-        // sp is offset by tempFrameStart, -1 for z-rel addressing
-        return intSP - (Squeak.Context_tempFrameStart - 1);
-    },
-    decodeSqueakSP: function(st78PC) {
-        return st78PC + (Squeak.Context_tempFrameStart - 1);
-    },
-    recycleIfPossible: function(ctxt) {
-        if (!this.isMethodContext(ctxt)) return;
-        if (ctxt.pointersSize() === (Squeak.Context_tempFrameStart+Squeak.Context_smallFrameSize)) {
-            // Recycle small contexts
-            ctxt.pointers[0] = this.freeContexts;
-            this.freeContexts = ctxt;
-        } else { // Recycle large contexts
-            if (ctxt.pointersSize() !== (Squeak.Context_tempFrameStart+Squeak.Context_largeFrameSize))
-                return;
-            ctxt.pointers[0] = this.freeLargeContexts;
-            this.freeLargeContexts = ctxt;
-        }
-    },
-    allocateOrRecycleContext: function(needsLarge) {
-        //Return a recycled context or a newly allocated one if none is available for recycling."
-        var freebie;
-        if (needsLarge) {
-            if (!this.freeLargeContexts.isNil) {
-                freebie = this.freeLargeContexts;
-                this.freeLargeContexts = freebie.pointers[0];
-                this.nRecycledContexts++;
-                return freebie;
-            }
-            this.nAllocatedContexts++;
-            return this.instantiateClass(this.specialObjects[Squeak.splOb_ClassMethodContext], Squeak.Context_largeFrameSize);
-        } else {
-            if (!this.freeContexts.isNil) {
-                freebie = this.freeContexts;
-                this.freeContexts = freebie.pointers[0];
-                this.nRecycledContexts++;
-                return freebie;
-            }
-            this.nAllocatedContexts++;
-            return this.instantiateClass(this.specialObjects[Squeak.splOb_ClassMethodContext], Squeak.Context_smallFrameSize);
-        }
-    },
+'frame', {
+    currentFrameTempOrArg: function(tempIndex) {
+        return tempIndex < this.methodNumArgs ? 
+            this.currentFrame + NoteTaker.FI_LAST_ARG + (this.methodNumArgs - 1 - tempIndex) :
+            this.currentFrame + NoteTaker.FI_FIRST_TEMP - (tempIndex - this.methodNumArgs);
+    }
 },
 'stack access', {
     pop: function() {
