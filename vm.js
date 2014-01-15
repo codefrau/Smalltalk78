@@ -1113,7 +1113,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         console.log("rcvr " + newRcvr + ", lookupClass= " + lookupClass);
         if (this.doSuper) {
             this.doSuper = false;
-            lookupClass = this.activeContextPointers[this.currentFrame + NoteTaker.FI_MCLASS];
+            lookupClass = this.activeContextPointers[this.currentFrame + NoteTaker.FI_MCLASS].superclass();
         }
         var entry = this.findSelectorInClass(selector, argCount, lookupClass);
         if (entry.primIndex) {
