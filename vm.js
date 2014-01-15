@@ -45,6 +45,7 @@ NoteTaker = {
 	OTI_CLNATURAL: 0x280,
 	OTI_CLLARGEINTEGER: 0x2c0,
     OTI_CLUNIQUESTRING: 0x340,
+    OTI_CLCOMPILEDMETHOD: 0x3C0,
     OTI_CLVLENGTHCLASS: 0x1380,
 
 	// CLCLASS layout:
@@ -245,7 +246,7 @@ The instsize is an integer (ie low bit = 1) with the following interpretation:
     },
     integerValueOf: function(oop) {
         var val = oop>>1;
-        return (val&0x4000)*-1 + (val&0x3FFF)
+        return (val&0x3FFF) - (val&0x4000);
     },
     isInteger: function(oop) {
         return oop & 1;
@@ -310,6 +311,7 @@ Object.subclass('users.bert.St78.vm.Image',
         this.firstOldObject = oopMap[0];
         this.lastOldObject = prevObj;
         this.initKnownObjects(oopMap);
+        this.initCompiledMethods(oopMap);
     },
     initKnownObjects: function(oopMap) {
         oopMap[NoteTaker.OTI_NIL].isNil = true;
@@ -318,6 +320,15 @@ Object.subclass('users.bert.St78.vm.Image',
         this.globals = oopMap[NoteTaker.OTI_SMALLTALK];
         this.userProcess = oopMap[NoteTaker.OTI_THEPROCESS];
         this.specialOopsVector = this.globalNamed('SpecialOops');
+    },
+    initCompiledMethods: function(oopMap) {
+        // make proper pointer objects for literals encoded in bytes
+        var cmClass = this.objectFromOop(NoteTaker.OTI_CLCOMPILEDMETHOD, oopMap),
+            cm = this.someInstanceOf(cmClass);
+        while (cm) {
+            cm.methodInitLits(this, oopMap);
+            cm = this.nextInstanceAfter(cm);
+        }
     },
     globalNamed: function(name) {
         var globalNames = this.globals.pointers[NoteTaker.PI_SYMBOLTABLE_OBJECTS].pointers,
@@ -328,12 +339,13 @@ Object.subclass('users.bert.St78.vm.Image',
                 return globalValues[i].pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE];
         }
     },
-    objectFromOop: function(oop) {
+    objectFromOop: function(oop, optionalOopMap) {
         if (oop & 1) {
             var val = oop >> 1;
             return (val & 0x3FFF) - (val & 0x4000);
         }
-        
+        if (optionalOopMap) return optionalOopMap[oop]; // only available at startup
+    
         // find the object with the given oop - looks only in oldSpace for now!
         var obj = this.firstOldObject;
         do {
@@ -503,7 +515,7 @@ Object.subclass('users.bert.St78.vm.Image',
     someInstanceOf: function(clsObj) {
         var obj = this.firstOldObject;
         while (true) {
-            if (obj.sqClass === clsObj)
+            if (obj.stClass === clsObj)
                 return obj;
             if (!obj.nextObject) {
                 // this was the last old object, tenure new objects and try again
@@ -521,7 +533,7 @@ Object.subclass('users.bert.St78.vm.Image',
         return obj.nextObject;
     },
     nextInstanceAfter: function(obj) {
-        var clsObj = obj.sqClass;
+        var clsObj = obj.stClass;
         while (true) {
             if (!obj.nextObject) {
                 // this was the last old object, tenure new objects and try again
@@ -530,7 +542,7 @@ Object.subclass('users.bert.St78.vm.Image',
                 if (!obj.nextObject) return null;
             }
             obj = obj.nextObject;
-            if (obj.sqClass === clsObj)
+            if (obj.stClass === clsObj)
                 return obj;
         }
     },
@@ -643,10 +655,26 @@ Object.subclass('users.bert.St78.vm.Object',
     } 
 },
 'as method', {
+    methodInitLits: function(image, optionalOopMap) {
+        // make literals encoded as oops available as proper pointer objects
+        var numLits = this.methodNumLits();
+        if (numLits) {
+            var lits = [],
+                bytesPtr = 2; // skip header word
+            for (var i = 0; i < numLits; i++) {
+                var oop = this.bytes[bytesPtr++] + 256 * this.bytes[bytesPtr++];
+                lits.push(image.objectFromOop(oop, optionalOopMap));
+            }
+            this.pointers = lits;
+        }
+    },
+
+
     methodIsQuick: function() {
         return this.bytes[1] === 128;
     },
     methodNumLits: function() {
+        if (this.methodIsQuick()) return 0;
         return ((this.bytes[1] & 126) - 4) / 2;
     },
     methodNumArgs: function() {
@@ -738,7 +766,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.activeContextPointers = this.activeContext.pointers;
         this.currentFrame = (this.activeContextPointers.length - this.activeContextPointers[NoteTaker.PI_PROCESS_TOP]) + 1;
         this.method = this.activeContextPointers[this.currentFrame + NoteTaker.FI_METHOD];
-        this.ensureLiterals(this.method);
         this.methodBytes = this.method.bytes;
         this.methodNumArgs = 0;
         this.receiver = this.activeContextPointers[this.currentFrame + NoteTaker.FI_RECEIVER];
@@ -769,16 +796,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.image.objectFromOop(NoteTaker.OTI_CLVECTOR).stClass =
             this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
     },
-    ensureLiterals: function(method) {
-        // If this method has literals, make a proper pointer object for them
-        if (this.pointers) return // already converted
-        var numLits = method.methodNumLits();
-        var lits = new Array(numLits);
-        for (var i=0; i<numLits; i++)
-            lits[i] = this.image.objectFromOop(method.bytes[i*2+3]*256 + method.bytes[i*2+2])
-        method.pointers = lits;
-}
-
 },
 'interpreting', {
     interpretOne: function() {
@@ -1134,7 +1151,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             var newMethod = this.lookupSelectorInDict(mDict, selector);
             if (!newMethod.isNil) {
                 //load cache entry here and return
-                this.ensureLiterals(newMethod);
                 cacheEntry.method = newMethod;
                 cacheEntry.methodClass = currentClass;
                 cacheEntry.primIndex = newMethod.methodPrimitiveIndex();
