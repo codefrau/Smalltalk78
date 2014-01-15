@@ -1118,8 +1118,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         var lookupClass = this.getClass(newRcvr);
         console.log("rcvr " + newRcvr + ", lookupClass= " + lookupClass);
         if (this.doSuper) {
-            lookupClass = this.method.methodClassForSuper();
-            lookupClass = lookupClass.pointers[Squeak.Class_superclass];
+            this.doSuper = false;
+            lookupClass = this.activeContextPointers[this.currentFrame + NoteTaker.FI_MCLASS];
         }
         var entry = this.findSelectorInClass(selector, argCount, lookupClass);
         if (entry.primIndex) {
