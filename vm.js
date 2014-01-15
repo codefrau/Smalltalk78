@@ -30,6 +30,7 @@ NoteTaker = {
 	OTI_SMALLTALK: 0x10,
 	OTI_FIRST_SEL: 0x14,
 	OTI_LAST_SEL: 0x9c,
+	OTI_ERROR_SEL: 0x9c,
 	OTI_USTABLE: 0xa0,
 
 	// known classes
@@ -752,7 +753,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.methodCacheRandomish = 0;
         this.methodCache = [];
         for (var i = 0; i < this.methodCacheSize; i++)
-            this.methodCache[i] = {lkupClass: null, selector: null, method: null, primIndex: 0, argCount: 0};
+            this.methodCache[i] = {lkupClass: null, selector: null, method: null, methodClass: null, primIndex: 0, argCount: 0};
         this.breakOutOfInterpreter = false;
         this.breakOutTick = 0;
         this.breakOnMethod = null; // method to break on
@@ -1123,7 +1124,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
 },
 'sending', {
-    send: function(selector, argCount) {
+    send: function(selector, argCountOrUndefined) {
         console.log("sending " + selector.stInstName() + ", super= " + this.doSuper);
         var newRcvr = this.top();
         var lookupClass = this.getClass(newRcvr);
@@ -1132,7 +1133,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             this.doSuper = false;
             lookupClass = this.activeContextPointers[this.currentFrame + NoteTaker.FI_MCLASS].superclass();
         }
-        var entry = this.findSelectorInClass(selector, argCount, lookupClass);
+        var entry = this.findSelectorInClass(selector, argCountOrUndefined, lookupClass);
         if (entry.primIndex) {
             //note details for verification of at/atput primitives
             this.verifyAtSelector = selector;
@@ -1140,7 +1141,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         }
         this.executeNewMethod(newRcvr, entry.method, entry.methodClass, entry.argCount, entry.primIndex);
     },
-    findSelectorInClass: function(selector, argCount, startingClass) {
+    findSelectorInClass: function(selector, argCountOrUndefined, startingClass) {
         var cacheEntry = this.findMethodCacheEntry(selector, startingClass);
         if (cacheEntry.method) return cacheEntry; // Found it in the method cache
         var currentClass = startingClass;
@@ -1154,18 +1155,16 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                 cacheEntry.method = newMethod;
                 cacheEntry.methodClass = currentClass;
                 cacheEntry.primIndex = newMethod.methodPrimitiveIndex();
-                cacheEntry.argCount = argCount;
+                cacheEntry.argCount = argCountOrUndefined === undefined ? newMethod.methodNumArgs() : argCountOrUndefined;
                 return cacheEntry;
             }  
             currentClass = currentClass.pointers[NoteTaker.PI_CLASS_SUPERCLASS];
         }
-        //Cound not find a normal message -- send #doesNotUnderstand:
-        var dnuSel = this.specialObjects[Squeak.splOb_SelectorDoesNotUnderstand];
-        if (selector === dnuSel) // Cannot find #doesNotUnderstand: -- unrecoverable error.
+        //Cound not find a normal message -- send #error
+        var errorSel = this.image.objectFromOop(NoteTaker.OTI_ERROR_SEL);
+        if (selector === errorSel) // Cannot find #error -- unrecoverable error.
             throw "Recursive not understood error encountered";
-        var dnuMsg = this.createActualMessage(selector, argCount, startingClass); //The argument to doesNotUnderstand:
-        this.popNandPush(argCount, dnuMsg);
-        return this.findSelectorInClass(dnuSel, 1, startingClass);
+        return this.findSelectorInClass(errorSel, 0, startingClass);
     },
     lookupSelectorInDict: function(mDict, messageSelector) {
         //Returns a method or nilObject
@@ -1265,17 +1264,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         }
         var success = this.primHandler.doPrimitive(primIndex, argCount, newMethod);
         return success;
-    },
-    createActualMessage: function(selector, argCount, cls) {
-        //Bundle up receiver, args and selector as a messageObject
-        var message = this.instantiateClass(this.specialObjects[Squeak.splOb_ClassMessage], 0);
-        var argArray = this.instantiateClass(this.specialObjects[Squeak.splOb_ClassArray], argCount);
-        this.arrayCopy(this.activeContext.pointers, this.sp-argCount+1, argArray.pointers, 0, argCount); //copy args from stack
-        message.pointers[Squeak.Message_selector] = selector;
-        message.pointers[Squeak.Message_arguments] = argArray;
-        if (message.pointers.length > Squeak.Message_lookupClass) //Early versions don't have lookupClass
-            message.pointers[Squeak.Message_lookupClass] = cls;
-        return message;
     },
     primitivePerform: function(argCount) {
         var selector = this.stackValue(argCount-1);
