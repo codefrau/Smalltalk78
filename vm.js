@@ -153,6 +153,11 @@ NoteTaker = {
 	FMT_ISVARIABLE: 0x2000,
 	FMT_BYTELENGTH: 0x0ffe,
 
+    // Ints
+    MAX_INT:  0x3FFF,
+    MIN_INT: -0x4000,
+    NON_INT: -0x5000, // non-small and neg (so non pos16 too)
+
     // Event constants
     Mouse_Blue: 1,
     Mouse_Yellow: 2,
@@ -685,10 +690,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         console.log('st78: interpreter ready');
     },
     initConstants: function() {
-        this.minSmallInt = -0x40000000;
-        this.maxSmallInt =  0x3FFFFFFF;
-        this.nonSmallInt = -0x50000000; //non-small and neg (so non pos32 too)
-        this.millisecondClockMask = this.maxSmallInt >> 1; //keeps ms logic in small int range
+        this.millisecondClockMask = NoteTaker.MAX_INT >> 1; //keeps ms logic in small int range
     },
     loadImageState: function() {
         this.specialObjects = this.image.specialOopsVector.pointers;
@@ -1399,7 +1401,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         return obj.stClass;
     },
     canBeSmallInt: function(anInt) {
-        return (anInt >= this.minSmallInt) && (anInt <= this.maxSmallInt);
+        return (anInt >= NoteTaker.MIN_INT) && (anInt <= NoteTaker.MAX_INT);
     },
     isSmallInt: function(object) {
         return typeof object === "number";
@@ -1411,17 +1413,17 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         return 1;
     },
     quickDivide: function(rcvr, arg) { // must only handle exact case
-        if (arg === 0) return this.nonSmallInt;  // fail if divide by zero
+        if (arg === 0) return NoteTaker.NON_INT;  // fail if divide by zero
         var result = rcvr / arg | 0;
         if (result * arg === rcvr) return result;
-        return this.nonSmallInt;     // fail if result is not exact
+        return NoteTaker.NON_INT;     // fail if result is not exact
     },
     div: function(rcvr, arg) {
-        if (arg === 0) return this.nonSmallInt;  // fail if divide by zero
+        if (arg === 0) return NoteTaker.NON_INT;  // fail if divide by zero
         return Math.floor(rcvr/arg);
     },
     mod: function(rcvr, arg) {
-        if (arg === 0) return this.nonSmallInt;  // fail if divide by zero
+        if (arg === 0) return NoteTaker.NON_INT;  // fail if divide by zero
         return rcvr - Math.floor(rcvr/arg) * arg;
     },
     safeShift: function(bitsToShift, shiftCount) {
@@ -1429,7 +1431,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         //check for lost bits by seeing if computation is reversible
         var shifted = bitsToShift<<shiftCount;
         if  ((shifted>>shiftCount) === bitsToShift) return shifted;
-        return this.nonSmallInt;  //non-small result will cause failure
+        return NoteTaker.NON_INT;  //non-small result will cause failure
     },
 },
 'utils',
