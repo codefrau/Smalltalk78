@@ -968,8 +968,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             // at:, at:put:, size, next, nextPut:, ...
             case 0xC0: case 0xC1: case 0xC2: case 0xC3: case 0xC4: case 0xC5: case 0xC6: case 0xC7:
             case 0xC8: case 0xC9: case 0xCA: case 0xCB: case 0xCC: case 0xCD: case 0xCE: case 0xCF:
-                // FIXME: For now we just run a full send (for testing)
-                //if (!this.primHandler.quickSendOther(this.receiver, b&0xF))
+                if (!this.primHandler.doSpecial(this.receiver, b&0xF))
                     this.sendSpecial((b&0xF)+16); break;
 
             // Send Literal Selector
@@ -979,7 +978,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             case 0xE8: case 0xE9: case 0xEA: case 0xEB: case 0xEC: case 0xED: case 0xEE: case 0xEF:
             case 0xF0: case 0xF1: case 0xF2: case 0xF3: case 0xF4: case 0xF5: case 0xF6: case 0xF7:
             case 0xF8: case 0xF9: case 0xFA: case 0xFB: case 0xFC: case 0xFD: case 0xFE: case 0xFF:
-                this.send(this.method.methodGetSelector(b - 0xD0)); break;
+                this.send(this.method.methodGetLiteral(b - 0xD0)); break;
         }
     },
     doStore: function (value, addrByte) {
@@ -1670,7 +1669,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
 },
 'dispatch', {
-    quickSendOther: function(rcvr, lobits) {
+    doSpecial: function(rcvr, lobits) {
         // returns true if it succeeds
         this.success = true;
         switch (lobits) {
@@ -1678,7 +1677,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 0x1: return this.popNandPushIfOK(3, this.objectAtPut(true,true,false)); // at:put:
             //case 0x2: return false; // next
             //case 0x3: return false; // nextPut:
-            case 0x4: return this.popNandPushIfOK(1, this.objectSize(0)); // size
+            case 0x4: return this.popNandPushIfOK(1, this.objectSize()); // length
             case 0x5: return this.pop2andPushBoolIfOK(this.vm.stackValue(1) === this.vm.stackValue(0)); // ==
             //case 0x6: return false; // is:
             //case 0x7: return false; // append:
@@ -1994,14 +1993,9 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
     indexableSize: function(obj) {
         if (this.vm.isSmallInt(obj)) return -1; // -1 means not indexable
-        var fmt = obj.format;
-        if (fmt<2) return -1; //not indexable
-        if (fmt===3 && this.vm.isContext(obj))
-            return obj.pointers[Squeak.Context_stackPointer]; // no access beyond top of stack?
-        if (fmt<6) return obj.pointersSize() - obj.instSize(); // pointers
-        if (fmt<8) return obj.wordsSize(); // words
-        if (fmt<12) return obj.bytesSize(); // bytes
-        return obj.bytesSize() + (4 * obj.pointersSize()); // methods
+        if (obj.bytes) return obj.bytes.length;
+        if (obj.words) return obj.words.length;
+        return obj.pointersSize();
     },
     isA: function(obj, knownClass) {
         return obj.sqClass === this.vm.specialObjects[knownClass];
@@ -2135,7 +2129,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var rcvr = this.vm.stackValue(0);
         var size = this.indexableSize(rcvr);
         if (size === -1) {this.success = false; return -1}; //not indexable
-        return this.pos32BitIntFor(size);
+        return size;
     },
     initAtCache: function() {
         // The purpose of the at-cache is to allow fast (bytecode) access to at/atput code
@@ -3338,7 +3332,7 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
     	this.print('pushInstVar: ' + offset);
     },
 	pushTemporaryVariable: function(offset) {
-	    this.print('pushTemp: ' + offset);
+	    this.print('pushArgOrTemp: ' + offset);
     },
     send: function(selector) {
     	this.print( 'send: #' + (selector.bytesAsString ? selector.bytesAsString() : selector));
@@ -3352,7 +3346,7 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
     	this.print((doPop ? 'pop' : 'store') + 'IntoInstVar: ' + offset);
     },
 	storeIntoTemporaryVariable: function(offset, doPop) {
-	    this.print((doPop ? 'pop' : 'store') + 'IntoTemp: ' + offset);
+	    this.print((doPop ? 'pop' : 'store') + 'IntoArgOrTemp: ' + offset);
     },
 });
 
