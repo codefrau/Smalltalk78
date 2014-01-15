@@ -45,6 +45,7 @@ NoteTaker = {
 	OTI_CLNATURAL: 0x280,
 	OTI_CLLARGEINTEGER: 0x2c0,
     OTI_CLUNIQUESTRING: 0x340,
+    OTI_CLVLENGTHCLASS: 0x1380,
 
 	// CLCLASS layout:
 	PI_CLASS_TITLE: 0,
@@ -292,6 +293,8 @@ Object.subclass('users.bert.St78.vm.Image',
         this.oldSpaceBytes = 0;
         var reader = new users.bert.St78.vm.ImageReader(objTable, objSpace, dataBias);
         var oopMap = reader.readObjects();
+        //FIXME: This is only needed because objectFromOop doesn't work right
+        this.oopMap = oopMap;
         // link all objects into oldspace
         var prevObj;
         for (var oop = 0; oop < objTable.length; oop += 4)
@@ -327,6 +330,9 @@ Object.subclass('users.bert.St78.vm.Image',
             var val = oop>>1;
             return (val&0x4000)*-1 + (val&0x3FFF)
         }
+        // FIXME: We should use the code below and not hold onto oopMap
+        return this.oopMap[oop];
+        
         // find the object with the given oop - looks only in oldSpace for now!
         var obj = this.firstOldObject;
         do {
@@ -589,7 +595,8 @@ Object.subclass('users.bert.St78.vm.Object',
 },
 'as class', {
     isClass: function() {
-        return this.stClass.oop === NoteTaker.OTI_CLCLASS;
+        return this.stClass.oop === NoteTaker.OTI_CLCLASS
+            || this.stClass.oop === NoteTaker.OTI_CLVLENGTHCLASS;
     },
     superclass: function() {
         return this.pointers[NoteTaker.PI_CLASS_SUPERCLASS];
@@ -610,7 +617,7 @@ Object.subclass('users.bert.St78.vm.Object',
         if (this.oop === NoteTaker.OTI_NIL) return "nil";
         if (this.oop === NoteTaker.OTI_FALSE) return "false";
         if (this.oop === NoteTaker.OTI_TRUE) return "true";
-        if (this.stClass.oop === NoteTaker.OTI_CLCLASS) return "the " + this.className() + " class";
+        if (this.isClass()) return "the " + this.className() + " class";
         if (this.stClass.oop === NoteTaker.OTI_CLSTRING) return "'" + this.bytesAsString() + "'";
         if (this.stClass.oop === NoteTaker.OTI_CLUNIQUESTRING) return "#" + this.bytesAsString();
         var className = this.stClass.className();
@@ -738,13 +745,29 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         // FIXME:  [DI] I don't understand the saved pc in the image, but I do know that it
         // starts by setting the global Notetaker to true.  
         this.pc = this.method.methodStartPC(); // Loc of Notetaker <- true.
+        this.sp = this.currentFrame;
+
+        // FIXME:  The following should all be moved to a method called, eg, NTpatches...
         // So far all the references to the Notetaker global seem to be about byte ordering, 
         // and I believe that we do not want the intel swapping,  So by skipping 3 bytes forward, 
         // Notetaker will remain false and byte access will benormal
+        this.pc += 3; // Loc beyond Notetaker <- true.
+
         // Sadly the call on notetakerize will still cause trouble, so we'll have to patch that out
         this.methodBytes[77] = 144;  // Patches over "DefaultTextStyle NoteTakerize."
-        this.pc += 3; // Loc beyond Notetaker <- true.
-        this.sp = this.currentFrame;
+
+        // Also, remarkably, it seems that Vector, String and Uniquestring all have their classes
+        // mistakenly set to Class rather than VariableLengthClass as they were in the image
+        // from which the NT image was cloned.  I was accused of "bit rot" for claiming this
+        // to be in error due to the contradictory evidence in the image.  Amazingly
+        // the one thing that would have revealed this error, the lookup of new:, was sidestepped
+        // in both my original 8086 code and Helge's Java VM.  Truly amazing  ;-)
+        this.image.objectFromOop(NoteTaker.OTI_CLSTRING).stClass =
+            this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
+        this.image.objectFromOop(NoteTaker.OTI_CLUNIQUESTRING).stClass =
+            this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
+        this.image.objectFromOop(NoteTaker.OTI_CLVECTOR).stClass =
+            this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
     },
     ensureLiterals: function(method) {
         // If this method has literals, make a proper pointer object for them
