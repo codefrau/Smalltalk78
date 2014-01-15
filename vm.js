@@ -1502,17 +1502,12 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         if (typeof ctx == "number") {limit = ctx; ctx = null;}
         if (!ctx) ctx = this.activeContext;
         if (!limit) limit = 100;
-        return 'current method: ' + this.printMethod() + '\n';
         var stack = '';
-        while (!ctx.isNil && limit-- > 0) {
-            var block = '';
-            var method = ctx.pointers[Squeak.Context_method];
-            if (typeof method === 'number') { // it's a block context, fetch home
-                method = ctx.pointers[Squeak.BlockContext_home].pointers[Squeak.Context_method];
-                block = '[] in ';
-            };
-            stack = block + this.printMethod(method) + '\n' + stack;
-            ctx = ctx.pointers[Squeak.Context_sender];
+        var bp = this.currentFrame;
+        while (bp && limit-- > 0) {
+            var method = ctx.pointers[bp + NoteTaker.FI_METHOD];
+            stack = this.printMethod(method) + '\n' + stack;
+            bp = ctx.pointers[bp + NoteTaker.FI_SAVED_BP];
         }
         return stack;
     },
