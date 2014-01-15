@@ -669,10 +669,11 @@ Object.subclass('users.bert.St78.vm.Object',
             this.pointers = lits;
         }
     },
-
-
     methodIsQuick: function() {
         return this.bytes[1] === 128;
+    },
+    methodQuickIndex: function() {
+        return this.bytes[0];
     },
     methodNumLits: function() {
         if (this.methodIsQuick()) return 0;
@@ -1183,6 +1184,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             this.breakOnContextChanged = false;
             this.breakOutOfInterpreter = 'break';
         }
+        if (newMethod.methodIsQuick())
+            return this.doQuickPush(newMethod.methodQuickIndex());
         if (primitiveIndex>0)
             if (this.tryPrimitive(primitiveIndex, argumentCount, newMethod))
                 return;  //Primitive succeeded -- end of story
@@ -1242,26 +1245,17 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             this.breakOutOfInterpreter = 'break';
         }
     },
+    doQuickPush: function(index) {
+        if (index === 255)
+            return this.push(this.receiver);
+        if (index >= this.receiver.pointers.size) {
+            debugger;
+            throw "quick push out of range?"
+        }
+        this.push(this.receiver.pointers[index]);
+    },
     tryPrimitive: function(primIndex, argCount, newMethod) {
         debugger;
-        if ((primIndex > 255) && (primIndex < 520)) {
-            if (primIndex >= 264) {//return instvars
-                this.popNandPush(1, this.top().pointers[primIndex - 264]);
-                return true;
-            }
-            switch (primIndex) {
-                case 256: //return self
-                    return true;
-                case 257: this.popNandPush(1, this.trueObj); //return true
-                    return true;
-                case 258: this.popNandPush(1, this.falseObj); //return false
-                    return true;
-                case 259: this.popNandPush(1, this.nilObj); //return nil
-                    return true;
-            }
-            this.popNandPush(1, primIndex - 261); //return -1...2
-            return true;
-        }
         var success = this.primHandler.doPrimitive(primIndex, argCount, newMethod);
         return success;
     },
