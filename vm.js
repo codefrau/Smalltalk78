@@ -455,22 +455,18 @@ Object.subclass('users.bert.St78.vm.Image',
     },
 },
 'creating', {
-    registerObject: function(obj) {
-        // We don't actually register the object yet, because that would prevent
-        // it from being garbage-collected.
-        obj.oop = this.lastOop += 4; // might want to recycle oops
+    newOop: function() {
         this.newSpaceCount++;
+        return this.lastOop += 4;
     },
     instantiateClass: function(aClass, indexableSize, filler) {
-        var newObject = new users.bert.St78.vm.Object();
-        this.registerObject(newObject);
+        var newObject = new users.bert.St78.vm.Object(this.newOop());
         newObject.initInstanceOf(aClass, indexableSize, filler);
         return newObject;
     },
     clone: function(object) {
-        var newObject = new users.bert.St78.vm.Object();
-        var hash = this.registerObject(newObject);
-        newObject.initAsClone(object, hash);
+        var newObject = new users.bert.St78.vm.Object(this.newOop());
+        newObject.initAsClone(object);
         return newObject;
     },
 },
@@ -587,9 +583,9 @@ Object.subclass('users.bert.St78.vm.Object',
         debugger;
         this.stClass = aClass;
         var instSpec = aClass.pointers[NoteTaker.PI_CLASS_INSTSIZE];
-        var instSize = instSpec & NoteTaker.BYTELENGTH;
 
         if (instSpec & NoteTaker.FMT_HASPOINTERS) {
+            var instSize = ((instSpec & NoteTaker.FMT_BYTELENGTH) >> 1) - 1; // words, sans header
             if (instSize + indexableSize > 0)
                 this.pointers = this.fillArray(instSize + indexableSize, filler);
         } else
