@@ -149,11 +149,11 @@ NoteTaker = {
 	//
 	F_FRAMESIZE: 5,	// don't count args nor receiver...
 	
-	// Class instSize format (assuming tagged integer!):
-	FMT_HASPOINTERS: 0x8000,
-	FMT_HASWORDS: 0x4000,
-	FMT_ISVARIABLE: 0x2000,
-	FMT_BYTELENGTH: 0x0ffe,
+	// Class instSize format (assuming untagged integer!):
+	FMT_HASPOINTERS: 0x4000,
+	FMT_HASWORDS: 0x2000,
+	FMT_ISVARIABLE: 0x1000,
+	FMT_BYTELENGTH: 0x07ff,
 
     // Ints
     MAX_INT:  0x3FFF,
@@ -311,6 +311,7 @@ Object.subclass('users.bert.St78.vm.Image',
             }
         this.firstOldObject = oopMap[0];
         this.lastOldObject = prevObj;
+        this.lastOop = prevObj.oop; // might want an oop recycling scheme later
         this.initKnownObjects(oopMap);
         this.initCompiledMethods(oopMap);
     },
@@ -457,15 +458,13 @@ Object.subclass('users.bert.St78.vm.Image',
     registerObject: function(obj) {
         // We don't actually register the object yet, because that would prevent
         // it from being garbage-collected.
-        obj.id = ++this.lastId; // this can become quite large, but won't overflow for many years
+        obj.oop = this.lastOop += 4; // might want to recycle oops
         this.newSpaceCount++;
-        this.lastHash = (13849 + (27181 * this.lastHash)) & 0xFFFFFFFF;
-        return this.lastHash & 0xFFF;
     },
     instantiateClass: function(aClass, indexableSize, filler) {
         var newObject = new users.bert.St78.vm.Object();
-        var hash = this.registerObject(newObject);
-        newObject.initInstanceOf(aClass, indexableSize, hash, filler);
+        this.registerObject(newObject);
+        newObject.initInstanceOf(aClass, indexableSize, filler);
         return newObject;
     },
     clone: function(object) {
@@ -560,17 +559,17 @@ Object.subclass('users.bert.St78.vm.Object',
         var classOop = image.classOfOop(this.oop);
         this.stClass = oopMap[classOop];
         var instSize = image.fieldOfObject(3, classOop) >> 1;
-        var objBytes = instSize & 0x1000
-            ? image.lengthBitsAtAddr(addr) : instSize & 0x3FF;
+        var objBytes = instSize & NoteTaker.FMT_ISVARIABLE
+            ? image.lengthBitsAtAddr(addr) : instSize & NoteTaker.FMT_BYTELENGTH;
         if (objBytes <= 2) return; // only class
-        if (instSize & 0x4000) { // pointers
+        if (instSize & NoteTaker.FMT_HASPOINTERS) { // pointers
             this.pointers = [];
             for (var i = 1; i < objBytes/2; i++) {
                 var oop = image.fieldOfObject(i, this.oop);
                 var obj = image.isInteger(oop) ? image.integerValueOf(oop) : oopMap[oop];
                 this.pointers.push(obj);
             }
-        } else if (instSize & 0x2000) { // words
+        } else if (instSize & NoteTaker.FMT_HASWORDS) { // words
             this.words = [];
             for (var i = 1; i < objBytes/2; i++) {
                 var word = image.fieldOfObject(i, this.oop);
@@ -583,6 +582,27 @@ Object.subclass('users.bert.St78.vm.Object',
                 this.bytes.push(byte);
             }
         }
+    },
+    initInstanceOf: function(aClass, indexableSize, filler) {
+        debugger;
+        this.stClass = aClass;
+        var instSpec = aClass.pointers[NoteTaker.PI_CLASS_INSTSIZE];
+        var instSize = instSpec & NoteTaker.BYTELENGTH;
+
+        if (instSpec & NoteTaker.FMT_HASPOINTERS) {
+            if (instSize + indexableSize > 0)
+                this.pointers = this.fillArray(instSize + indexableSize, filler);
+        } else
+            if (indexableSize > 0)
+                if (instSpec & NoteTaker.FMT_HASWORDS)
+                    this.words = this.fillArray(indexableSize, 0);
+                else
+                    this.bytes = this.fillArray(indexableSize, 0); //Methods require further init of pointers
+    },
+    fillArray: function(length, filler) {
+        for (var array = [], i = 0; i < length; i++)
+            array[i] = filler;
+        return array;
     },
 },
 'accessing', {
@@ -1371,8 +1391,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     top: function() {
         return this.activeContextPointers[this.sp];
     },
-    stackFrame: function(frameIndex) {
-        return this.activeContext.pointers[this.sp + frameIndex];
+    stackValue: function(depthIntoStack) {
+        return this.activeContext.pointers[this.sp + depthIntoStack];
     },
     stackInteger: function(depthIntoStack) {
         return this.checkSmallInt(this.stackValue(depthIntoStack));
@@ -1685,6 +1705,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
     doPrimitive: function(index, argCount, newMethod) {
         this.success = true;
         switch (index) {
+/*
             case 1: return this.popNandPushIntIfOK(2,this.stackInteger(1) + this.stackInteger(0));  // Integer.add
             case 2: return this.popNandPushIntIfOK(2,this.stackInteger(1) - this.stackInteger(0));  // Integer.subtract
             case 3: return this.pop2andPushBoolIfOK(this.stackInteger(1) < this.stackInteger(0));   // Integer.less
@@ -1711,8 +1732,10 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 24: return false; // primitiveGreaterThanLargeIntegers
             case 25: return false; // primitiveLessOrEqualLargeIntegers
             case 26: return false; // primitiveGreaterOrEqualLargeIntegers
+*/
             case 27: return this.primitiveNew(argCount); // argCount = 0 fixed size
             case 28: return this.primitiveNew(argCount); // argCount = 1 variable
+/*
             case 29: return false; // primitiveMultiplyLargeIntegers
             case 30: return false; // primitiveDivideLargeIntegers
             case 31: return false; // primitiveModLargeIntegers
@@ -1859,35 +1882,10 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 245: return false; // primStringindexOfAsciiinStringstartingAt
             case 246: return false; // primStringfindSubstringinstartingAtmatchTable
             case 254: return this.primitiveVMParameter(argCount);
+*/
         }
         throw "primitive " + index + " not implemented yet";
         return false;
-    },
-    doNamedPrimitive: function(argCount, newMethod) {
-        if (newMethod.pointersSize() < 2) return false;
-        var firstLiteral = newMethod.pointers[1]; // skip method header
-        if (firstLiteral.pointersSize() !== 4) return false;
-        var moduleName = firstLiteral.pointers[0].bytesAsString();
-        var functionName = firstLiteral.pointers[1].bytesAsString();
-        console.log('st78: named primitive "' + moduleName + '.' + functionName + '"');
-        var module = this.loadedModules[moduleName];
-        if (!module) {
-            if (module !== undefined) return false; // earlier load failed
-            module = this.loadModule(moduleName);
-            this.loadedModules[moduleName] = module;
-        }
-        if (module) {
-            var primitive = module.exports[functionName];
-            if (primitive) return primitive(argCount);
-        }
-        return false;
-    },
-    loadModule: function(moduleName) {
-        var module = this.externalModules[moduleName] || this.builtinModules[moduleName];
-        if (!module || !module.exports) return null;
-        if (module.exports.initializeModule)
-            module.exports.initializeModule(this);
-        return module;
     },
 },
 'stack access', {
@@ -2219,25 +2217,15 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return true;
     },
     primitiveNew: function(argCount) {
-        // Create a new instance **under construction**
-        var rcvr = this.stackValue(argCount);
-        // Check that receiver is a class, and get instSize
-        if (!rcvr.isClass()) return false;
-        var sizeSpec = rcvr.pointers[instSize];
-        var instSize = sizeSpec & mask;
-
-        if (argCount == 1) {
-        // Check that size is an int of reasonable size
-        var instSize = this.checkSmallInt(this.stackValue(0));
-        if (!this.success) return false;
-        }
-
-        if (sizeSpec & mask) {
-            this.vm.popNandPush(1+argCount, this.makeBytesInstance(rcvr, instSize));
-        } else {
-            this.vm.popNandPush(1+argCount, this.makePointersInstance(rcvr, instSize));
-        }
-        return true;
+        // Create a new instance
+        var rcvr = this.stackNonInteger(0);
+        if (!this.success || !rcvr.isClass()) return false;
+        if (argCount == 0) // fixed size
+            return this.popNandPushIfOK(1, this.vm.instantiateClass(rcvr, 0));
+        // variable size 
+        var size = this.stackInteger(1);
+        if (!this.success || size < 0) return false;
+        return this.popNandPushIfOK(2, this.vm.instantiateClass(rcvr, size));
     },
 
 
