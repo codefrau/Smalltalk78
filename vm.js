@@ -298,8 +298,6 @@ Object.subclass('users.bert.St78.vm.Image',
         this.oldSpaceBytes = 0;
         var reader = new users.bert.St78.vm.ImageReader(objTable, objSpace, dataBias);
         var oopMap = reader.readObjects();
-        //FIXME: This is only needed because objectFromOop doesn't work right
-        this.oopMap = oopMap;
         // link all objects into oldspace
         var prevObj;
         for (var oop = 0; oop < objTable.length; oop += 4)
@@ -332,11 +330,9 @@ Object.subclass('users.bert.St78.vm.Image',
     },
     objectFromOop: function(oop) {
         if (oop & 1) {
-            var val = oop>>1;
-            return (val&0x4000)*-1 + (val&0x3FFF)
+            var val = oop >> 1;
+            return (val & 0x3FFF) - (val & 0x4000);
         }
-        // FIXME: We should use the code below and not hold onto oopMap
-        return this.oopMap[oop];
         
         // find the object with the given oop - looks only in oldSpace for now!
         var obj = this.firstOldObject;
@@ -344,7 +340,9 @@ Object.subclass('users.bert.St78.vm.Image',
             if (oop === obj.oop) return obj;
             obj = obj.nextObject;
         } while (obj);
-        return null;
+        
+        debugger;
+        throw "oop not found";
     },
 },
 'garbage collection', {
