@@ -1379,8 +1379,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     top: function() {
         return this.activeContextPointers[this.sp];
     },
-    stackValue: function(depthIntoStack) {
-        return this.activeContext.pointers[this.sp - depthIntoStack];
+    stackFrame: function(frameIndex) {
+        return this.activeContext.pointers[this.sp + frameIndex];
     },
     stackInteger: function(depthIntoStack) {
         return this.checkSmallInt(this.stackValue(depthIntoStack));
@@ -1719,8 +1719,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 24: return false; // primitiveGreaterThanLargeIntegers
             case 25: return false; // primitiveLessOrEqualLargeIntegers
             case 26: return false; // primitiveGreaterOrEqualLargeIntegers
-            case 27: return false; // primitiveEqualLargeIntegers
-            case 28: return false; // primitiveNotEqualLargeIntegers
+            case 27: return this.primitiveNew(argCount); // argCount = 0 fixed size
+            case 28: return this.primitiveNew(argCount); // argCount = 1 variable
             case 29: return false; // primitiveMultiplyLargeIntegers
             case 30: return false; // primitiveDivideLargeIntegers
             case 31: return false; // primitiveModLargeIntegers
@@ -2226,6 +2226,30 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.vm.popNandPush(1+argCount, this.makePointWithXandY(x, y));
         return true;
     },
+    primitiveNew: function(argCount) {
+        // Create a new instance **under construction**
+        var rcvr = this.stackValue(argCount);
+        // Check that receiver is a class, and get instSize
+        if (!rcvr.isClass()) return false;
+        var sizeSpec = rcvr.pointers[instSize];
+        var instSize = sizeSpec & mask;
+
+        if (argCount == 1) {
+        // Check that size is an int of reasonable size
+        var instSize = this.checkSmallInt(this.stackValue(0));
+        if (!this.success) return false;
+        }
+
+        if (sizeSpec & mask) {
+            this.vm.popNandPush(1+argCount, this.makeBytesInstance(rcvr, instSize));
+        } else {
+            this.vm.popNandPush(1+argCount, this.makePointersInstance(rcvr, instSize));
+        }
+        return true;
+    },
+
+
+
     primitiveNewMethod: function(argCount) {
         var header = this.stackInteger(0);
         var byteCount = this.stackInteger(1);
