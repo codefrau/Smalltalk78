@@ -1483,15 +1483,9 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         for (var i = this.sp; i < ctx.length; i++) {
             var obj = ctx[i];
             var value = typeof obj === 'number' ? obj : obj.stInstName();
-            if (i == ctx[bp + NoteTaker.FI_SAVED_BP]) {
-                bp = ctx[bp + NoteTaker.FI_SAVED_BP];
-                numArgs = ctx[bp + NoteTaker.FI_NUMARGS];
-                numTemps = ctx[bp + NoteTaker.FI_METHOD].methodNumTemps();
-                stack += '\n' + this.printMethod(ctx[bp + NoteTaker.FI_METHOD]);
-            }
             stack += Strings.format('\nctx[%s]: %s%s', i, value,
-                bp + NoteTaker.FI_SAVED_BP - numTemps <= i && i < bp + NoteTaker.FI_SAVED_BP
-                    ? (' (temp' + (bp + NoteTaker.FI_SAVED_BP + numTemps - numArgs - i) + ')') :
+                bp + NoteTaker.FI_FIRST_TEMP - numTemps < i && i <= bp + NoteTaker.FI_FIRST_TEMP
+                    ? (' (temp' + (bp + NoteTaker.FI_FIRST_TEMP + numArgs - i) + ')') :
                 bp + NoteTaker.FI_SAVED_BP == i ? ' (savedBP)' :
                 bp + NoteTaker.FI_CALLER_PC == i ? ' (callerPC)' :
                 bp + NoteTaker.FI_NUMARGS == i ? ' (numArgs)' :
@@ -1502,6 +1496,12 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                     ? (' (arg' + (bp + NoteTaker.FI_RECEIVER + numArgs - i) + ')') :
                 this.sp == i ? ' <== sp' : 
                 '');
+            if (i === bp + NoteTaker.FI_RECEIVER + numArgs && i+1 < ctx.length) {
+                bp = ctx[bp + NoteTaker.FI_SAVED_BP];
+                numArgs = ctx[bp + NoteTaker.FI_NUMARGS];
+                numTemps = ctx[bp + NoteTaker.FI_METHOD].methodNumTemps();
+                stack += '\n' + this.printMethod(ctx[bp + NoteTaker.FI_METHOD]);
+            }
         }
         return stack;
     },
