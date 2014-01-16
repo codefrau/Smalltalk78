@@ -799,7 +799,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.pc += 3; // Loc beyond Notetaker <- true.
 
         // Sadly the call on notetakerize will still cause trouble, so we'll have to patch that out
-        this.methodBytes[77] = 144;  // Patches over "DefaultTextStyle NoteTakerize."
+        this.methodBytes[77] = 145;  // Patches over "DefaultTextStyle NoteTakerize."
 
         // Also, remarkably, it seems that Vector, String and Uniquestring all have their classes
         // mistakenly set to Class rather than VariableLengthClass as they were in the image
@@ -864,11 +864,15 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 				this.doStore(this.top(), this.nextByte()); break;  // STONP
 			case 0x82:
 				this.pop(); break;	// POP
-			case 0x83:	// RETURN
-				reply= pop_();
-				while (fSP < fBP)
-					refd(pop_());		// pop eval stack and temps
-				leave(reply);
+			case 0x83:	// RETURN  FIXME - this should be refactored maybe as Helge did
+                var reply= this.top();
+                var nArgs = this.checkSmallInt(this.activeContextPointers[this.currentFrame + NoteTaker.FI_NUMARGS])
+                this.pc = this.checkSmallInt(this.activeContextPointers[this.currentFrame + NoteTaker.FI_CALLER_PC])
+                this.sp = this.currentFrame + NoteTaker.FI_RECEIVER;
+                this.currentFrame = this.checkSmallInt(this.activeContextPointers[this.currentFrame + NoteTaker.FI_SAVED_BP])
+                this.method = this.activeContextPointers[this.currentFrame + NoteTaker.FI_METHOD];
+                this.methodBytes = this.method.bytes;
+                this.popNandPush(nArgs+1, reply);
 				break;
 			case 0x84:	// REMLV
 				leave(pop_());			// stack must be otherwise empty
