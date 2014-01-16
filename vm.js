@@ -1180,7 +1180,9 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.methodBytes = newMethod.bytes;
         this.methodNumArgs = argumentCount;
         this.pc = newMethod.methodStartPC();
-        this.sp = newFrame - newMethod.methodNumTemps(); //  leave room for temps
+        this.sp = newFrame;
+        for (var i = 0; i < newMethod.methodNumTemps(); i++)
+            this.push(this.nilObj); //  make room for temps and init them
         this.receiver = this.activeContextPointers[this.currentFrame + NoteTaker.FI_RECEIVER];
         if (this.receiver !== newRcvr)
             throw "receivers don't match";
