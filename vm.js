@@ -1474,7 +1474,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         // temps and stack in current context
         var ctx = this.activeContextPointers,
             bp = this.currentFrame,
-            numArgs = ctx[bp + NoteTaker.FI_NUMARGS];
+            numArgs = ctx[bp + NoteTaker.FI_NUMARGS],
+            numTemps = ctx[bp + NoteTaker.FI_METHOD].methodNumTemps();
         var stack = Strings.format("\npc: %s sp: %s bp: %s numArgs: %s\n",
             this.pc, this.sp, this.currentFrame, numArgs);
         for (var i = this.sp; i < ctx.length; i++) {
@@ -1483,9 +1484,12 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             if (i == ctx[bp + NoteTaker.FI_SAVED_BP]) {
                 bp = ctx[bp + NoteTaker.FI_SAVED_BP];
                 numArgs = ctx[bp + NoteTaker.FI_NUMARGS];
-                stack += '\n';
+                numTemps = ctx[bp + NoteTaker.FI_METHOD].methodNumTemps();
+                stack += '\n' + this.printMethod(ctx[bp + NoteTaker.FI_METHOD]);
             }
             stack += Strings.format('\nctx[%s]: %s%s', i, value,
+                bp + NoteTaker.FI_SAVED_BP - numTemps <= i && i < bp + NoteTaker.FI_SAVED_BP
+                    ? (' (temp' + (bp + NoteTaker.FI_SAVED_BP + numTemps - numArgs - i) + ')') :
                 bp + NoteTaker.FI_SAVED_BP == i ? ' (savedBP)' :
                 bp + NoteTaker.FI_CALLER_PC == i ? ' (callerPC)' :
                 bp + NoteTaker.FI_NUMARGS == i ? ' (numArgs)' :
