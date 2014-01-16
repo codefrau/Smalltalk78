@@ -925,13 +925,13 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             // Arithmetic Ops... + - < > <= >= = ~=    * / \ @ lshift: lxor: land: lor:
             case 0xB0: case 0xB1: case 0xB2: case 0xB3: case 0xB4: case 0xB5: case 0xB6: case 0xB7:
             case 0xB8: case 0xB9: case 0xBA: case 0xBB: case 0xBC: case 0xBD: case 0xBE: case 0xBF:
-                // if (!this.primHandler.doPrimitive(this.receiver, b&0xF))
+                if (!this.primHandler.doPrimitive(b&0xF, this.specialNargs[b&0xF]))
                     this.sendSpecial(b&0xF); break;
 
             // at:, at:put:, size, next, nextPut:, ...
             case 0xC0: case 0xC1: case 0xC2: case 0xC3: case 0xC4: case 0xC5: case 0xC6: case 0xC7:
             case 0xC8: case 0xC9: case 0xCA: case 0xCB: case 0xCC: case 0xCD: case 0xCE: case 0xCF:
-                if (!this.primHandler.doSpecial(this.receiver, b&0xF))
+                if (!this.primHandler.doSpecial(b&0xF))
                     this.sendSpecial((b&0xF)+16); break;
 
             // Send Literal Selector
@@ -1623,7 +1623,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
 },
 'dispatch', {
-    doSpecial: function(rcvr, lobits) {
+    doSpecial: function(lobits) {
         // returns true if it succeeds
         this.success = true;
         switch (lobits) {
@@ -1646,7 +1646,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         }
         return false;
     },
-    doPrimitive: function(index, argCount, newMethod) {
+    doPrimitive: function(index, argCount) {
         this.success = true;
         debugger;
         switch (index) {
