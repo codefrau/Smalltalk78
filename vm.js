@@ -1500,22 +1500,28 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
     printActiveContext: function() {
         // temps and stack in current context
-        var ctx = this.activeContextPointers;
-        var numArgs = ctx[this.currentFrame + NoteTaker.FI_NUMARGS];
-        var stack = Strings.format("\npc: %s\nsp: %s\nframe: %s\nnumArgs: %s\n",
+        var ctx = this.activeContextPointers,
+            bp = this.currentFrame,
+            numArgs = ctx[bp + NoteTaker.FI_NUMARGS];
+        var stack = Strings.format("\npc: %s sp: %s bp: %s numArgs: %s\n",
             this.pc, this.sp, this.currentFrame, numArgs);
-
-        for (var i = this.sp; i <= this.currentFrame + NoteTaker.FI_RECEIVER + numArgs; i++) {
+        for (var i = this.sp; i < ctx.length; i++) {
             var obj = ctx[i];
             var value = typeof obj === 'number' ? obj : obj.stInstName();
+            if (i == ctx[bp + NoteTaker.FI_SAVED_BP]) {
+                bp = ctx[bp + NoteTaker.FI_SAVED_BP];
+                numArgs = ctx[bp + NoteTaker.FI_NUMARGS];
+                stack += '\n';
+            }
             stack += Strings.format('\nctx[%s]: %s%s', i, value,
-                this.currentFrame + NoteTaker.FI_SAVED_BP == i ? ' (frame.savedBP)' :
-                this.currentFrame + NoteTaker.FI_CALLER_PC == i ? ' (frame.callerPC)' :
-                this.currentFrame + NoteTaker.FI_NUMARGS == i ? ' (frame.numArgs)' :
-                this.currentFrame + NoteTaker.FI_METHOD == i ? ' (frame.method)' :
-                this.currentFrame + NoteTaker.FI_MCLASS == i ? ' (frame.mclass)' :
-                this.currentFrame + NoteTaker.FI_RECEIVER == i ? ' (frame.receiver)' :
-                this.currentFrame + NoteTaker.FI_RECEIVER < i ? ' (frame.arg' + (i - this.currentFrame - NoteTaker.FI_RECEIVER - 1) + ')' :
+                bp + NoteTaker.FI_SAVED_BP == i ? ' (savedBP)' :
+                bp + NoteTaker.FI_CALLER_PC == i ? ' (callerPC)' :
+                bp + NoteTaker.FI_NUMARGS == i ? ' (numArgs)' :
+                bp + NoteTaker.FI_METHOD == i ? ' (method)' :
+                bp + NoteTaker.FI_MCLASS == i ? ' (mclass)' :
+                bp + NoteTaker.FI_RECEIVER == i ? ' (receiver)' :
+                bp + NoteTaker.FI_RECEIVER < i && i <= bp + NoteTaker.FI_RECEIVER + numArgs 
+                    ? (' (arg' + (bp + NoteTaker.FI_RECEIVER + numArgs - i) + ')') :
                 this.sp == i ? ' <== sp' : 
                 '');
         }
