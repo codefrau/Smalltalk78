@@ -1651,18 +1651,18 @@ Object.subclass('users.bert.St78.vm.Primitives',
         debugger;
         switch (index) {
 
-            case 0: return this.popNandPushIntIfOK(2,this.stackInteger(1) + this.stackInteger(0));  // Integer.add
-            case 1: return this.popNandPushIntIfOK(2,this.stackInteger(1) - this.stackInteger(0));  // Integer.subtract
-            case 2: return this.pop2andPushBoolIfOK(this.stackInteger(1) < this.stackInteger(0));   // Integer.less
-            case 3: return this.pop2andPushBoolIfOK(this.stackInteger(1) > this.stackInteger(0));   // Integer.greater
-            case 4: return this.pop2andPushBoolIfOK(this.stackInteger(1) <= this.stackInteger(0));  // Integer.leq
-            case 5: return this.pop2andPushBoolIfOK(this.stackInteger(1) >= this.stackInteger(0));  // Integer.geq
-            case 6: return this.pop2andPushBoolIfOK(this.stackInteger(1) === this.stackInteger(0)); // Integer.equal
-            case 7: return this.pop2andPushBoolIfOK(this.stackInteger(1) !== this.stackInteger(0)); // Integer.notequal
-            case 8: return this.popNandPushIntIfOK(2,this.stackInteger(1) * this.stackInteger(0));  // Integer.multiply *
-            case 9: return this.popNandPushIntIfOK(2,this.vm.quickDivide(this.stackInteger(1),this.stackInteger(0)));  // Integer.divide /  (fails unless exact)
-            case 10: return this.popNandPushIntIfOK(2,this.vm.mod(this.stackInteger(1),this.stackInteger(0)));  // Integer.rem \\
-            // case 11: return this.primitiveMakePoint(argCount);
+            case 0: return this.popNandPushIntIfOK(2,this.stackInteger(0) + this.stackInteger(1));  // Integer.add
+            case 1: return this.popNandPushIntIfOK(2,this.stackInteger(0) - this.stackInteger(1));  // Integer.subtract
+            case 2: return this.pop2andPushBoolIfOK(this.stackInteger(0) < this.stackInteger(1));   // Integer.less
+            case 3: return this.pop2andPushBoolIfOK(this.stackInteger(0) > this.stackInteger(1));   // Integer.greater
+            case 4: return this.pop2andPushBoolIfOK(this.stackInteger(0) <= this.stackInteger(1));  // Integer.leq
+            case 5: return this.pop2andPushBoolIfOK(this.stackInteger(0) >= this.stackInteger(1));  // Integer.geq
+            case 6: return this.pop2andPushBoolIfOK(this.stackInteger(0) === this.stackInteger(1)); // Integer.equal
+            case 7: return this.pop2andPushBoolIfOK(this.stackInteger(0) !== this.stackInteger(1)); // Integer.notequal
+            case 8: return this.popNandPushIntIfOK(2,this.stackInteger(0) * this.stackInteger(1));  // Integer.multiply *
+            case 9: return this.popNandPushIntIfOK(2,this.vm.quickDivide(this.stackInteger(0),this.stackInteger(1)));  // Integer.divide /  (fails unless exact)
+            case 10: return this.popNandPushIntIfOK(2,this.vm.mod(this.stackInteger(0),this.stackInteger(1)));  // Integer.rem \\
+            case 11: return false; //return this.primitiveMakePoint(argCount);
             case 12: return this.popNandPushIfOK(2,this.doBitShift());  // SmallInt.bitShift
             case 13: return this.popNandPushIfOK(2,this.doBitXor());  // SmallInt.bitXor
             case 14: return this.popNandPushIfOK(2,this.doBitAnd());  // SmallInt.bitAnd
@@ -1691,20 +1691,20 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 38: return false; // TODO: primitiveFloatAt
             case 39: return false; // TODO: primitiveFloatAtPut
             case 40: return this.popNandPushFloatIfOK(1,this.stackInteger(0)); // primitiveAsFloat
-            case 41: return this.popNandPushFloatIfOK(2,this.stackFloat(1)+this.stackFloat(0));  // Float +
-            case 42: return this.popNandPushFloatIfOK(2,this.stackFloat(1)-this.stackFloat(0));  // Float -	
-            case 43: return this.pop2andPushBoolIfOK(this.stackFloat(1)<this.stackFloat(0));  // Float <
-            case 44: return this.pop2andPushBoolIfOK(this.stackFloat(1)>this.stackFloat(0));  // Float >
-            case 45: return this.pop2andPushBoolIfOK(this.stackFloat(1)<=this.stackFloat(0));  // Float <=
-            case 46: return this.pop2andPushBoolIfOK(this.stackFloat(1)>=this.stackFloat(0));  // Float >=
-            case 47: return this.pop2andPushBoolIfOK(this.stackFloat(1)===this.stackFloat(0));  // Float =
-            case 48: return this.pop2andPushBoolIfOK(this.stackFloat(1)!==this.stackFloat(0));  // Float !=
-            case 49: return this.popNandPushFloatIfOK(2,this.stackFloat(1)*this.stackFloat(0));  // Float.mul
-            case 50: return this.popNandPushFloatIfOK(2,this.safeFDiv(this.stackFloat(1),this.stackFloat(0)));  // Float.div
+            case 41: return this.popNandPushFloatIfOK(2,this.stackFloat(0)+this.stackFloat(1));  // Float +
+            case 42: return this.popNandPushFloatIfOK(2,this.stackFloat(0)-this.stackFloat(1));  // Float -	
+            case 43: return this.pop2andPushBoolIfOK(this.stackFloat(0)<this.stackFloat(1));  // Float <
+            case 44: return this.pop2andPushBoolIfOK(this.stackFloat(0)>this.stackFloat(1));  // Float >
+            case 45: return this.pop2andPushBoolIfOK(this.stackFloat(0)<=this.stackFloat(1));  // Float <=
+            case 46: return this.pop2andPushBoolIfOK(this.stackFloat(0)>=this.stackFloat(1));  // Float >=
+            case 47: return this.pop2andPushBoolIfOK(this.stackFloat(0)===this.stackFloat(1));  // Float =
+            case 48: return this.pop2andPushBoolIfOK(this.stackFloat(0)!==this.stackFloat(1));  // Float !=
+            case 49: return this.popNandPushFloatIfOK(2,this.stackFloat(0)*this.stackFloat(1));  // Float.mul
+            case 50: return this.popNandPushFloatIfOK(2,this.safeFDiv(this.stackFloat(0),this.stackFloat(1)));  // Float.div
             case 51: return this.popNandPushIfOK(1, this.checkSmallInt(this.stackFloat(0)|0));  // Float.asInteger
             case 52: return false;  // Float.fractionPart
             case 53: return this.popNandPushIfOK(1, Math.log(this.stackFloat(0)) / Math.log(2) | 0); // Exponent
-            case 54: return this.popNandPushFloatIfOK(2, this.stackFloat(1) * Math.pow(2, this.stackFloat(0))); // TimesTwoPower
+            case 54: return this.popNandPushFloatIfOK(2, this.stackFloat(0) * Math.pow(2, this.stackFloat(1))); // TimesTwoPower
             case 55: return this.popNandPushFloatIfOK(1, Math.sqrt(this.stackFloat(0))); // SquareRoot
             case 56: return this.popNandPushFloatIfOK(1, Math.sin(this.stackFloat(0))); // Sine
             case 57: return this.popNandPushFloatIfOK(1, Math.atan(this.stackFloat(0))); // Arctan
@@ -1720,8 +1720,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 67: return false; // primitiveAtEnd
             case 68: return this.popNandPushIfOK(2, this.objectAt(false,false,true)); // Method.objectAt:
             case 69: return this.popNandPushIfOK(3, this.objectAtPut(false,false,true)); // Method.objectAt:put:
-            case 70: return this.popNandPushIfOK(1, this.vm.instantiateClass(this.stackNonInteger(0), 0)); // Class.new
-            case 71: return this.popNandPushIfOK(2, this.vm.instantiateClass(this.stackNonInteger(1), this.stackPos32BitInt(0))); // Class.new:
             case 72: return this.popNandPushIfOK(2, this.doArrayBecome(false)); //arrayBecomeOneWay
             case 73: return this.popNandPushIfOK(2, this.objectAt(false,false,true)); // instVarAt:
             case 74: return this.popNandPushIfOK(3, this.objectAtPut(false,false,true)); // instVarAt:put:
@@ -1760,7 +1758,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 107: return this.primitiveMouseButtons(argCount); // Sensor mouseButtons
             case 108: return this.primitiveKeyboardNext(argCount); // Sensor kbdNext
             case 109: return this.primitiveKeyboardPeek(argCount); // Sensor kbdPeek
-            case 110: return this.pop2andPushBoolIfOK(this.vm.stackValue(1) === this.vm.stackValue(0)); // ==
+            case 110: return this.pop2andPushBoolIfOK(this.vm.stackValue(0) === this.vm.stackValue(1)); // ==
             case 111: return this.popNandPushIfOK(1, this.vm.getClass(this.vm.top())); // Object.class
             case 112: return this.popNandPushIfOK(1, 1000000); //primitiveBytesLeft
             case 113: return this.primitiveQuit(argCount);
