@@ -785,7 +785,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.currentFrame = (this.activeContextPointers.length - this.activeContextPointers[NoteTaker.PI_PROCESS_TOP]) + 1;
         this.method = this.activeContextPointers[this.currentFrame + NoteTaker.FI_METHOD];
         this.methodBytes = this.method.bytes;
-        this.methodNumArgs = 0;
+        this.methodNumArgs = this.activeContextPointers[this.currentFrame + NoteTaker.FI_NUMARGS];
         this.receiver = this.activeContextPointers[this.currentFrame + NoteTaker.FI_RECEIVER];
         // FIXME:  [DI] I don't understand the saved pc in the image, but I do know that it
         // starts by setting the global Notetaker to true.  
@@ -864,15 +864,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 				this.doStore(this.top(), this.nextByte()); break;  // STONP
 			case 0x82:
 				this.pop(); break;	// POP
-			case 0x83:	// RETURN  FIXME - this should be refactored maybe as Helge did
-                var reply= this.top();
-                var nArgs = this.checkSmallInt(this.activeContextPointers[this.currentFrame + NoteTaker.FI_NUMARGS])
-                this.pc = this.checkSmallInt(this.activeContextPointers[this.currentFrame + NoteTaker.FI_CALLER_PC])
-                this.sp = this.currentFrame + NoteTaker.FI_RECEIVER;
-                this.currentFrame = this.checkSmallInt(this.activeContextPointers[this.currentFrame + NoteTaker.FI_SAVED_BP])
-                this.method = this.activeContextPointers[this.currentFrame + NoteTaker.FI_METHOD];
-                this.methodBytes = this.method.bytes;
-                this.popNandPush(nArgs+1, reply);
+			case 0x83:	// RETURN
+			    this.doReturn();
 				break;
 			case 0x84:	// REMLV
 				leave(pop_());			// stack must be otherwise empty
@@ -1181,7 +1174,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.activeContextPointers[newFrame + NoteTaker.FI_NUMARGS] = argumentCount;
         this.activeContextPointers[newFrame + NoteTaker.FI_METHOD] = newMethod;
         this.activeContextPointers[newFrame + NoteTaker.FI_MCLASS] = newMethodClass;
-        /////// Woosh //////
+        /////// Whoosh //////
         this.currentFrame = newFrame; //We're off and running...
         this.method = newMethod;
         this.methodBytes = newMethod.bytes;
@@ -1193,42 +1186,21 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             throw "receivers don't match";
         this.checkForInterrupts();
     },
-    doReturn: function(returnValue, targetContext) {
-        if (targetContext.isNil || targetContext.pointers[Squeak.Context_instructionPointer].isNil)
-            this.cannotReturn();
-        // search up stack for unwind
-        var thisContext = this.activeContext;
-        while (thisContext !== targetContext) {
-            if (thisContext.isNil)
-                this.cannotReturn();
-            if (this.isUnwindMarked(thisContext))
-                this.aboutToReturn(returnValue,thisContext);
-            thisContext = thisContext.pointers[Squeak.Context_sender];
-        }
-        // no unwind to worry about, just peel back the stack (usually just to sender)
-        var nextContext;
-        thisContext = this.activeContext;
-        while (thisContext !== targetContext) {
-            if (this.breakOnContextReturned === thisContext) {
-                this.breakOnContextReturned = null;
-                this.breakOutOfInterpreter = 'break';
-            }
-            nextContext = thisContext.pointers[Squeak.Context_sender];
-            thisContext.pointers[Squeak.Context_sender] = this.nilObj;
-            thisContext.pointers[Squeak.Context_instructionPointer] = this.nilObj;
-            if (this.reclaimableContextCount > 0) {
-                this.reclaimableContextCount--;
-                this.recycleIfPossible(thisContext);
-            }
-            thisContext = nextContext;
-        }
-        this.activeContext = thisContext;
-        this.fetchContextRegisters(this.activeContext);
-        this.push(returnValue);
-        if (this.breakOnContextChanged) {
-            this.breakOnContextChanged = false;
-            this.breakOutOfInterpreter = 'break';
-        }
+    doReturn: function() {
+        // reverse of executeNewMethod()
+        var reply = this.top();
+        var oldFrame = this.currentFrame;
+        var newFrame = this.activeContextPointers[oldFrame + NoteTaker.FI_SAVED_BP];
+        var newSP = oldFrame + NoteTaker.FI_LAST_ARG + this.methodNumArgs; // pop past old frame and args
+        /////// Whoosh //////
+        this.currentFrame = newFrame;
+        this.method = this.activeContextPointers[newFrame + NoteTaker.FI_METHOD];
+        this.methodBytes = this.method.bytes;
+        this.methodNumArgs = this.activeContextPointers[newFrame + NoteTaker.FI_NUMARGS];
+        this.pc = this.activeContextPointers[oldFrame + NoteTaker.FI_CALLER_PC];
+        this.sp = newSP;
+        this.receiver = this.activeContextPointers[newFrame + NoteTaker.FI_RECEIVER];
+        this.push(reply);
     },
     doQuickPush: function(index) {
         if (index === 255)
