@@ -952,17 +952,16 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 			case 0x0:	// store inst
 				this.receiver.pointers[addrByte] = value; break;
 			case 0x1:	// store temp
-				var addr= fBP + tempOrArgOffset(addrByte-0x10);  // ** fix me
-				this.activeProcessPointers[addr] = value; break;
+				var addr = this.currentFrameTempOrArg(addrByte-0x10);
+				this.activeContextPointers[addr] = value; break;
 			case 0x2:	// store lit
 			case 0x3:
 				this.nono(); break;
 			case 0x4:	// store lit indirect
 			case 0x5:
 			case 0x6:
-		        // this.method.methodGetLiteral(addrByte&0x3F).pointers[Squeak.Assn_value] = value; break;
-		        this.method.methodGetLiteral(addrByte&0x3F).pointers[0] = value; break;
-			case 0x8:
+		        this.method.methodGetLiteral(addrByte&0x3F).pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE] = value; break;
+			//case 0x8:
 				// handle EXTENDED stores 0x88-0x8c
 				/*  ** under construction
 				int extendedAddr= nextByte();
