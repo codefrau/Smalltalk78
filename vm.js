@@ -1162,7 +1162,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             this.breakOutOfInterpreter = 'break';
         }
         if (newMethod.methodIsQuick())
-            return this.doQuickPush(newMethod.methodQuickIndex());
+            return this.doQuickSend(newRcvr, newMethod.methodQuickIndex());
         if (primitiveIndex>0)
             if (this.tryPrimitive(primitiveIndex, argumentCount, newMethod))
                 return;  //Primitive succeeded -- end of story
@@ -1203,14 +1203,15 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.receiver = this.activeContextPointers[newFrame + NoteTaker.FI_RECEIVER];
         this.push(reply);
     },
-    doQuickPush: function(index) {
+    doQuickSend: function(obj, index) {
+        // pop receiver, push self or my inst var at index
         if (index === 255)
-            return this.push(this.receiver);
-        if (index >= this.receiver.pointers.size) {
+            return this.activeContextPointers[this.sp] = obj;
+        if (index >= obj.pointers.size) {
             debugger;
             throw "quick push out of range?"
         }
-        this.push(this.receiver.pointers[index]);
+        this.activeContextPointers[this.sp] = obj.pointers[index];
     },
     tryPrimitive: function(primIndex, argCount, newMethod) {
         debugger;
