@@ -1661,7 +1661,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.success = true;
         switch (lobits) {
             case 0x0: return this.popNandPushIfOK(2, this.objectAt(true,true,false)); // at:
-            case 0x1: return this.popNandPushIfOK(3, this.objectAtPut(true,true,false)); // at:put:
+            case 0x1: return this.popNandPushIfOK(2, this.objectAtPut(true,true,false)); // at:put:
             //case 0x2: return false; // next
             //case 0x3: return false; // nextPut:
             case 0x4: return this.popNandPushIfOK(1, this.objectSize()); // length
@@ -1744,18 +1744,18 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 58: return this.popNandPushFloatIfOK(1, Math.log(this.stackFloat(0))); // LogN
             case 59: return this.popNandPushFloatIfOK(1, Math.exp(this.stackFloat(0))); // Exp
             case 60: return this.popNandPushIfOK(2, this.objectAt(false,false,false)); // basicAt:
-            case 61: return this.popNandPushIfOK(3, this.objectAtPut(false,false,false)); // basicAt:put:
+            case 61: return this.popNandPushIfOK(2, this.objectAtPut(false,false,false)); // basicAt:put:
             case 62: return this.popNandPushIfOK(1, this.objectSize()); // size
             case 63: return this.popNandPushIfOK(2, this.objectAt(false,true,false)); // String.basicAt:
-            case 64: return this.popNandPushIfOK(3, this.objectAtPut(false,true,false)); // String.basicAt:put:
+            case 64: return this.popNandPushIfOK(2, this.objectAtPut(false,true,false)); // String.basicAt:put:
             case 65: return false; // primitiveNext
             case 66: return false; // primitiveNextPut
             case 67: return false; // primitiveAtEnd
             case 68: return this.popNandPushIfOK(2, this.objectAt(false,false,true)); // Method.objectAt:
-            case 69: return this.popNandPushIfOK(3, this.objectAtPut(false,false,true)); // Method.objectAt:put:
+            case 69: return this.popNandPushIfOK(2, this.objectAtPut(false,false,true)); // Method.objectAt:put:
             case 72: return this.popNandPushIfOK(2, this.doArrayBecome(false)); //arrayBecomeOneWay
             case 73: return this.popNandPushIfOK(2, this.objectAt(false,false,true)); // instVarAt:
-            case 74: return this.popNandPushIfOK(3, this.objectAtPut(false,false,true)); // instVarAt:put:
+            case 74: return this.popNandPushIfOK(2, this.objectAtPut(false,false,true)); // instVarAt:put:
             case 75: return this.popNandPushIfOK(1, this.stackNonInteger(0).hash); // Object.identityHash
             case 76: return false; // primitiveStoreStackp (Blue Book: primitiveAsObject)
             case 77: return this.popNandPushIfOK(1, this.someInstanceOf(this.stackNonInteger(0))); // Class.someInstance
