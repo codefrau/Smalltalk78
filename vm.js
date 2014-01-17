@@ -1875,7 +1875,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
     stackInteger: function(nDeep) {
         return this.checkSmallInt(this.vm.stackValue(nDeep));
     },
-    stackPos32BitInt: function(nDeep) {
+    stackPos16BitInt: function(nDeep) {
         var stackVal = this.vm.stackValue(nDeep);
         if (this.vm.isSmallInt(stackVal)) {
             if (stackVal >= 0)
@@ -1883,6 +1883,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
             this.success = false;
             return 0;
         }
+        debugger;
+        throw "large int lookup not yet implemented"
         if (!this.isA(stackVal, Squeak.splOb_ClassLargePositiveInteger) || stackVal.bytesSize() !== 4) {
             this.success = false;
             return 0;
@@ -1910,26 +1912,26 @@ Object.subclass('users.bert.St78.vm.Primitives',
 },
 'numbers', {
     doBitAnd: function() {
-        var rcvr = this.stackPos32BitInt(1);
-        var arg = this.stackPos32BitInt(0);
+        var rcvr = this.stackPos16BitInt(0);
+        var arg = this.stackPos16BitInt(1);
         if (!this.success) return 0;
         return this.pos32BitIntFor(rcvr & arg);
     },
     doBitOr: function() {
-        var rcvr = this.stackPos32BitInt(1);
-        var arg = this.stackPos32BitInt(0);
+        var rcvr = this.stackPos16BitInt(0);
+        var arg = this.stackPos16BitInt(1);
         if (!this.success) return 0;
         return this.pos32BitIntFor(rcvr | arg);
     },
     doBitXor: function() {
-        var rcvr = this.stackPos32BitInt(1);
-        var arg = this.stackPos32BitInt(0);
+        var rcvr = this.stackPos16BitInt(0);
+        var arg = this.stackPos16BitInt(1);
         if (!this.success) return 0;
         return this.pos32BitIntFor(rcvr ^ arg);
     },
     doBitShift: function() {
-        var rcvr = this.stackPos32BitInt(1);
-        var arg = this.stackInteger(0);
+        var rcvr = this.stackPos16BitInt(0);
+        var arg = this.stackInteger(1);
         if (!this.success) return 0;
         var result = this.vm.safeShift(rcvr, arg); // returns negative result if failed
         if (result > 0)
@@ -2015,8 +2017,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
 'indexing', {
     objectAt: function(cameFromBytecode, convertChars, includeInstVars) {
         //Returns result of at: or sets success false
-        var array = this.stackNonInteger(1);
-        var index = this.stackPos32BitInt(0); //note non-int returns zero
+        var array = this.stackNonInteger(0);
+        var index = this.stackPos16BitInt(1); //note non-int returns zero
         if (!this.success) return array;
         var info;
         if (cameFromBytecode) {// fast entry checks cache
@@ -2048,8 +2050,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
     objectAtPut: function(cameFromBytecode, convertChars, includeInstVars) {
         //Returns result of at:put: or sets success false
-        var array = this.stackNonInteger(2);
-        var index = this.stackPos32BitInt(1); //note non-int returns zero
+        var array = this.stackNonInteger(0);
+        var index = this.stackPos16BitInt(1); //note non-int returns zero
         if (!this.success) return array;
         var info;
         if (cameFromBytecode) {// fast entry checks cache
@@ -2066,14 +2068,14 @@ Object.subclass('users.bert.St78.vm.Primitives',
             info = this.makeAtCacheInfo(this.atPutCache, this.vm.specialSelectors[34], array, convertChars, includeInstVars);
         }
         if (index<1 || index>info.size) {this.success = false; return array;}
-        var objToPut = this.vm.stackValue(0);
+        var objToPut = this.vm.stackValue(2);
         if (includeInstVars)  // pointers...   instVarAtPut and objectAtPut
             return array.pointers[index-1] = objToPut; //eg, objectAt:
         if (array.format<6)  // pointers...   normal atPut
             return array.pointers[index-1+info.ivarOffset] = objToPut;
         var intToPut;
         if (array.format<8) {  // words...
-            intToPut = this.stackPos32BitInt(0);
+            intToPut = this.stackPos16BitInt(2);
             if (this.success) array.words[index-1] = intToPut;
             return objToPut;
         }
@@ -2169,8 +2171,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return 0;
     },
     primitiveMakePoint: function(argCount) {
-        var x = this.vm.stackValue(1);
-        var y = this.vm.stackValue(0);
+        var x = this.vm.stackValue(0);
+        var y = this.vm.stackValue(1);
         this.vm.popNandPush(1+argCount, this.makePointWithXandY(x, y));
         return true;
     },
@@ -2208,13 +2210,14 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return true;
     },
     doArrayBecome: function(doBothWays) {
-	    var rcvr = this.stackNonInteger(1);
-        var arg = this.stackNonInteger(0);
+	    var rcvr = this.stackNonInteger(0);
+        var arg = this.stackNonInteger(1);
     	if (!this.success) return rcvr;
         this.success = this.vm.image.bulkBecome(rcvr.pointers, arg.pointers, doBothWays);
         return rcvr;
     },
     doStringReplace: function() {
+        throw "need to reverse args"
         var dst = this.stackNonInteger(4);
         var dstPos = this.stackInteger(3) - 1;
         var count = this.stackInteger(2) - dstPos;
