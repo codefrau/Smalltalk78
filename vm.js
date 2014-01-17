@@ -936,8 +936,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                 break;
             // Long jumps on false
             case 0xA8: case 0xA9: case 0xAA: case 0xAB: case 0xAC: case 0xAD: case 0xAE: case 0xAF:
+                var delta = ((b&7) - 4) * 256 + this.nextByte();
                 if (this.pop().isFalse) {
-                    var delta = ((b&7) - 4) * 256 + this.nextByte();
                     this.pc += delta;
                     if (delta < 0) this.checkForInterrupts();  //check on backward jumps (loops)
                 }
