@@ -332,21 +332,6 @@ Object.subclass('users.bert.St78.vm.Image',
             cm = this.nextInstanceAfter(cm);
         }
     },
-
-    variableClasses: function() {
-        // enumerate classes to find all classes flagged as indexable in their instSize
-        // this.variableClasses()
-        var clClass = this.objectFromOop(NoteTaker.OTI_CLCLASS),
-            cl = this.someInstanceOf(clClass),
-            result = [];
-        while (cl) {
-            if ((cl.pointers[NoteTaker.PI_CLASS_INSTSIZE] & NoteTaker.FMT_ISVARIABLE) > 0) result.push(cl);
-            cl = this.nextInstanceAfter(cl);
-        };
-        return result
-    },
-
-
     globalNamed: function(name) {
         var globalNames = this.globals.pointers[NoteTaker.PI_SYMBOLTABLE_OBJECTS].pointers,
             globalValues = this.globals.pointers[NoteTaker.PI_SYMBOLTABLE_VALUES].pointers;
@@ -557,6 +542,31 @@ Object.subclass('users.bert.St78.vm.Image',
                 return obj;
         }
     },
+},
+'debugging',
+{
+    variableClasses: function() {
+        // enumerate classes to find all classes flagged as indexable in their instSize
+        // this.variableClasses()
+        var clClass = this.objectFromOop(NoteTaker.OTI_CLCLASS),
+            cl = this.someInstanceOf(clClass),
+            result = [];
+        while (cl) {
+            if ((cl.pointers[NoteTaker.PI_CLASS_INSTSIZE] & NoteTaker.FMT_ISVARIABLE) > 0) result.push(cl);
+            cl = this.nextInstanceAfter(cl);
+        };
+        return result
+    },
+    labelObjRefs: function() {
+        // label object refs with their keys in all symbol tables
+        debugger;
+        var tableClass = this.globalNamed('SymbolTable'),
+            table = this.someInstanceOf(tableClass);
+        while (table) {
+            table.symbolTableLabelObjRefs();
+            table = this.nextInstanceAfter(table);
+        }
+    },
 });
 
 Object.subclass('users.bert.St78.vm.Object',
@@ -739,6 +749,28 @@ Object.subclass('users.bert.St78.vm.Object',
     methodEndPC: function() {
         if (this.methodIsQuick()) return 0; 
         return this.bytes.length;
+    },
+},
+'as symbol table', {
+    symbolTableLabelObjRefs: function(objRef) {
+        var tableValues = this.pointers[NoteTaker.PI_SYMBOLTABLE_VALUES].pointers;
+        for (var i = 0; i < tableValues.length; i++)
+            if (!tableValues[i].isNil)
+                // cache in objRef's stInstName() function
+                (function(table, i){
+                    tableValues[i].stInstName = function() {
+                        if (this === table.symbolTableRefAtIndex(i))
+                            return 'objref ' + table.symbolTableKeyAtIndex(i).bytesAsString();
+                        delete this.stInstName; // cache is invalid
+                        return 'objref ' + this.oop;
+                    };
+                })(this, i);
+    },
+    symbolTableKeyAtIndex: function(i) {
+        return this.pointers[NoteTaker.PI_SYMBOLTABLE_OBJECTS].pointers[i];
+    },
+    symbolTableRefAtIndex: function(i) {
+        return this.pointers[NoteTaker.PI_SYMBOLTABLE_VALUES].pointers[i];
     },
 });
 
@@ -1533,29 +1565,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         var printer = new users.bert.St78.vm.InstructionPrinter(aMethod || this.method, this);
         return printer.printInstructions(optionalIndent, optionalHighlight, optionalPC);
     },
-    printObjectRef: function(objRef, startIndex) {
-        // if cached, use it
-        if (objRef.hasOwnProperty('stInstName')) return objRef.stInstName();
-        // look up in global symbol table 
-        var globalNames = this.image.globals.pointers[NoteTaker.PI_SYMBOLTABLE_OBJECTS].pointers,
-            globalValues = this.image.globals.pointers[NoteTaker.PI_SYMBOLTABLE_VALUES].pointers;
-        for (var i = startIndex || 0; i < globalNames.length; i++) {
-            if (objRef === globalValues[i]) {
-                // cache in stInstName() function
-                (function(globals, index){
-                    objRef.stInstName = function() {
-                        if (this === globals.pointers[NoteTaker.PI_SYMBOLTABLE_VALUES].pointers[i])
-                            return 'global ' + globals.pointers[NoteTaker.PI_SYMBOLTABLE_OBJECTS].pointers[i].bytesAsString();
-                        delete this.stInstName; // cache is invalid
-                        return "object ref " + this.oop;
-                    };
-                })(this.image.globals, i);
-                return objRef.stInstName();
-            }
-        }
-        // not found, maybe just created? Look it up again next time.
-        return "object ref " + objRef.oop;
-    },    
     willSendOrReturn: function() {
         // Answer whether the next bytecode corresponds to a Smalltalk
         // message send or return
@@ -3265,7 +3274,7 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
     },
     pushLiteralVariable: function(index) {
         var objRef = this.method.methodGetLiteral(index),
-            refName = this.vm.printObjectRef(objRef);
+            refName = objRef.stInstName();
         this.print('pushLitRef: ' + index + ' (' + refName + ')');
     },
 	pushReceiver: function() {
@@ -3282,7 +3291,7 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
     },
     storeIntoLiteralVariable: function(index, doPop) {
         var objRef = this.method.methodGetLiteral(index),
-            refName = this.vm.printObjectRef(objRef);
+            refName = objRef.stInstName();
         this.print((doPop ? 'pop' : 'store') + 'IntoLitRef: ' + index + ' (' + refName + ')');
     },
     storeIntoReceiverVariable: function(offset, doPop) { 
