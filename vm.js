@@ -332,6 +332,21 @@ Object.subclass('users.bert.St78.vm.Image',
             cm = this.nextInstanceAfter(cm);
         }
     },
+
+    variableClasses: function() {
+        // enumerate classes to find all classes flagged as indexable in their instSize
+        // this.variableClasses()
+        var clClass = this.objectFromOop(NoteTaker.OTI_CLCLASS),
+            cl = this.someInstanceOf(clClass),
+            result = [];
+        while (cl) {
+            if ((cl.pointers[NoteTaker.PI_CLASS_INSTSIZE] & NoteTaker.FMT_ISVARIABLE) > 0) result.push(cl);
+            cl = this.nextInstanceAfter(cl);
+        };
+        return result
+    },
+
+
     globalNamed: function(name) {
         var globalNames = this.globals.pointers[NoteTaker.PI_SYMBOLTABLE_OBJECTS].pointers,
             globalValues = this.globals.pointers[NoteTaker.PI_SYMBOLTABLE_VALUES].pointers;
@@ -812,6 +827,12 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.image.objectFromOop(NoteTaker.OTI_CLUNIQUESTRING).stClass =
             this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
         this.image.objectFromOop(NoteTaker.OTI_CLVECTOR).stClass =
+            this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
+        this.image.objectFromOop(NoteTaker.OTI_CLPROCESS).stClass =
+            this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
+        this.image.objectFromOop(NoteTaker.OTI_CLNATURAL).stClass =
+            this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
+        this.image.objectFromOop(NoteTaker.OTI_CLCOMPILEDMETHOD).stClass =
             this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
     },
 },
@@ -2154,6 +2175,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
     primitiveNew: function(argCount) {
         // Create a new instance
+        // Note testing for argCount is *not* the way to check indexable
+        // Instead we should be checking the instSize spec
         var rcvr = this.stackNonInteger(0);
         if (!this.success || !rcvr.isClass()) return false;
         if (argCount == 0) // fixed size
@@ -2161,6 +2184,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
         // variable size 
         var size = this.stackInteger(1);
         if (!this.success || size < 0) return false;
+        if (!((rcvr.pointers[NoteTaker.PI_CLASS_INSTSIZE] & NoteTaker.FMT_ISVARIABLE) > 0)) console.log("Failure of new: due to instSize bit not set for class " + rcvr);
+        if (!((rcvr.pointers[NoteTaker.PI_CLASS_INSTSIZE] & NoteTaker.FMT_ISVARIABLE) > 0)) return false
         return this.popNandPushIfOK(2, this.vm.instantiateClass(rcvr, size));
     },
 
