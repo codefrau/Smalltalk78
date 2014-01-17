@@ -629,7 +629,8 @@ Object.subclass('users.bert.St78.vm.Object',
     bytesAsString: function() {
         if (!this.bytes) return '';
         return this.bytes.map(function(char) {
-            return String.fromCharCode(char); }).join('');
+            return char == 95 ? '←' : char >= 32 ? String.fromCharCode(char)
+                : '␀≤␂▹␄␅≡◦␈\x09\x0A␋␌\x0A≠↪␐↑≥␓␔¬␖⦿␘␙␚⇒␜␝␞␟'[char]; }).join('');
     },
     totalBytes: function() { // size in bytes this object would take up in image snapshot
         var nWords =
@@ -3333,8 +3334,8 @@ Object.subclass('users.bert.St78.vm.InstructionStream',
         this.method = method;
         this.pc = method.methodStartPC();
         this.specialConstants = ['-1', '0', '1', '2', '10', 'nil', 'false', 'true'];
-        this.specialSelectors = ['+', '-', '<', '>', '<=', '>=', '=', '~=', '*', '/', '\\', '@',
-        'lshift:', 'lxor:', 'land:', 'lor:', '◦', '◦_', 'next', 'next_', 'length', '==',
+        this.specialSelectors = ['+', '-', '<', '>', '≤', '≥', '=', '≠', '*', '/', '\\', '⦿',
+        'lshift:', 'lxor:', 'land:', 'lor:', '◦', '◦←', 'next', 'next←', 'length', '≡',
         'is:', 'append:', 'class', 'remoteCopy', 'eval', 'new', 'new:', 'x', 'y', 'asStream'];
     },
 },
