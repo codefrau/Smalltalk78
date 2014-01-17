@@ -595,7 +595,6 @@ Object.subclass('users.bert.St78.vm.Object',
         }
     },
     initInstanceOf: function(aClass, indexableSize, filler) {
-        debugger;
         this.stClass = aClass;
         var instSpec = aClass.pointers[NoteTaker.PI_CLASS_INSTSIZE];
 
@@ -649,6 +648,13 @@ Object.subclass('users.bert.St78.vm.Object',
     superclass: function() {
         return this.pointers[NoteTaker.PI_CLASS_SUPERCLASS];
     },
+    classInstSize: function() {
+        // number of vars in my instances
+        var instSpec = this.pointers[NoteTaker.PI_CLASS_INSTSIZE];
+        if (instSpec & NoteTaker.FMT_HASPOINTERS)
+            return ((instSpec & NoteTaker.FMT_BYTELENGTH) >> 1) - 1; // words, sans header
+        return 0;
+    }
 },
 'debugging', {
     toString: function() {
@@ -1134,11 +1140,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             lookupClass = this.activeContextPointers[this.currentFrame + NoteTaker.FI_MCLASS].superclass();
         }
         var entry = this.findSelectorInClass(selector, argCountOrUndefined, lookupClass);
-        if (entry.primIndex) {
-            //note details for verification of at/atput primitives
-            this.verifyAtSelector = selector;
-            this.verifyAtClass = lookupClass;
-        }
         this.executeNewMethod(newRcvr, entry.method, entry.methodClass, entry.argCount, entry.primIndex);
     },
     findSelectorInClass: function(selector, argCountOrUndefined, startingClass) {
@@ -1966,12 +1967,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.success = false;
         return this.vm.nilObj;
     },
-    indexableSize: function(obj) {
-        if (this.vm.isSmallInt(obj)) return -1; // -1 means not indexable
-        if (obj.bytes) return obj.bytes.length;
-        if (obj.words) return obj.words.length;
-        return obj.pointersSize();
-    },
     isA: function(obj, knownClass) {
         return obj.sqClass === this.vm.specialObjects[knownClass];
     },
@@ -2015,90 +2010,59 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
 },
 'indexing', {
+    indexableSize: function(obj) {
+        if (this.vm.isSmallInt(obj)) return -1; // -1 means not indexable
+        if (obj.bytes) return obj.bytes.length;
+        if (obj.words) return obj.words.length;
+        return obj.pointersSize() - obj.stClass.classInstSize();
+    },
     objectAt: function(cameFromBytecode, convertChars, includeInstVars) {
         //Returns result of at: or sets success false
         var array = this.stackNonInteger(0);
         var index = this.stackPos16BitInt(1); //note non-int returns zero
         if (!this.success) return array;
-        var info;
-        if (cameFromBytecode) {// fast entry checks cache
-            info = this.atCache[array.hash & this.atCacheMask];
-            if (info.array !== array) {this.success = false; return array;}
-        } else {// slow entry installs in cache if appropriate
-            if (array.isFloat) { // present float as word array
-                var floatData = array.floatData();
-                if (index==1) return this.pos32BitIntFor(floatData.getUint32(0, false));
-                if (index==2) return this.pos32BitIntFor(floatData.getUint32(4, false));
-                this.success = false; return array;
-            }
-            info = this.makeAtCacheInfo(this.atCache, this.vm.specialSelectors[32], array, convertChars, includeInstVars);
-        }
+        var info = this.atCache[(array.oop >> 1) & this.atCacheMask];
+        if (info.array !== array)
+            info = this.makeAtCacheInfo(this.atCache, this.vm.specialSelectors[16], array, convertChars, includeInstVars);
         if (index < 1 || index > info.size) {this.success = false; return array;}
-        if (includeInstVars)  //pointers...   instVarAt and objectAt
+        if (includeInstVars)  // pointers
             return array.pointers[index-1];
-        if (array.format<6)   //pointers...   normal at:
+        if (array.words) // words
+            return this.pos16BitIntFor(array.words[index-1]);
+        if (array.bytes) // bytes...
+            return array.bytes[index-1];
+        // comes last to not report pointers of compiled methods
+        if (array.pointers)
             return array.pointers[index-1+info.ivarOffset];
-        if (array.format<8) // words...
-            return this.pos32BitIntFor(array.words[index-1]);
-        if (array.format<12) // bytes...
-            if (info.convertChars) return this.charFromInt(array.bytes[index-1] & 0xFF);
-            else return array.bytes[index-1] & 0xFF;
-        // methods (format>=12) must simulate Squeak's method indexing
-        var offset = array.pointersSize() * 4;
-        if (index-1-offset < 0) {this.success = false; return array;} //reading lits as bytes
-        return array.bytes[index-1-offset] & 0xFF;
+        throw "indexing problem"
     },
     objectAtPut: function(cameFromBytecode, convertChars, includeInstVars) {
         //Returns result of at:put: or sets success false
         var array = this.stackNonInteger(0);
-        var index = this.stackPos16BitInt(1); //note non-int returns zero
+        var index = this.stackPos16BitInt(2); //note non-int returns zero
         if (!this.success) return array;
-        var info;
-        if (cameFromBytecode) {// fast entry checks cache
-            info = this.atPutCache[array.hash & this.atCacheMask];
-            if (info.array !== array) {this.success = false; return array;}
-        } else {// slow entry installs in cache if appropriate
-            if (array.isFloat) { // present float as word array
-                throw "not implemented yet"
-                var floatData = array.floatData();
-                if (index==1) return this.pos32BitIntFor(floatData.getUint32(0, false));
-                if (index==2) return this.pos32BitIntFor(floatData.getUint32(4, false));
-                this.success = false; return array;
-            }
-            info = this.makeAtCacheInfo(this.atPutCache, this.vm.specialSelectors[34], array, convertChars, includeInstVars);
-        }
+        var info = this.atPutCache[(array.oop >> 1) & this.atCacheMask];
+        if (info.array !== array)
+            info = this.makeAtCacheInfo(this.atPutCache, this.vm.specialSelectors[17], array, convertChars, includeInstVars);
         if (index<1 || index>info.size) {this.success = false; return array;}
-        var objToPut = this.vm.stackValue(2);
-        if (includeInstVars)  // pointers...   instVarAtPut and objectAtPut
-            return array.pointers[index-1] = objToPut; //eg, objectAt:
-        if (array.format<6)  // pointers...   normal atPut
+        var objToPut = this.vm.stackValue(1);
+        if (includeInstVars)  // pointers
+            return array.pointers[index-1] = objToPut;
+        if (array.pointers && !array.bytes) // pointers, but not compiled methods
             return array.pointers[index-1+info.ivarOffset] = objToPut;
-        var intToPut;
-        if (array.format<8) {  // words...
-            intToPut = this.stackPos16BitInt(2);
-            if (this.success) array.words[index-1] = intToPut;
+        // words and bytes
+        if (array.words) {  // words...
+            var wordToPut = this.stackPos16BitInt(1);
+            if (this.success) array.words[index-1] = wordToPut;
             return objToPut;
         }
-        // bytes...
-        if (convertChars) {
-            // put a character...
-            if (this.vm.isSmallInt(objToPut)) {this.success = false; return objToPut;}
-            if (objToPut.sqClass !== this.vm.specialObjects[Squeak.splOb_ClassCharacter])
-                {this.success = false; return objToPut;}
-            intToPut = objToPut.pointers[0];
-            if (!(this.vm.isSmallInt(intToPut))) {this.success = false; return objToPut;}
-        } else { // put a byte...
-            if(!(this.vm.isSmallInt(objToPut))) {this.success = false; return objToPut;}
-            intToPut = objToPut;
+        if (array.bytes) { // bytes...
+            var byteToPut = this.checkSmallInt(objToPut);
+            if (!this.success) return objToPut;
+            if (byteToPut < 0 || byteToPut > 255) {this.success = false; return objToPut;}
+            return array.bytes[index-1] = byteToPut;
         }
-        if (intToPut<0 || intToPut>255) {this.success = false; return objToPut;}
-        if (array.format<8)  // bytes...
-            return array.bytes[index-1] = intToPut;
-        // methods (format>=12) must simulate Squeak's method indexing
-        var offset = array.pointersSize() * 4;
-        if (index-1-offset < 0) {this.success = false; return array;} //writing lits as bytes
-        array.bytes[index-1-offset] = intToPut;
-        return objToPut;
+        throw "indexing problem"
     },
     objectSize: function(argCount) {
         var rcvr = this.vm.stackValue(0);
@@ -2132,20 +2096,18 @@ Object.subclass('users.bert.St78.vm.Primitives',
         //then return the info in nonCachedInfo.
         //Note that info for objectAt (includeInstVars) will have
         //a zero ivarOffset, and a size that includes the extra instVars
-        var info;
-        var cacheable =
-            (this.vm.verifyAtSelector === atOrPutSelector)         //is at or atPut
-		    && (this.vm.verifyAtClass === array.sqClass)           //not a super send
-            && !(array.format === 3 && this.vm.isContext(array));  //not a context (size can change)
-        info = cacheable ? atOrPutCache[array.hash & this.atCacheMask] : this.nonCachedInfo;
+        var cacheable = !this.vm.doSuper,           //not a super send
+            instSize = array.stClass.classInstSize(),
+            indexableSize = this.indexableSize(array),
+            info = cacheable ? atOrPutCache[(array.oop >> 1) & this.atCacheMask] : this.nonCachedInfo;
         info.array = array;
         info.convertChars = convertChars;
         if (includeInstVars) {
-            info.size = array.instSize() + Math.max(0, this.indexableSize(array));
+            info.size = instSize + indexableSize;
             info.ivarOffset = 0;
         } else {
-            info.size = this.indexableSize(array);
-            info.ivarOffset = (array.format < 6) ? array.instSize() : 0;
+            info.size = indexableSize;
+            info.ivarOffset = instSize;
         }
         return info;
     },
