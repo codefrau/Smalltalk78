@@ -1504,19 +1504,19 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         for (var i = this.sp; i < ctx.length; i++) {
             var obj = ctx[i];
             var value = typeof obj === 'number' ? obj : obj.stInstName();
-            stack += Strings.format('\nctx[%s]: %s%s', i, value,
+            stack += Strings.format('\n[%s] %s%s', i, 
                 bp + NoteTaker.FI_FIRST_TEMP - numTemps < i && i <= bp + NoteTaker.FI_FIRST_TEMP
-                    ? (' (temp' + (bp + NoteTaker.FI_FIRST_TEMP + numArgs - i) + ')') :
-                bp + NoteTaker.FI_SAVED_BP == i ? ' (savedBP)' :
-                bp + NoteTaker.FI_CALLER_PC == i ? ' (callerPC)' :
-                bp + NoteTaker.FI_NUMARGS == i ? ' (numArgs)' :
-                bp + NoteTaker.FI_METHOD == i ? ' (method)' :
-                bp + NoteTaker.FI_MCLASS == i ? ' (mclass)' :
-                bp + NoteTaker.FI_RECEIVER == i ? ' (receiver)' :
+                    ? ('  temp ' + (bp + NoteTaker.FI_FIRST_TEMP + numArgs - i) + ': ') :
+                bp + NoteTaker.FI_SAVED_BP == i ? ' savedBP: ' :
+                bp + NoteTaker.FI_CALLER_PC == i ? 'callerPC: ' :
+                bp + NoteTaker.FI_NUMARGS == i ? ' numArgs: ' :
+                bp + NoteTaker.FI_METHOD == i ? '  method: ' :
+                bp + NoteTaker.FI_MCLASS == i ? '  mclass: ' :
+                bp + NoteTaker.FI_RECEIVER == i ? 'receiver: ' :
                 bp + NoteTaker.FI_RECEIVER < i && i <= bp + NoteTaker.FI_RECEIVER + numArgs 
-                    ? (' (arg' + (bp + NoteTaker.FI_RECEIVER + numArgs - i) + ')') :
-                this.sp == i ? ' <== sp' : 
-                '');
+                    ? ('   arg ' + (bp + NoteTaker.FI_RECEIVER + numArgs - i) + ': ') :
+                this.sp == i ? '   sp ==> ' : 
+                '          ', value);
             if (i === bp + NoteTaker.FI_RECEIVER + numArgs && i+1 < ctx.length) {
                 bp = ctx[bp + NoteTaker.FI_SAVED_BP];
                 numArgs = ctx[bp + NoteTaker.FI_NUMARGS];
