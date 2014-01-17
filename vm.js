@@ -934,19 +934,20 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             case 0x98: case 0x99: case 0x9A: case 0x9B: case 0x9C: case 0x9D: case 0x9E: case 0x9F:
                 if (this.pop().isFalse) this.pc += (b&7) + 1;
                 break;
-            // Long jumps backwards
-            case 0xA0: case 0xA1: case 0xA2: case 0xA3:
-                this.checkForInterrupts(); // fall through
             // Long jumps
+            case 0xA0: case 0xA1: case 0xA2: case 0xA3:
             case 0xA4: case 0xA5: case 0xA6: case 0xA7:
-                this.pc += ((b&7) - 4) * 256 + this.nextByte();
+                var delta = ((b&7) - 4) * 256 + this.nextByte();
+                if (delta < 0) {delta++; this.checkForInterrupts();}  //check on backward jumps (loops)
+                this.pc += delta;
                 break;
             // Long jumps on false
             case 0xA8: case 0xA9: case 0xAA: case 0xAB: case 0xAC: case 0xAD: case 0xAE: case 0xAF:
-                var delta = ((b&7) - 4) * 256 + this.nextByte();
+                var b2 = this.nextByte();
                 if (this.pop().isFalse) {
+                    var delta = ((b&7) - 4) * 256 + b2;
+                    if (delta < 0) {delta++; this.checkForInterrupts()};  //check on backward jumps (loops)
                     this.pc += delta;
-                    if (delta < 0) this.checkForInterrupts();  //check on backward jumps (loops)
                 }
                 break;
 
@@ -3361,7 +3362,9 @@ Object.subclass('users.bert.St78.vm.InstructionStream',
     	    }
     	    throw "unusedBytecode";
     	case 9: return client.jump((offset&7)+1, offset&8);
-    	case 0xA: return client.jump(((offset&7)<<8) + this.method.bytes[this.pc++] - 0x400, offset&8);
+    	case 0xA: return offset < 4
+    	    ? client.jump((((offset&7) - 4) * 256) + this.method.bytes[this.pc++] + 1, offset&8)
+    	    : client.jump((((offset&7) - 4) * 256) + this.method.bytes[this.pc++], offset&8);
     	case 0xB: return client.send(this.specialSelectors[offset]);
     	case 0xC: return client.send(this.specialSelectors[offset+16]);
     	case 0xD: return client.send(method.methodGetLiteral(offset));
