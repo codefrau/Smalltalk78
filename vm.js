@@ -829,8 +829,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.breakOutTick = 0;
         this.breakOnMethod = null; // method to break on
         this.breakOnNewMethod = false;
-        this.breakOnContextChanged = false;
-        this.breakOnContextReturned = null; // context to break on
+        this.breakOnFrameChanged = false;
+        this.breakOnFrameReturned = null; // context to break on
         this.startupTime = Date.now(); // base for millisecond clock
     },
     loadInitialContext: function() {
@@ -1211,10 +1211,10 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
     executeNewMethod: function(newRcvr, newMethod, newMethodClass, argumentCount, primitiveIndex) {
         this.sendCount++;
-        if (newMethod === this.breakOnMethod) this.breakOutOfInterpreter = 'break';
         if (this.logSends) console.log(this.sendCount + ' ' + this.printMethod(newMethod));
-        if (this.breakOnContextChanged) {
-            this.breakOnContextChanged = false;
+        if (this.breakOnMethod === newMethod) this.breakOutOfInterpreter = 'break';
+        if (this.breakOnFrameChanged) {
+            this.breakOnFrameChanged = false;
             this.breakOutOfInterpreter = 'break';
         }
         if (newMethod.methodIsQuick())
@@ -1245,6 +1245,10 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
     doReturn: function() {
         // reverse of executeNewMethod()
+        if (this.breakOnFrameReturned === this.currentFrame) {
+            this.breakOnFrameReturned = null;
+            this.breakOutOfInterpreter = 'break';
+        }
         var reply = this.top();
         var oldFrame = this.currentFrame;
         var newFrame = this.activeContextPointers[oldFrame + NoteTaker.FI_SAVED_BP];
@@ -1258,7 +1262,11 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.sp = newSP;
         this.receiver = this.activeContextPointers[newFrame + NoteTaker.FI_RECEIVER];
         this.push(reply);
-    },
+        if (this.breakOnFrameChanged) {
+            this.breakOnFrameChanged = false;
+            this.breakOutOfInterpreter = 'break';
+        }
+},
     doQuickSend: function(obj, index) {
         // pop receiver, push self or my inst var at index
         if (index === 255)
@@ -1488,10 +1496,10 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                     var mdict = cls.pointers[NoteTaker.PI_CLASS_MDICT];
                     var selectors = mdict.pointers[NoteTaker.PI_MESSAGEDICT_OBJECTS].pointers;
                     var methods = mdict.pointers[NoteTaker.PI_MESSAGEDICT_METHODS].pointers;
-                    for (var j = 0; j < methods.length; j++) {
-                        if (callback.call(this, cls, methods[j], selectors[j]))
-                            return;
-                    }
+                    for (var j = 0; j < methods.length; j++)
+                        if (!methods[j].isNil)
+                            if (callback.call(this, cls, methods[j], selectors[j]))
+                                return;
                 }
             }
         }
@@ -1514,19 +1522,20 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         // classAndMethodString is 'Class>>method'
         var found;
         this.allMethodsDo(function(classObj, methodObj, selectorObj) {
-            if (classAndMethodString == (classObj.className() + '>>' + selectorObj.bytesAsString()))
+            var thisMethod = classObj.className() + '>>' + selectorObj.bytesAsString();
+            if (classAndMethodString == thisMethod)
                 return found = methodObj;
         });
-        if (!found) throw 'method not found: ', classAndMethodString;
+        if (!found) throw 'method not found: ' + classAndMethodString;
         this.breakOnMethod = found;
     },
     breakOnReturn: function() {
-        this.breakOnContextChanged = false;
-        this.breakOnContextReturned = this.activeContext;
+        this.breakOnFrameChanged = false;
+        this.breakOnFrameReturned = this.currentFrame;
     },
     breakOnSendOrReturn: function() {
-        this.breakOnContextChanged = true;
-        this.breakOnContextReturned = null;
+        this.breakOnFrameChanged = true;
+        this.breakOnFrameReturned = null;
     },
     printActiveContext: function() {
         // temps and stack in current context
@@ -1569,32 +1578,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         // Answer whether the next bytecode corresponds to a Smalltalk
         // message send or return
         var byte = this.method.bytes[this.pc];
-        if (byte >= 120 && byte <= 125) return true; // return
-        /* 
-        if (byte < 96) return false;    // 96-103 storeAndPopReceiverVariableBytecode
-        if (byte <= 111) return true;   // 104-111 storeAndPopTemporaryVariableBytecode
-        if (byte == 129        // 129 extendedStoreBytecode
-            || byte == 130     // 130 extendedStoreAndPopBytecode
-            || byte == 141	   // 141 storeRemoteTempLongBytecode
-            || byte == 142	   // 142 storeAndPopRemoteTempLongBytecode
-            || (byte == 132 && 
-                this.method.bytes[this.pc + 1] >= 160)) // 132 doubleExtendedDoAnythingBytecode
-                    return true;
-        */
-        if (byte < 131 || byte == 200) return false;
-        if (byte >= 176) return true; // special send or short send
-        if (byte <= 134) {         // long sends
-			// long form support demands we check the selector
-			var litIndex;
-			if (byte === 132) {
-                if ((this.method.bytes[this.pc + 1] >> 5) > 1) return false;
-                litIndex = this.method.bytes[this.pc + 2];
-			} else
-                litIndex = this.method.bytes[this.pc + 1] & (byte === 134 ? 63 : 31);
-            var selectorObj = this.method.pointers[litIndex + 1];
-            if (selectorObj.bytesAsString() != 'blockCopy:') return true;
-        }
-        return false;
+        return byte >= 0xB0 || byte == 0x8C || byte == 0x83;
     },
 
 
@@ -2339,9 +2323,9 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.vm.newActiveContext(newProc.pointers[Squeak.Proc_suspendedContext]);
         newProc.pointers[Squeak.Proc_suspendedContext] = this.vm.nilObj;
         this.vm.reclaimableContextCount = 0;
-        if (this.vm.breakOnContextChanged || this.vm.breakOnContextReturned) {
-            this.vm.breakOnContextChanged = false;
-            this.vm.breakOnContextReturned = null;
+        if (this.vm.breakOnFrameChanged || this.vm.breakOnFrameReturned) {
+            this.vm.breakOnFrameChanged = false;
+            this.vm.breakOnFrameReturned = null;
             this.vm.breakOutOfInterpreter = 'break';
         }
     },
