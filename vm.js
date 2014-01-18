@@ -970,7 +970,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             case 0xA0: case 0xA1: case 0xA2: case 0xA3:
             case 0xA4: case 0xA5: case 0xA6: case 0xA7:
                 var delta = ((b&7) - 4) * 256 + this.nextByte();
-                if (delta < 0) {delta++; this.checkForInterrupts();}  //check on backward jumps (loops)
+                if (delta < 0) this.checkForInterrupts();  //check on backward jumps (loops)
                 this.pc += delta;
                 break;
             // Long jumps on false
@@ -1661,7 +1661,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.success = true;
         switch (lobits) {
             case 0x0: return this.popNandPushIfOK(2, this.objectAt(true,true,false)); // at:
-            case 0x1: return this.popNandPushIfOK(2, this.objectAtPut(true,true,false)); // at:put:
+            case 0x1: return this.popNandPushIfOK(3, this.objectAtPut(true,true,false)); // at:put:
             //case 0x2: return false; // next
             //case 0x3: return false; // nextPut:
             case 0x4: return this.popNandPushIfOK(1, this.objectSize()); // length
