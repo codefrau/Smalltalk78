@@ -1906,15 +1906,16 @@ Object.subclass('users.bert.St78.vm.Primitives',
             value += ((bytes[i]&255)<<(8*i));
         return value;
     },
-    pos32BitIntFor: function(pos32Val) {
-        // Return the 32-bit quantity as a positive 32-bit integer
-        if (pos32Val >= 0)
-            if (this.vm.canBeSmallInt(pos32Val)) return pos32Val;
+    pos16BitIntFor: function(pos16Val) {
+        // Return the 16-bit quantity as a positive 16-bit integer
+        if (pos16Val >= 0)
+            if (this.vm.canBeSmallInt(pos16Val)) return pos16Val;
+        debugger; throw "large ints not implemented yet"
         var lgIntClass = this.vm.specialObjects[Squeak.splOb_ClassLargePositiveInteger];
         var lgIntObj = this.vm.instantiateClass(lgIntClass, 4);
         var bytes = lgIntObj.bytes;
         for (var i=0; i<4; i++)
-            bytes[i] = (pos32Val>>>(8*i))&255;
+            bytes[i] = (pos16Val>>>(8*i))&255;
         return lgIntObj;
     },
     stackFloat: function(nDeep) {
@@ -1926,19 +1927,19 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var rcvr = this.stackPos16BitInt(0);
         var arg = this.stackPos16BitInt(1);
         if (!this.success) return 0;
-        return this.pos32BitIntFor(rcvr & arg);
+        return this.pos16BitIntFor(rcvr & arg);
     },
     doBitOr: function() {
         var rcvr = this.stackPos16BitInt(0);
         var arg = this.stackPos16BitInt(1);
         if (!this.success) return 0;
-        return this.pos32BitIntFor(rcvr | arg);
+        return this.pos16BitIntFor(rcvr | arg);
     },
     doBitXor: function() {
         var rcvr = this.stackPos16BitInt(0);
         var arg = this.stackPos16BitInt(1);
         if (!this.success) return 0;
-        return this.pos32BitIntFor(rcvr ^ arg);
+        return this.pos16BitIntFor(rcvr ^ arg);
     },
     doBitShift: function() {
         var rcvr = this.stackPos16BitInt(0);
@@ -1946,7 +1947,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (!this.success) return 0;
         var result = this.vm.safeShift(rcvr, arg); // returns negative result if failed
         if (result >= 0)
-            return this.pos32BitIntFor(this.vm.safeShift(rcvr, arg));
+            return this.pos16BitIntFor(this.vm.safeShift(rcvr, arg));
         this.success = false;
         return 0;
     },
@@ -2666,7 +2667,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var seconds = date.getTime() / 1000 | 0;    // milliseconds -> seconds
         seconds -= date.getTimezoneOffset() * 60;   // make local time
         seconds += ((69 * 365 + 17) * 24 * 3600);   // adjust epoch from 1970 to 1901
-        return this.pos32BitIntFor(seconds);
+        return this.pos16BitIntFor(seconds);
     },
 });
 Object.subclass('users.bert.St78.vm.BitBlt',
