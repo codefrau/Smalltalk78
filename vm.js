@@ -3241,6 +3241,13 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
             this.result += (this.method.bytes[i]+0x100).toString(16).substr(-2).toUpperCase(); // padded hex
         }
         this.result += "> " + instruction + "\n";
+        // if pc is in the middle of an extended instruction, restart from there
+        if (this.highlightPC > this.oldPC && this.highlightPC < this.scanner.pc) {
+            this.oldPC = this.highlightPC;
+            this.scanner.pc = this.highlightPC;
+            this.scanner.interpretNextInstructionFor(this);
+            this.result = this.result.slice(0,-1) + " <partial instr>\n";
+        }
         this.oldPC = this.scanner.pc;
     }
 },
@@ -3300,11 +3307,6 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
     },
 	storeIntoTemporaryVariable: function(offset, doPop) {
 	    this.print((doPop ? 'pop' : 'store') + 'IntoArgOrTemp: ' + offset);
-	    if (this.highlightPC === this.oldPC - 1) {// we jumped into middle of this instruction
-            this.oldPC--;
-            this.pushTemporaryVariable(offset);
-            this.result = this.result.slice(0,-1) + " <partial instr>\n";
-	    }
     },
 });
 
