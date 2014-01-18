@@ -3300,6 +3300,11 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
     },
 	storeIntoTemporaryVariable: function(offset, doPop) {
 	    this.print((doPop ? 'pop' : 'store') + 'IntoArgOrTemp: ' + offset);
+	    if (this.highlightPC === this.oldPC - 1) {// we jumped into middle of this instruction
+            this.oldPC--;
+            this.pushTemporaryVariable(offset);
+            this.result = this.result.slice(0,-1) + " <partial instr>\n";
+	    }
     },
 });
 
