@@ -1945,7 +1945,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var arg = this.stackInteger(1);
         if (!this.success) return 0;
         var result = this.vm.safeShift(rcvr, arg); // returns negative result if failed
-        if (result > 0)
+        if (result >= 0)
             return this.pos32BitIntFor(this.vm.safeShift(rcvr, arg));
         this.success = false;
         return 0;
