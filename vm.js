@@ -639,7 +639,7 @@ Object.subclass('users.bert.St78.vm.Object',
         if (!this.bytes) return '';
         return this.bytes.map(function(char) {
             return char == 95 ? '←' : char >= 32 ? String.fromCharCode(char)
-                : '␀≤␂▹␄␅≡◦␈\x09\x0A␋␌\x0A≠↪␐↑≥␓␔¬␖⦿␘␙␚⇒␜␝␞␟'[char]; }).join('');
+                : '␀≤␂▹␄␅≡◦␈\x09◢␋␌\x0A≠↪␐↑≥ⓢ◣¬∢⌾▱␙␚⇒␜␝␞␟'[char]; }).join('');
     },
     totalBytes: function() { // size in bytes this object would take up in image snapshot
         var nWords =
