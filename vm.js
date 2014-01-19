@@ -992,7 +992,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             // at:, at:put:, size, next, nextPut:, ...
             case 0xC0: case 0xC1: case 0xC2: case 0xC3: case 0xC4: case 0xC5: case 0xC6: case 0xC7:
             case 0xC8: case 0xC9: case 0xCA: case 0xCB: case 0xCC: case 0xCD: case 0xCE: case 0xCF:
-                if (!this.primHandler.doSpecial(b&0xF))
+                if (this.doSuper || !this.primHandler.doSpecial(b&0xF))
                     this.sendSpecial((b&0xF)+16); break;
 
             // Send Literal Selector
@@ -1004,6 +1004,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             case 0xF8: case 0xF9: case 0xFA: case 0xFB: case 0xFC: case 0xFD: case 0xFE: case 0xFF:
                 this.send(this.method.methodGetLiteral(b - 0xD0)); break;
         }
+        if (this.doSuper && b != 0x86) debugger  // this can prob be remeoved
     },
     doStore: function (value, addrByte) {
 		// ** under construction
