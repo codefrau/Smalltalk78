@@ -1692,6 +1692,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
 
             case 27: return this.primitiveNew(argCount); // argCount = 0 fixed size
             case 28: return this.primitiveNew(argCount); // argCount = 1 variable
+            case 41: return true; // bitBlt install for display **ignored for now
+            case 53: return true; // display bits lock ** ignored for now
 /*
             case 29: return false; // primitiveMultiplyLargeIntegers
             case 30: return false; // primitiveDivideLargeIntegers
