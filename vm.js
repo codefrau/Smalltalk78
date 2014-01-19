@@ -873,6 +873,16 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
         this.image.objectFromOop(NoteTaker.OTI_CLCOMPILEDMETHOD).stClass =
             this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
+        
+        // Temporary patch to skip over remoteCopy logic in Process>>run
+        var methodA = this.image.objectFromOop(26276);
+        methodA.bytes[12] = 0xA4; methodA.bytes[13] = 0x0A; // jumps to pc=24
+
+        
+        // Permanent patch to act as NoteTaker=true in Rectangle>>color:mode:
+        var methodB = this.image.objectFromOop(1052);
+        methodB.bytes[14] = 0x7F; // push true
+
     },
 },
 'interpreting', {
@@ -1691,7 +1701,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 22: return false; // primitiveSubtractLargeIntegers
             case 23: return false; // primitiveLessThanLargeIntegers
             case 24: return false; // primitiveGreaterThanLargeIntegers
-            case 25: return false; // primitiveLessOrEqualLargeIntegers
+            case 25: return this.popNandPushIfOK(1,this.doRemoteCopy(this.top())); // <Process> remoteCopy
             case 26: return false; // primitiveGreaterOrEqualLargeIntegers
 
             case 27: return this.primitiveNew(argCount); // argCount = 0 fixed size
@@ -2244,6 +2254,25 @@ Object.subclass('users.bert.St78.vm.Primitives',
         newBlock.pointers[Squeak.Context_sender] = this.vm.nilObj; // claim not needed; just initialized
         return newBlock;
     },
+    doRemoteCopy: function(rcvr) {
+        // Make a block-like outrigger to rcvr, a process
+	    if (rcvr.stClass.oop !== NoteTaker.OTI_CLPROCESS) return null;
+/*
+        this.vm.popPCBP();
+		var pc= this.vm.getPC();
+		var cm= this.vm.getFrameValue(NoteTaker.FI_METHOD);
+		int jump= this.vm.body(cm).bytes()[pc] & 0xff;
+		pc+= jump < 0xA0? 1 : 2;
+		short rcode= this.vm.cinst(St78VM.kRemoteCodeClass, 0);
+		int relBP= this.vm.getProcessEnd()-this.vm.getBP();
+		St78Object rcodeBody= this.vm.body(rcode);
+		rcodeBody.setPointer(NoteTaker.PI_RCODE_FRAMEOFFSET, St78VM.small(relBP));
+		rcodeBody.setPointer(NoteTaker.PI_RCODE_STARTINGPC, St78VM.small(pc));
+		this.vm.pushPCBP();	// reinstall the alibi frame
+		return rcode; 	// leavep will refi the RCode instance
+*/
+	    },
+
     primitiveBlockValue: function(argCount) {
         var rcvr = this.vm.stackValue(argCount);
         if (!this.isA(rcvr, Squeak.splOb_ClassBlockContext)) return false;
@@ -3293,6 +3322,10 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
 	storeIntoTemporaryVariable: function(offset, doPop) {
 	    this.print((doPop ? 'pop' : 'store') + 'IntoArgOrTemp: ' + offset);
     },
+    doRemoteReturn: function() {
+        this.print('remote return');
+    }
+
 });
 
 Object.subclass('users.bert.St78.vm.InstructionStream',
