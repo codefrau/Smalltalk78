@@ -1442,20 +1442,9 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.success = false;
         return 1;
     },
-    quickDivide: function(rcvr, arg) { // must only handle exact case
-        if (arg === 0) return NoteTaker.NON_INT;  // fail if divide by zero
-        var result = rcvr / arg | 0;
-        if (result * arg === rcvr) return result;
-        return NoteTaker.NON_INT;     // fail if result is not exact
-    },
-    div: function(rcvr, arg) {
-        if (arg === 0) return NoteTaker.NON_INT;  // fail if divide by zero
-        return Math.floor(rcvr/arg);
-    },
-    mod: function(rcvr, arg) {
-        if (arg === 0) return NoteTaker.NON_INT;  // fail if divide by zero
-        return rcvr - Math.floor(rcvr/arg) * arg;
-    },
+
+
+
     safeShift: function(bitsToShift, shiftCount) {
         if (shiftCount<0) return bitsToShift>>-shiftCount; //OK to lose bits shifting right
         //check for lost bits by seeing if computation is reversible
@@ -1688,14 +1677,15 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 6: return this.pop2andPushBoolIfOK(this.stackInteger(0) === this.stackInteger(1)); // Integer.equal
             case 7: return this.pop2andPushBoolIfOK(this.stackInteger(0) !== this.stackInteger(1)); // Integer.notequal
             case 8: return this.popNandPushIntIfOK(2,this.stackInteger(0) * this.stackInteger(1));  // Integer.multiply *
-            case 9: return this.popNandPushIntIfOK(2,this.vm.quickDivide(this.stackInteger(0),this.stackInteger(1)));  // Integer.divide /  (fails unless exact)
-            case 10: return this.popNandPushIntIfOK(2,this.vm.mod(this.stackInteger(0),this.stackInteger(1)));  // Integer.rem \\
+            case 9: return this.popNandPushIntIfOK(2,this.doDiv(this.stackInteger(0),this.stackInteger(1)));  // Integer.divide /  
+            case 10: return this.popNandPushIntIfOK(2,this.doRem(this.stackInteger(0),this.stackInteger(1)));  // Integer.rem \\
             case 11: return false; //return this.primitiveMakePoint(argCount);
             case 12: return this.popNandPushIfOK(2,this.doBitShift());  // SmallInt.bitShift
             case 13: return this.popNandPushIfOK(2,this.doBitXor());  // SmallInt.bitXor
             case 14: return this.popNandPushIfOK(2,this.doBitAnd());  // SmallInt.bitAnd
             case 15: return this.popNandPushIfOK(2,this.doBitOr());  // SmallInt.bitOr
-            case 19: return false;                                 // Guard primitive for simulation -- *must* fail
+            case 18: return false; // next;
+            case 19: return false; // next <-
             case 20: return false;
             case 21: return false; // primitiveAddLargeIntegers
             case 22: return false; // primitiveSubtractLargeIntegers
@@ -1953,7 +1943,14 @@ Object.subclass('users.bert.St78.vm.Primitives',
         }
         return dividend / divisor;
     },
-},
+    doDiv: function(rcvr, arg) {
+        if (arg === 0) return NoteTaker.NON_INT;  // fail if divide by zero
+        return Math.floor(rcvr/arg);
+    },
+    doRem: function(rcvr, arg) {
+        if (arg === 0) return NoteTaker.NON_INT;  // fail if divide by zero
+        return rcvr - Math.floor(rcvr/arg) * arg;
+    },},
 'utils', {
     checkFloat: function(maybeFloat) { // returns a float and sets success
         if (maybeFloat.isFloat)
