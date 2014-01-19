@@ -938,28 +938,29 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 			    this.doReturn();
 				break;
 			case 0x84:	// REMLV
-				leave(pop_());			// stack must be otherwise empty
+				leave(pop_());	
 				break;
 			case 0x85:	// PUSHCURRENT
-				push(fProcessOop);
+				this.push(this.activeContext);
 				break;
 			case 0x86:	// SUPER
 				this.doSuper = true;
-				break; //**continue stepping;		// goto start
+				break; 
 			case 0x87:	// LSELF (cf. 0x71 above)
-				push(receiver());
+				this.push(this.receiver);
 				break;
 			case 0x88:	// X LDINST
-				push(body(receiver()).pointers[nextByte()]);
+				this.push(this.receiver.pointers[this.nextByte()]);
 				break;
 			case 0x89:	// X LDTEMP
-				push(fProcessBody.pointers[fBP + tempOrArgOffset(nextByte())]);
+                var addr = this.currentFrameTempOrArg(this.nextByte());
+				this.push(this.activeContextPointers[addr]); break
 				break;
 			case 0x8A:	// X LDLIT
-				push(fetchMethodLiteral(nextByte()));
+				this.push(fetchMethodLiteral(this.nextByte()));
 				break;
 			case 0x8B:	// X LDLITI
-				push(body(fetchMethodLiteral(nextByte())).pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE]);
+				push(body(fetchMethodLiteral(this.nextByte())).pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE]);
 				break;
 			case 0x8C:	// X SEND
 				send(fetchMethodLiteral(nextByte()));
@@ -1033,28 +1034,23 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 			case 0x5:
 			case 0x6:
 		        this.method.methodGetLiteral(addrByte&0x3F).pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE] = value; break;
-			//case 0x8:
+            case 0x8:
 				// handle EXTENDED stores 0x88-0x8c
-				/*  ** under construction
-				int extendedAddr= nextByte();
+				//  ** under construction
+				extendedAddr= this.nextByte();
 				switch (addrByte) {
 					case 0x88:	// STO* X LDINST
-						rcvr= body(receiver());
-						prev= rcvr.pointers[extendedAddr];
-						rcvr.pointers[extendedAddr] = value;			// transfer refcount from stack
-						break;	
+						this.receiver.pointers[extendedAddr] = value; break;	
 					case 0x89:	// STO* X LDTEMP
-						addr= fBP + tempOrArgOffset(extendedAddr);
-						prev= fProcessBody.pointers[addr];
-						fProcessBody.pointers[addr] = value;	// transfer refcount from stack
-						break;
+						var addr = this.currentFrameTempOrArg(extendedAddr);
+				        this.activeContextPointers[addr] = value; break;
 					case 0x8b:	// STO* X LDLITI
-                        this.method.methodGetLiteral(b&0x3F).pointers[Squeak.Assn_value] = value; break;
+                        var oref = this.method.methodGetLiteral(extendedAddr);
+                        oref.pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE] = value; break
 					default:		// 0x8a (X LDLIT) and 0x8c (X SEND)
 						nono();
-				}
+				};
 				break;
-				*/
             default:
 				nono();
 		}
@@ -1879,17 +1875,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             this.success = false;
             return 0;
         }
-        debugger;
-        throw "large int lookup not yet implemented"
-        if (!this.isA(stackVal, Squeak.splOb_ClassLargePositiveInteger) || stackVal.bytesSize() !== 4) {
-            this.success = false;
-            return 0;
-        }
-        var bytes = stackVal.bytes;
-        var value = 0;
-        for (var i=0; i<4; i++)
-            value += ((bytes[i]&255)<<(8*i));
-        return value;
+        return 0;  //FIXME - I think in st78 all calls to stackPos16BitInt can simply call stackInteger
     },
     pos16BitIntFor: function(pos16Val) {
         // Return the 16-bit quantity as a positive 16-bit integer
