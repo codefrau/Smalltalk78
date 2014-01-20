@@ -314,6 +314,7 @@ Object.subclass('users.bert.St78.vm.Image',
         this.lastOop = prevObj.oop; // might want an oop recycling scheme later
         this.initKnownObjects(oopMap);
         this.initCompiledMethods(oopMap);
+        this.fixupImage(oopMap);
     },
     initKnownObjects: function(oopMap) {
         oopMap[NoteTaker.OTI_NIL].isNil = true;
@@ -332,6 +333,48 @@ Object.subclass('users.bert.St78.vm.Image',
             cm = this.nextInstanceAfter(cm);
         }
     },
+<<<<<<< Updated upstream
+
+    variableClasses: function() {
+        // enumerate classes to find all classes flagged as indexable in their instSize
+        // this.variableClasses()
+        var clClass = this.objectFromOop(NoteTaker.OTI_CLCLASS),
+            cl = this.someInstanceOf(clClass),
+            result = [];
+        while (cl) {
+            if ((cl.pointers[NoteTaker.PI_CLASS_INSTSIZE] & NoteTaker.FMT_ISVARIABLE) > 0) result.push(cl);
+            cl = this.nextInstanceAfter(cl);
+        };
+        return result
+    },
+
+
+=======
+    fixupImage: function(oopMap) {
+        // Remarkably, it seems that Vector, String and Uniquestring all have their classes
+        // mistakenly set to Class rather than VariableLengthClass as they were in the image
+        // from which the NT image was cloned.  I was accused of "bit rot" for claiming this
+        // to be in error due to the contradictory evidence in the image.  Amazingly
+        // the one thing that would have revealed this error, the lookup of new:, was sidestepped
+        // in both my original 8086 code and Helge's Java VM.  Truly amazing  ;-)
+        var vlClass = oopMap[NoteTaker.OTI_CLVLENGTHCLASS];
+        oopMap[NoteTaker.OTI_CLSTRING].stClass = vlClass;
+        oopMap[NoteTaker.OTI_CLVECTOR].stClass = vlClass;
+        function shouldBeVLClass(cls) {
+            return !cls.isNil && (cls.stClass == vlClass || shouldBeVLClass(cls.superclass()));
+        }
+        var cls = this.someInstanceOf(oopMap[NoteTaker.OTI_CLCLASS]);
+        while (cls) {
+            var next = this.nextInstanceAfter(cls);
+            if (shouldBeVLClass(cls)) {
+                console.log("fixing " + cls.stInstName());
+                cls.stClass = vlClass;
+            }
+            cls = next;
+        }
+    },
+
+>>>>>>> Stashed changes
     globalNamed: function(name) {
         var globalNames = this.globals.pointers[NoteTaker.PI_SYMBOLTABLE_OBJECTS].pointers,
             globalValues = this.globals.pointers[NoteTaker.PI_SYMBOLTABLE_VALUES].pointers;
@@ -542,31 +585,6 @@ Object.subclass('users.bert.St78.vm.Image',
                 return obj;
         }
     },
-},
-'debugging',
-{
-    variableClasses: function() {
-        // enumerate classes to find all classes flagged as indexable in their instSize
-        // this.variableClasses()
-        var clClass = this.objectFromOop(NoteTaker.OTI_CLCLASS),
-            cl = this.someInstanceOf(clClass),
-            result = [];
-        while (cl) {
-            if ((cl.pointers[NoteTaker.PI_CLASS_INSTSIZE] & NoteTaker.FMT_ISVARIABLE) > 0) result.push(cl);
-            cl = this.nextInstanceAfter(cl);
-        };
-        return result
-    },
-    labelObjRefs: function() {
-        // label object refs with their keys in all symbol tables
-        debugger;
-        var tableClass = this.globalNamed('SymbolTable'),
-            table = this.someInstanceOf(tableClass);
-        while (table) {
-            table.symbolTableLabelObjRefs();
-            table = this.nextInstanceAfter(table);
-        }
-    },
 });
 
 Object.subclass('users.bert.St78.vm.Object',
@@ -605,6 +623,7 @@ Object.subclass('users.bert.St78.vm.Object',
         }
     },
     initInstanceOf: function(aClass, indexableSize, filler) {
+        debugger;
         this.stClass = aClass;
         var instSpec = aClass.pointers[NoteTaker.PI_CLASS_INSTSIZE];
 
@@ -635,17 +654,11 @@ Object.subclass('users.bert.St78.vm.Object',
     wordsSize: function() {
         return this.words ? this.words.length : 0;
     },
-    bytesAsString: function(maxLength) {
+    bytesAsString: function() {
         if (!this.bytes) return '';
-        var bytes = this.bytes;
-        if (maxLength && this.bytes.length > maxLength)
-            bytes = bytes.slice(0, maxLength);
-        var string = bytes.map(function(char) {
+        return this.bytes.map(function(char) {
             return char == 95 ? '←' : char >= 32 ? String.fromCharCode(char)
-                : '␀≤␂▹␄␅≡◦␈\x09◢␋␌\x0A≠↪␐↑≥ⓢ◣¬∢⌾▱␙␚⇒␜␝␞␟'[char]; }).join('');
-        if (maxLength && this.bytes.length > maxLength)
-            string += '…';
-        return string;
+                : '␀≤␂▹␄␅≡◦␈\x09\x0A␋␌\x0A≠↪␐↑≥␓␔¬␖⦿␘␙␚⇒␜␝␞␟'[char]; }).join('');
     },
     totalBytes: function() { // size in bytes this object would take up in image snapshot
         var nWords =
@@ -664,13 +677,6 @@ Object.subclass('users.bert.St78.vm.Object',
     superclass: function() {
         return this.pointers[NoteTaker.PI_CLASS_SUPERCLASS];
     },
-    classInstSize: function() {
-        // number of vars in my instances
-        var instSpec = this.pointers[NoteTaker.PI_CLASS_INSTSIZE];
-        if (instSpec & NoteTaker.FMT_HASPOINTERS)
-            return ((instSpec & NoteTaker.FMT_BYTELENGTH) >> 1) - 1; // words, sans header
-        return 0;
-    }
 },
 'debugging', {
     toString: function() {
@@ -682,14 +688,14 @@ Object.subclass('users.bert.St78.vm.Object',
         if (!classNameObj.stClass) return "???";
         return classNameObj.bytesAsString();
     },
-    stInstName: function(maxLength) {
+    stInstName: function() {
         if (!this.stClass || !this.stClass.pointers) return "???";
         if (this.oop === NoteTaker.OTI_NIL) return "nil";
         if (this.oop === NoteTaker.OTI_FALSE) return "false";
         if (this.oop === NoteTaker.OTI_TRUE) return "true";
         if (this.isClass()) return "the " + this.className() + " class";
-        if (this.stClass.oop === NoteTaker.OTI_CLSTRING) return "'" + this.bytesAsString(maxLength||16) + "'";
-        if (this.stClass.oop === NoteTaker.OTI_CLUNIQUESTRING) return "#" + this.bytesAsString(maxLength||16);
+        if (this.stClass.oop === NoteTaker.OTI_CLSTRING) return "'" + this.bytesAsString() + "'";
+        if (this.stClass.oop === NoteTaker.OTI_CLUNIQUESTRING) return "#" + this.bytesAsString();
         var className = this.stClass.className();
         return (/^[aeiou]/i.test(className) ? 'an ' : 'a ') + className;
     },
@@ -756,28 +762,6 @@ Object.subclass('users.bert.St78.vm.Object',
         if (this.methodIsQuick()) return 0; 
         return this.bytes.length;
     },
-},
-'as symbol table', {
-    symbolTableLabelObjRefs: function(objRef) {
-        var tableValues = this.pointers[NoteTaker.PI_SYMBOLTABLE_VALUES].pointers;
-        for (var i = 0; i < tableValues.length; i++)
-            if (!tableValues[i].isNil)
-                // cache in objRef's stInstName() function
-                (function(table, i){
-                    tableValues[i].stInstName = function() {
-                        if (this === table.symbolTableRefAtIndex(i))
-                            return 'objref ' + table.symbolTableKeyAtIndex(i).bytesAsString();
-                        delete this.stInstName; // cache is invalid
-                        return 'objref ' + this.oop;
-                    };
-                })(this, i);
-    },
-    symbolTableKeyAtIndex: function(i) {
-        return this.pointers[NoteTaker.PI_SYMBOLTABLE_OBJECTS].pointers[i];
-    },
-    symbolTableRefAtIndex: function(i) {
-        return this.pointers[NoteTaker.PI_SYMBOLTABLE_VALUES].pointers[i];
-    },
 });
 
 Object.subclass('users.bert.St78.vm.Interpreter',
@@ -835,8 +819,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.breakOutTick = 0;
         this.breakOnMethod = null; // method to break on
         this.breakOnNewMethod = false;
-        this.breakOnFrameChanged = false;
-        this.breakOnFrameReturned = null; // context to break on
+        this.breakOnContextChanged = false;
+        this.breakOnContextReturned = null; // context to break on
         this.startupTime = Date.now(); // base for millisecond clock
     },
     loadInitialContext: function() {
@@ -860,6 +844,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 
         // Sadly the call on notetakerize will still cause trouble, so we'll have to patch that out
         this.methodBytes[77] = 145;  // Patches over "DefaultTextStyle NoteTakerize."
+<<<<<<< Updated upstream
 
         // Also, remarkably, it seems that Vector, String and Uniquestring all have their classes
         // mistakenly set to Class rather than VariableLengthClass as they were in the image
@@ -879,16 +864,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
         this.image.objectFromOop(NoteTaker.OTI_CLCOMPILEDMETHOD).stClass =
             this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
-        
-        // Temporary patch to skip over remoteCopy logic in Process>>run
-        var methodA = this.image.objectFromOop(26276);
-        methodA.bytes[12] = 0xA4; methodA.bytes[13] = 0x0A; // jumps to pc=24
-
-        
-        // Permanent patch to act as NoteTaker=true in Rectangle>>color:mode:
-        var methodB = this.image.objectFromOop(1052);
-        methodB.bytes[14] = 0x7F; // push true
-
+=======
+>>>>>>> Stashed changes
     },
 },
 'interpreting', {
@@ -944,29 +921,28 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 			    this.doReturn();
 				break;
 			case 0x84:	// REMLV
-				leave(pop_());	
+				leave(pop_());			// stack must be otherwise empty
 				break;
 			case 0x85:	// PUSHCURRENT
-				this.push(this.activeContext);
+				push(fProcessOop);
 				break;
 			case 0x86:	// SUPER
 				this.doSuper = true;
-				break; 
+				break; //**continue stepping;		// goto start
 			case 0x87:	// LSELF (cf. 0x71 above)
-				this.push(this.receiver);
+				push(receiver());
 				break;
 			case 0x88:	// X LDINST
-				this.push(this.receiver.pointers[this.nextByte()]);
+				push(body(receiver()).pointers[nextByte()]);
 				break;
 			case 0x89:	// X LDTEMP
-                var addr = this.currentFrameTempOrArg(this.nextByte());
-				this.push(this.activeContextPointers[addr]); break
+				push(fProcessBody.pointers[fBP + tempOrArgOffset(nextByte())]);
 				break;
 			case 0x8A:	// X LDLIT
-				this.push(fetchMethodLiteral(this.nextByte()));
+				push(fetchMethodLiteral(nextByte()));
 				break;
 			case 0x8B:	// X LDLITI
-				push(body(fetchMethodLiteral(this.nextByte())).pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE]);
+				push(body(fetchMethodLiteral(nextByte())).pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE]);
 				break;
 			case 0x8C:	// X SEND
 				send(fetchMethodLiteral(nextByte()));
@@ -983,20 +959,25 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             case 0x98: case 0x99: case 0x9A: case 0x9B: case 0x9C: case 0x9D: case 0x9E: case 0x9F:
                 if (this.pop().isFalse) this.pc += (b&7) + 1;
                 break;
-            // Long jumps
+            // Long jumps backwards
             case 0xA0: case 0xA1: case 0xA2: case 0xA3:
+                this.checkForInterrupts(); // fall through
+            // Long jumps
             case 0xA4: case 0xA5: case 0xA6: case 0xA7:
-                var delta = ((b&7) - 4) * 256 + this.nextByte();
-                if (delta < 0) this.checkForInterrupts();  //check on backward jumps (loops)
-                this.pc += delta;
+                this.pc += ((b&7) - 4) * 256 + this.nextByte();
                 break;
             // Long jumps on false
             case 0xA8: case 0xA9: case 0xAA: case 0xAB: case 0xAC: case 0xAD: case 0xAE: case 0xAF:
+<<<<<<< Updated upstream
+                var delta = ((b&7) - 4) * 256 + this.nextByte();
+                if (this.pop().isFalse) {
+=======
                 var b2 = this.nextByte();
                 if (this.pop().isFalse) {
                     var delta = ((b&7) - 4) * 256 + b2;
-                    if (delta < 0) this.checkForInterrupts();  //check on backward jumps (loops)
+>>>>>>> Stashed changes
                     this.pc += delta;
+                    if (delta < 0) this.checkForInterrupts();  //check on backward jumps (loops)
                 }
                 break;
 
@@ -1009,7 +990,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             // at:, at:put:, size, next, nextPut:, ...
             case 0xC0: case 0xC1: case 0xC2: case 0xC3: case 0xC4: case 0xC5: case 0xC6: case 0xC7:
             case 0xC8: case 0xC9: case 0xCA: case 0xCB: case 0xCC: case 0xCD: case 0xCE: case 0xCF:
-                if (this.doSuper || !this.primHandler.doSpecial(b&0xF))
+                if (!this.primHandler.doSpecial(b&0xF))
                     this.sendSpecial((b&0xF)+16); break;
 
             // Send Literal Selector
@@ -1021,7 +1002,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             case 0xF8: case 0xF9: case 0xFA: case 0xFB: case 0xFC: case 0xFD: case 0xFE: case 0xFF:
                 this.send(this.method.methodGetLiteral(b - 0xD0)); break;
         }
-        if (this.doSuper && b != 0x86) debugger  // this can prob be remeoved
     },
     doStore: function (value, addrByte) {
 		// ** under construction
@@ -1040,23 +1020,28 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 			case 0x5:
 			case 0x6:
 		        this.method.methodGetLiteral(addrByte&0x3F).pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE] = value; break;
-            case 0x8:
+			//case 0x8:
 				// handle EXTENDED stores 0x88-0x8c
-				//  ** under construction
-				extendedAddr= this.nextByte();
+				/*  ** under construction
+				int extendedAddr= nextByte();
 				switch (addrByte) {
 					case 0x88:	// STO* X LDINST
-						this.receiver.pointers[extendedAddr] = value; break;	
+						rcvr= body(receiver());
+						prev= rcvr.pointers[extendedAddr];
+						rcvr.pointers[extendedAddr] = value;			// transfer refcount from stack
+						break;	
 					case 0x89:	// STO* X LDTEMP
-						var addr = this.currentFrameTempOrArg(extendedAddr);
-				        this.activeContextPointers[addr] = value; break;
+						addr= fBP + tempOrArgOffset(extendedAddr);
+						prev= fProcessBody.pointers[addr];
+						fProcessBody.pointers[addr] = value;	// transfer refcount from stack
+						break;
 					case 0x8b:	// STO* X LDLITI
-                        var oref = this.method.methodGetLiteral(extendedAddr);
-                        oref.pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE] = value; break
+                        this.method.methodGetLiteral(b&0x3F).pointers[Squeak.Assn_value] = value; break;
 					default:		// 0x8a (X LDLIT) and 0x8c (X SEND)
 						nono();
-				};
+				}
 				break;
+				*/
             default:
 				nono();
 		}
@@ -1186,6 +1171,11 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             lookupClass = this.activeContextPointers[this.currentFrame + NoteTaker.FI_MCLASS].superclass();
         }
         var entry = this.findSelectorInClass(selector, argCountOrUndefined, lookupClass);
+        if (entry.primIndex) {
+            //note details for verification of at/atput primitives
+            this.verifyAtSelector = selector;
+            this.verifyAtClass = lookupClass;
+        }
         this.executeNewMethod(newRcvr, entry.method, entry.methodClass, entry.argCount, entry.primIndex);
     },
     findSelectorInClass: function(selector, argCountOrUndefined, startingClass) {
@@ -1224,10 +1214,10 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
     executeNewMethod: function(newRcvr, newMethod, newMethodClass, argumentCount, primitiveIndex) {
         this.sendCount++;
+        if (newMethod === this.breakOnMethod) this.breakOutOfInterpreter = 'break';
         if (this.logSends) console.log(this.sendCount + ' ' + this.printMethod(newMethod));
-        if (this.breakOnMethod === newMethod) this.breakOutOfInterpreter = 'break';
-        if (this.breakOnFrameChanged) {
-            this.breakOnFrameChanged = false;
+        if (this.breakOnContextChanged) {
+            this.breakOnContextChanged = false;
             this.breakOutOfInterpreter = 'break';
         }
         if (newMethod.methodIsQuick())
@@ -1258,10 +1248,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
     doReturn: function() {
         // reverse of executeNewMethod()
-        if (this.breakOnFrameReturned === this.currentFrame) {
-            this.breakOnFrameReturned = null;
-            this.breakOutOfInterpreter = 'break';
-        }
         var reply = this.top();
         var oldFrame = this.currentFrame;
         var newFrame = this.activeContextPointers[oldFrame + NoteTaker.FI_SAVED_BP];
@@ -1275,11 +1261,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.sp = newSP;
         this.receiver = this.activeContextPointers[newFrame + NoteTaker.FI_RECEIVER];
         this.push(reply);
-        if (this.breakOnFrameChanged) {
-            this.breakOnFrameChanged = false;
-            this.breakOutOfInterpreter = 'break';
-        }
-},
+    },
     doQuickSend: function(obj, index) {
         // pop receiver, push self or my inst var at index
         if (index === 255)
@@ -1444,9 +1426,20 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.success = false;
         return 1;
     },
-
-
-
+    quickDivide: function(rcvr, arg) { // must only handle exact case
+        if (arg === 0) return NoteTaker.NON_INT;  // fail if divide by zero
+        var result = rcvr / arg | 0;
+        if (result * arg === rcvr) return result;
+        return NoteTaker.NON_INT;     // fail if result is not exact
+    },
+    div: function(rcvr, arg) {
+        if (arg === 0) return NoteTaker.NON_INT;  // fail if divide by zero
+        return Math.floor(rcvr/arg);
+    },
+    mod: function(rcvr, arg) {
+        if (arg === 0) return NoteTaker.NON_INT;  // fail if divide by zero
+        return rcvr - Math.floor(rcvr/arg) * arg;
+    },
     safeShift: function(bitsToShift, shiftCount) {
         if (shiftCount<0) return bitsToShift>>-shiftCount; //OK to lose bits shifting right
         //check for lost bits by seeing if computation is reversible
@@ -1498,10 +1491,10 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                     var mdict = cls.pointers[NoteTaker.PI_CLASS_MDICT];
                     var selectors = mdict.pointers[NoteTaker.PI_MESSAGEDICT_OBJECTS].pointers;
                     var methods = mdict.pointers[NoteTaker.PI_MESSAGEDICT_METHODS].pointers;
-                    for (var j = 0; j < methods.length; j++)
-                        if (!methods[j].isNil)
-                            if (callback.call(this, cls, methods[j], selectors[j]))
-                                return;
+                    for (var j = 0; j < methods.length; j++) {
+                        if (callback.call(this, cls, methods[j], selectors[j]))
+                            return;
+                    }
                 }
             }
         }
@@ -1524,20 +1517,19 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         // classAndMethodString is 'Class>>method'
         var found;
         this.allMethodsDo(function(classObj, methodObj, selectorObj) {
-            var thisMethod = classObj.className() + '>>' + selectorObj.bytesAsString();
-            if (classAndMethodString == thisMethod)
+            if (classAndMethodString == (classObj.className() + '>>' + selectorObj.bytesAsString()))
                 return found = methodObj;
         });
-        if (!found) throw 'method not found: ' + classAndMethodString;
+        if (!found) throw 'method not found: ', classAndMethodString;
         this.breakOnMethod = found;
     },
     breakOnReturn: function() {
-        this.breakOnFrameChanged = false;
-        this.breakOnFrameReturned = this.currentFrame;
+        this.breakOnContextChanged = false;
+        this.breakOnContextReturned = this.activeContext;
     },
     breakOnSendOrReturn: function() {
-        this.breakOnFrameChanged = true;
-        this.breakOnFrameReturned = null;
+        this.breakOnContextChanged = true;
+        this.breakOnContextReturned = null;
     },
     printActiveContext: function() {
         // temps and stack in current context
@@ -1576,11 +1568,59 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         var printer = new users.bert.St78.vm.InstructionPrinter(aMethod || this.method, this);
         return printer.printInstructions(optionalIndent, optionalHighlight, optionalPC);
     },
+    printObjectRef: function(objRef, startIndex) {
+        // if cached, use it
+        if (objRef.hasOwnProperty('stInstName')) return objRef.stInstName();
+        // look up in global symbol table 
+        var globalNames = this.image.globals.pointers[NoteTaker.PI_SYMBOLTABLE_OBJECTS].pointers,
+            globalValues = this.image.globals.pointers[NoteTaker.PI_SYMBOLTABLE_VALUES].pointers;
+        for (var i = startIndex || 0; i < globalNames.length; i++) {
+            if (objRef === globalValues[i]) {
+                // cache in stInstName() function
+                (function(globals, index){
+                    objRef.stInstName = function() {
+                        if (this === globals.pointers[NoteTaker.PI_SYMBOLTABLE_VALUES].pointers[i])
+                            return 'global ' + globals.pointers[NoteTaker.PI_SYMBOLTABLE_OBJECTS].pointers[i].bytesAsString();
+                        delete this.stInstName; // cache is invalid
+                        return "object ref " + this.oop;
+                    };
+                })(this.image.globals, i);
+                return objRef.stInstName();
+            }
+        }
+        // not found, maybe just created? Look it up again next time.
+        return "object ref " + objRef.oop;
+    },    
     willSendOrReturn: function() {
         // Answer whether the next bytecode corresponds to a Smalltalk
         // message send or return
         var byte = this.method.bytes[this.pc];
-        return byte >= 0xB0 || byte == 0x8C || byte == 0x83;
+        if (byte >= 120 && byte <= 125) return true; // return
+        /* 
+        if (byte < 96) return false;    // 96-103 storeAndPopReceiverVariableBytecode
+        if (byte <= 111) return true;   // 104-111 storeAndPopTemporaryVariableBytecode
+        if (byte == 129        // 129 extendedStoreBytecode
+            || byte == 130     // 130 extendedStoreAndPopBytecode
+            || byte == 141	   // 141 storeRemoteTempLongBytecode
+            || byte == 142	   // 142 storeAndPopRemoteTempLongBytecode
+            || (byte == 132 && 
+                this.method.bytes[this.pc + 1] >= 160)) // 132 doubleExtendedDoAnythingBytecode
+                    return true;
+        */
+        if (byte < 131 || byte == 200) return false;
+        if (byte >= 176) return true; // special send or short send
+        if (byte <= 134) {         // long sends
+			// long form support demands we check the selector
+			var litIndex;
+			if (byte === 132) {
+                if ((this.method.bytes[this.pc + 1] >> 5) > 1) return false;
+                litIndex = this.method.bytes[this.pc + 2];
+			} else
+                litIndex = this.method.bytes[this.pc + 1] & (byte === 134 ? 63 : 31);
+            var selectorObj = this.method.pointers[litIndex + 1];
+            if (selectorObj.bytesAsString() != 'blockCopy:') return true;
+        }
+        return false;
     },
 
 
@@ -1679,27 +1719,24 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 6: return this.pop2andPushBoolIfOK(this.stackInteger(0) === this.stackInteger(1)); // Integer.equal
             case 7: return this.pop2andPushBoolIfOK(this.stackInteger(0) !== this.stackInteger(1)); // Integer.notequal
             case 8: return this.popNandPushIntIfOK(2,this.stackInteger(0) * this.stackInteger(1));  // Integer.multiply *
-            case 9: return this.popNandPushIntIfOK(2,this.doDiv(this.stackInteger(0),this.stackInteger(1)));  // Integer.divide /  
-            case 10: return this.popNandPushIntIfOK(2,this.doRem(this.stackInteger(0),this.stackInteger(1)));  // Integer.rem \\
+            case 9: return this.popNandPushIntIfOK(2,this.vm.quickDivide(this.stackInteger(0),this.stackInteger(1)));  // Integer.divide /  (fails unless exact)
+            case 10: return this.popNandPushIntIfOK(2,this.vm.mod(this.stackInteger(0),this.stackInteger(1)));  // Integer.rem \\
             case 11: return false; //return this.primitiveMakePoint(argCount);
             case 12: return this.popNandPushIfOK(2,this.doBitShift());  // SmallInt.bitShift
             case 13: return this.popNandPushIfOK(2,this.doBitXor());  // SmallInt.bitXor
             case 14: return this.popNandPushIfOK(2,this.doBitAnd());  // SmallInt.bitAnd
             case 15: return this.popNandPushIfOK(2,this.doBitOr());  // SmallInt.bitOr
-            case 18: return false; // next;
-            case 19: return false; // next <-
+            case 19: return false;                                 // Guard primitive for simulation -- *must* fail
             case 20: return false;
             case 21: return false; // primitiveAddLargeIntegers
             case 22: return false; // primitiveSubtractLargeIntegers
             case 23: return false; // primitiveLessThanLargeIntegers
             case 24: return false; // primitiveGreaterThanLargeIntegers
-            case 25: return this.popNandPushIfOK(1,this.doRemoteCopy(this.top())); // <Process> remoteCopy
+            case 25: return false; // primitiveLessOrEqualLargeIntegers
             case 26: return false; // primitiveGreaterOrEqualLargeIntegers
 
             case 27: return this.primitiveNew(argCount); // argCount = 0 fixed size
             case 28: return this.primitiveNew(argCount); // argCount = 1 variable
-            case 41: return true; // bitBlt install for display **ignored for now
-            case 53: return true; // display bits lock ** ignored for now
 /*
             case 29: return false; // primitiveMultiplyLargeIntegers
             case 30: return false; // primitiveDivideLargeIntegers
@@ -1875,7 +1912,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
     stackInteger: function(nDeep) {
         return this.checkSmallInt(this.vm.stackValue(nDeep));
     },
-    stackPos16BitInt: function(nDeep) {
+    stackPos32BitInt: function(nDeep) {
         var stackVal = this.vm.stackValue(nDeep);
         if (this.vm.isSmallInt(stackVal)) {
             if (stackVal >= 0)
@@ -1883,18 +1920,25 @@ Object.subclass('users.bert.St78.vm.Primitives',
             this.success = false;
             return 0;
         }
-        return 0;  //FIXME - I think in st78 all calls to stackPos16BitInt can simply call stackInteger
+        if (!this.isA(stackVal, Squeak.splOb_ClassLargePositiveInteger) || stackVal.bytesSize() !== 4) {
+            this.success = false;
+            return 0;
+        }
+        var bytes = stackVal.bytes;
+        var value = 0;
+        for (var i=0; i<4; i++)
+            value += ((bytes[i]&255)<<(8*i));
+        return value;
     },
-    pos16BitIntFor: function(pos16Val) {
-        // Return the 16-bit quantity as a positive 16-bit integer
-        if (pos16Val >= 0)
-            if (this.vm.canBeSmallInt(pos16Val)) return pos16Val;
-        debugger; throw "large ints not implemented yet"
+    pos32BitIntFor: function(pos32Val) {
+        // Return the 32-bit quantity as a positive 32-bit integer
+        if (pos32Val >= 0)
+            if (this.vm.canBeSmallInt(pos32Val)) return pos32Val;
         var lgIntClass = this.vm.specialObjects[Squeak.splOb_ClassLargePositiveInteger];
         var lgIntObj = this.vm.instantiateClass(lgIntClass, 4);
         var bytes = lgIntObj.bytes;
         for (var i=0; i<4; i++)
-            bytes[i] = (pos16Val>>>(8*i))&255;
+            bytes[i] = (pos32Val>>>(8*i))&255;
         return lgIntObj;
     },
     stackFloat: function(nDeep) {
@@ -1903,30 +1947,30 @@ Object.subclass('users.bert.St78.vm.Primitives',
 },
 'numbers', {
     doBitAnd: function() {
-        var rcvr = this.stackPos16BitInt(0);
-        var arg = this.stackPos16BitInt(1);
+        var rcvr = this.stackPos32BitInt(1);
+        var arg = this.stackPos32BitInt(0);
         if (!this.success) return 0;
-        return this.pos16BitIntFor(rcvr & arg);
+        return this.pos32BitIntFor(rcvr & arg);
     },
     doBitOr: function() {
-        var rcvr = this.stackPos16BitInt(0);
-        var arg = this.stackPos16BitInt(1);
+        var rcvr = this.stackPos32BitInt(1);
+        var arg = this.stackPos32BitInt(0);
         if (!this.success) return 0;
-        return this.pos16BitIntFor(rcvr | arg);
+        return this.pos32BitIntFor(rcvr | arg);
     },
     doBitXor: function() {
-        var rcvr = this.stackPos16BitInt(0);
-        var arg = this.stackPos16BitInt(1);
+        var rcvr = this.stackPos32BitInt(1);
+        var arg = this.stackPos32BitInt(0);
         if (!this.success) return 0;
-        return this.pos16BitIntFor(rcvr ^ arg);
+        return this.pos32BitIntFor(rcvr ^ arg);
     },
     doBitShift: function() {
-        var rcvr = this.stackPos16BitInt(0);
-        var arg = this.stackInteger(1);
+        var rcvr = this.stackPos32BitInt(1);
+        var arg = this.stackInteger(0);
         if (!this.success) return 0;
         var result = this.vm.safeShift(rcvr, arg); // returns negative result if failed
-        if (result >= 0)
-            return this.pos16BitIntFor(this.vm.safeShift(rcvr, arg));
+        if (result > 0)
+            return this.pos32BitIntFor(this.vm.safeShift(rcvr, arg));
         this.success = false;
         return 0;
     },
@@ -1937,14 +1981,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         }
         return dividend / divisor;
     },
-    doDiv: function(rcvr, arg) {
-        if (arg === 0) return NoteTaker.NON_INT;  // fail if divide by zero
-        return Math.floor(rcvr/arg);
-    },
-    doRem: function(rcvr, arg) {
-        if (arg === 0) return NoteTaker.NON_INT;  // fail if divide by zero
-        return rcvr - Math.floor(rcvr/arg) * arg;
-    },},
+},
 'utils', {
     checkFloat: function(maybeFloat) { // returns a float and sets success
         if (maybeFloat.isFloat)
@@ -1963,6 +2000,12 @@ Object.subclass('users.bert.St78.vm.Primitives',
             return obj;
         this.success = false;
         return this.vm.nilObj;
+    },
+    indexableSize: function(obj) {
+        if (this.vm.isSmallInt(obj)) return -1; // -1 means not indexable
+        if (obj.bytes) return obj.bytes.length;
+        if (obj.words) return obj.words.length;
+        return obj.pointersSize();
     },
     isA: function(obj, knownClass) {
         return obj.sqClass === this.vm.specialObjects[knownClass];
@@ -2007,59 +2050,90 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
 },
 'indexing', {
-    indexableSize: function(obj) {
-        if (this.vm.isSmallInt(obj)) return -1; // -1 means not indexable
-        if (obj.bytes) return obj.bytes.length;
-        if (obj.words) return obj.words.length;
-        return obj.pointersSize() - obj.stClass.classInstSize();
-    },
     objectAt: function(cameFromBytecode, convertChars, includeInstVars) {
         //Returns result of at: or sets success false
-        var array = this.stackNonInteger(0);
-        var index = this.stackPos16BitInt(1); //note non-int returns zero
+        var array = this.stackNonInteger(1);
+        var index = this.stackPos32BitInt(0); //note non-int returns zero
         if (!this.success) return array;
-        var info = this.atCache[(array.oop >> 1) & this.atCacheMask];
-        if (info.array !== array)
-            info = this.makeAtCacheInfo(this.atCache, this.vm.specialSelectors[16], array, convertChars, includeInstVars);
+        var info;
+        if (cameFromBytecode) {// fast entry checks cache
+            info = this.atCache[array.hash & this.atCacheMask];
+            if (info.array !== array) {this.success = false; return array;}
+        } else {// slow entry installs in cache if appropriate
+            if (array.isFloat) { // present float as word array
+                var floatData = array.floatData();
+                if (index==1) return this.pos32BitIntFor(floatData.getUint32(0, false));
+                if (index==2) return this.pos32BitIntFor(floatData.getUint32(4, false));
+                this.success = false; return array;
+            }
+            info = this.makeAtCacheInfo(this.atCache, this.vm.specialSelectors[32], array, convertChars, includeInstVars);
+        }
         if (index < 1 || index > info.size) {this.success = false; return array;}
-        if (includeInstVars)  // pointers
+        if (includeInstVars)  //pointers...   instVarAt and objectAt
             return array.pointers[index-1];
-        if (array.words) // words
-            return this.pos16BitIntFor(array.words[index-1]);
-        if (array.bytes) // bytes...
-            return array.bytes[index-1];
-        // comes last to not report pointers of compiled methods
-        if (array.pointers)
+        if (array.format<6)   //pointers...   normal at:
             return array.pointers[index-1+info.ivarOffset];
-        throw "indexing problem"
+        if (array.format<8) // words...
+            return this.pos32BitIntFor(array.words[index-1]);
+        if (array.format<12) // bytes...
+            if (info.convertChars) return this.charFromInt(array.bytes[index-1] & 0xFF);
+            else return array.bytes[index-1] & 0xFF;
+        // methods (format>=12) must simulate Squeak's method indexing
+        var offset = array.pointersSize() * 4;
+        if (index-1-offset < 0) {this.success = false; return array;} //reading lits as bytes
+        return array.bytes[index-1-offset] & 0xFF;
     },
     objectAtPut: function(cameFromBytecode, convertChars, includeInstVars) {
         //Returns result of at:put: or sets success false
-        var array = this.stackNonInteger(0);
-        var index = this.stackPos16BitInt(2); //note non-int returns zero
+        var array = this.stackNonInteger(2);
+        var index = this.stackPos32BitInt(1); //note non-int returns zero
         if (!this.success) return array;
-        var info = this.atPutCache[(array.oop >> 1) & this.atCacheMask];
-        if (info.array !== array)
-            info = this.makeAtCacheInfo(this.atPutCache, this.vm.specialSelectors[17], array, convertChars, includeInstVars);
+        var info;
+        if (cameFromBytecode) {// fast entry checks cache
+            info = this.atPutCache[array.hash & this.atCacheMask];
+            if (info.array !== array) {this.success = false; return array;}
+        } else {// slow entry installs in cache if appropriate
+            if (array.isFloat) { // present float as word array
+                throw "not implemented yet"
+                var floatData = array.floatData();
+                if (index==1) return this.pos32BitIntFor(floatData.getUint32(0, false));
+                if (index==2) return this.pos32BitIntFor(floatData.getUint32(4, false));
+                this.success = false; return array;
+            }
+            info = this.makeAtCacheInfo(this.atPutCache, this.vm.specialSelectors[34], array, convertChars, includeInstVars);
+        }
         if (index<1 || index>info.size) {this.success = false; return array;}
-        var objToPut = this.vm.stackValue(1);
-        if (includeInstVars)  // pointers
-            return array.pointers[index-1] = objToPut;
-        if (array.pointers && !array.bytes) // pointers, but not compiled methods
+        var objToPut = this.vm.stackValue(0);
+        if (includeInstVars)  // pointers...   instVarAtPut and objectAtPut
+            return array.pointers[index-1] = objToPut; //eg, objectAt:
+        if (array.format<6)  // pointers...   normal atPut
             return array.pointers[index-1+info.ivarOffset] = objToPut;
-        // words and bytes
-        if (array.words) {  // words...
-            var wordToPut = this.stackPos16BitInt(1);
-            if (this.success) array.words[index-1] = wordToPut;
+        var intToPut;
+        if (array.format<8) {  // words...
+            intToPut = this.stackPos32BitInt(0);
+            if (this.success) array.words[index-1] = intToPut;
             return objToPut;
         }
-        if (array.bytes) { // bytes...
-            var byteToPut = this.checkSmallInt(objToPut);
-            if (!this.success) return objToPut;
-            if (byteToPut < 0 || byteToPut > 255) {this.success = false; return objToPut;}
-            return array.bytes[index-1] = byteToPut;
+        // bytes...
+        if (convertChars) {
+            // put a character...
+            if (this.vm.isSmallInt(objToPut)) {this.success = false; return objToPut;}
+            if (objToPut.sqClass !== this.vm.specialObjects[Squeak.splOb_ClassCharacter])
+                {this.success = false; return objToPut;}
+            intToPut = objToPut.pointers[0];
+            if (!(this.vm.isSmallInt(intToPut))) {this.success = false; return objToPut;}
+        } else { // put a byte...
+            if(!(this.vm.isSmallInt(objToPut))) {this.success = false; return objToPut;}
+            intToPut = objToPut;
         }
-        throw "indexing problem"
+        if (intToPut<0 || intToPut>255) {this.success = false; return objToPut;}
+        if (array.format<8)  // bytes...
+            return array.bytes[index-1] = intToPut;
+        // methods (format>=12) must simulate Squeak's method indexing
+        var offset = array.pointersSize() * 4;
+        if (index-1-offset < 0) {this.success = false; return array;} //writing lits as bytes
+        array.bytes[index-1-offset] = intToPut;
+        return objToPut;
     },
     objectSize: function(argCount) {
         var rcvr = this.vm.stackValue(0);
@@ -2093,18 +2167,20 @@ Object.subclass('users.bert.St78.vm.Primitives',
         //then return the info in nonCachedInfo.
         //Note that info for objectAt (includeInstVars) will have
         //a zero ivarOffset, and a size that includes the extra instVars
-        var cacheable = !this.vm.doSuper,           //not a super send
-            instSize = array.stClass.classInstSize(),
-            indexableSize = this.indexableSize(array),
-            info = cacheable ? atOrPutCache[(array.oop >> 1) & this.atCacheMask] : this.nonCachedInfo;
+        var info;
+        var cacheable =
+            (this.vm.verifyAtSelector === atOrPutSelector)         //is at or atPut
+		    && (this.vm.verifyAtClass === array.sqClass)           //not a super send
+            && !(array.format === 3 && this.vm.isContext(array));  //not a context (size can change)
+        info = cacheable ? atOrPutCache[array.hash & this.atCacheMask] : this.nonCachedInfo;
         info.array = array;
         info.convertChars = convertChars;
         if (includeInstVars) {
-            info.size = instSize + indexableSize;
+            info.size = array.instSize() + Math.max(0, this.indexableSize(array));
             info.ivarOffset = 0;
         } else {
-            info.size = indexableSize;
-            info.ivarOffset = instSize;
+            info.size = this.indexableSize(array);
+            info.ivarOffset = (array.format < 6) ? array.instSize() : 0;
         }
         return info;
     },
@@ -2130,8 +2206,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return 0;
     },
     primitiveMakePoint: function(argCount) {
-        var x = this.vm.stackValue(0);
-        var y = this.vm.stackValue(1);
+        var x = this.vm.stackValue(1);
+        var y = this.vm.stackValue(0);
         this.vm.popNandPush(1+argCount, this.makePointWithXandY(x, y));
         return true;
     },
@@ -2169,14 +2245,13 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return true;
     },
     doArrayBecome: function(doBothWays) {
-	    var rcvr = this.stackNonInteger(0);
-        var arg = this.stackNonInteger(1);
+	    var rcvr = this.stackNonInteger(1);
+        var arg = this.stackNonInteger(0);
     	if (!this.success) return rcvr;
         this.success = this.vm.image.bulkBecome(rcvr.pointers, arg.pointers, doBothWays);
         return rcvr;
     },
     doStringReplace: function() {
-        throw "need to reverse args"
         var dst = this.stackNonInteger(4);
         var dstPos = this.stackInteger(3) - 1;
         var count = this.stackInteger(2) - dstPos;
@@ -2245,25 +2320,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
         newBlock.pointers[Squeak.Context_sender] = this.vm.nilObj; // claim not needed; just initialized
         return newBlock;
     },
-    doRemoteCopy: function(rcvr) {
-        // Make a block-like outrigger to rcvr, a process
-	    if (rcvr.stClass.oop !== NoteTaker.OTI_CLPROCESS) return null;
-/*
-        this.vm.popPCBP();
-		var pc= this.vm.getPC();
-		var cm= this.vm.getFrameValue(NoteTaker.FI_METHOD);
-		int jump= this.vm.body(cm).bytes()[pc] & 0xff;
-		pc+= jump < 0xA0? 1 : 2;
-		short rcode= this.vm.cinst(St78VM.kRemoteCodeClass, 0);
-		int relBP= this.vm.getProcessEnd()-this.vm.getBP();
-		St78Object rcodeBody= this.vm.body(rcode);
-		rcodeBody.setPointer(NoteTaker.PI_RCODE_FRAMEOFFSET, St78VM.small(relBP));
-		rcodeBody.setPointer(NoteTaker.PI_RCODE_STARTINGPC, St78VM.small(pc));
-		this.vm.pushPCBP();	// reinstall the alibi frame
-		return rcode; 	// leavep will refi the RCode instance
-*/
-	    },
-
     primitiveBlockValue: function(argCount) {
         var rcvr = this.vm.stackValue(argCount);
         if (!this.isA(rcvr, Squeak.splOb_ClassBlockContext)) return false;
@@ -2344,9 +2400,9 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.vm.newActiveContext(newProc.pointers[Squeak.Proc_suspendedContext]);
         newProc.pointers[Squeak.Proc_suspendedContext] = this.vm.nilObj;
         this.vm.reclaimableContextCount = 0;
-        if (this.vm.breakOnFrameChanged || this.vm.breakOnFrameReturned) {
-            this.vm.breakOnFrameChanged = false;
-            this.vm.breakOnFrameReturned = null;
+        if (this.vm.breakOnContextChanged || this.vm.breakOnContextReturned) {
+            this.vm.breakOnContextChanged = false;
+            this.vm.breakOnContextReturned = null;
             this.vm.breakOutOfInterpreter = 'break';
         }
     },
@@ -2672,7 +2728,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var seconds = date.getTime() / 1000 | 0;    // milliseconds -> seconds
         seconds -= date.getTimezoneOffset() * 60;   // make local time
         seconds += ((69 * 365 + 17) * 24 * 3600);   // adjust epoch from 1970 to 1901
-        return this.pos16BitIntFor(seconds);
+        return this.pos32BitIntFor(seconds);
     },
 });
 Object.subclass('users.bert.St78.vm.BitBlt',
@@ -3246,13 +3302,6 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
             this.result += (this.method.bytes[i]+0x100).toString(16).substr(-2).toUpperCase(); // padded hex
         }
         this.result += "> " + instruction + "\n";
-        // if pc is in the middle of an extended instruction, restart from there
-        if (this.highlightPC > this.oldPC && this.highlightPC < this.scanner.pc) {
-            this.oldPC = this.highlightPC;
-            this.scanner.pc = this.highlightPC;
-            this.scanner.interpretNextInstructionFor(this);
-            this.result = this.result.slice(0,-1) + " <partial instr>\n";
-        }
         this.oldPC = this.scanner.pc;
     }
 },
@@ -3287,7 +3336,7 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
     },
     pushLiteralVariable: function(index) {
         var objRef = this.method.methodGetLiteral(index),
-            refName = objRef.stInstName();
+            refName = this.vm.printObjectRef(objRef);
         this.print('pushLitRef: ' + index + ' (' + refName + ')');
     },
 	pushReceiver: function() {
@@ -3304,7 +3353,7 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
     },
     storeIntoLiteralVariable: function(index, doPop) {
         var objRef = this.method.methodGetLiteral(index),
-            refName = objRef.stInstName();
+            refName = this.vm.printObjectRef(objRef);
         this.print((doPop ? 'pop' : 'store') + 'IntoLitRef: ' + index + ' (' + refName + ')');
     },
     storeIntoReceiverVariable: function(offset, doPop) { 
@@ -3313,10 +3362,6 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
 	storeIntoTemporaryVariable: function(offset, doPop) {
 	    this.print((doPop ? 'pop' : 'store') + 'IntoArgOrTemp: ' + offset);
     },
-    doRemoteReturn: function() {
-        this.print('remote return');
-    }
-
 });
 
 Object.subclass('users.bert.St78.vm.InstructionStream',
@@ -3388,7 +3433,7 @@ Object.subclass('users.bert.St78.vm.InstructionStream',
     	    }
     	    throw "unusedBytecode";
     	case 9: return client.jump((offset&7)+1, offset&8);
-    	case 0xA: return client.jump((((offset&7) - 4) * 256) + this.method.bytes[this.pc++], offset&8);
+    	case 0xA: return client.jump(((offset&7)<<8) + this.method.bytes[this.pc++] - 0x400, offset&8);
     	case 0xB: return client.send(this.specialSelectors[offset]);
     	case 0xC: return client.send(this.specialSelectors[offset+16]);
     	case 0xD: return client.send(method.methodGetLiteral(offset));
