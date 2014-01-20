@@ -559,7 +559,6 @@ Object.subclass('users.bert.St78.vm.Image',
     },
     labelObjRefs: function() {
         // label object refs with their keys in all symbol tables
-        debugger;
         var tableClass = this.globalNamed('SymbolTable'),
             table = this.someInstanceOf(tableClass);
         while (table) {
@@ -973,7 +972,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 				break;
 			case 0x8D:
 			case 0x8E: this.nono(); break; 			// illegal 0x87..0x8F
-			case 0x8F: this.breakOutOfInterpreter = "break"; break;
+			case 0x8F: this.breakNow(); break;
 
             // Short jumps
             case 0x90: case 0x91: case 0x92: case 0x93: case 0x94: case 0x95: case 0x96: case 0x97:
@@ -1225,10 +1224,10 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     executeNewMethod: function(newRcvr, newMethod, newMethodClass, argumentCount, primitiveIndex) {
         this.sendCount++;
         if (this.logSends) console.log(this.sendCount + ' ' + this.printMethod(newMethod));
-        if (this.breakOnMethod === newMethod) this.breakOutOfInterpreter = 'break';
+        if (this.breakOnMethod === newMethod) this.breakNow();
         if (this.breakOnFrameChanged) {
             this.breakOnFrameChanged = false;
-            this.breakOutOfInterpreter = 'break';
+            this.breakNow();
         }
         if (newMethod.methodIsQuick())
             return this.doQuickSend(newRcvr, newMethod.methodQuickIndex());
@@ -1260,7 +1259,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         // reverse of executeNewMethod()
         if (this.breakOnFrameReturned === this.currentFrame) {
             this.breakOnFrameReturned = null;
-            this.breakOutOfInterpreter = 'break';
+            this.breakNow();
         }
         var reply = this.top();
         var oldFrame = this.currentFrame;
@@ -1277,7 +1276,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.push(reply);
         if (this.breakOnFrameChanged) {
             this.breakOnFrameChanged = false;
-            this.breakOutOfInterpreter = 'break';
+            this.breakNow();
         }
 },
     doQuickSend: function(obj, index) {
@@ -1291,7 +1290,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.activeContextPointers[this.sp] = obj.pointers[index];
     },
     tryPrimitive: function(primIndex, argCount, newMethod) {
-        debugger;
         var success = this.primHandler.doPrimitive(primIndex, argCount, newMethod);
         return success;
     },
@@ -1531,6 +1529,9 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         if (!found) throw 'method not found: ' + classAndMethodString;
         this.breakOnMethod = found;
     },
+    breakNow: function() {
+        this.breakOutOfInterpreter = 'break';
+    },
     breakOnReturn: function() {
         this.breakOnFrameChanged = false;
         this.breakOnFrameReturned = this.currentFrame;
@@ -1582,9 +1583,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         var byte = this.method.bytes[this.pc];
         return byte >= 0xB0 || byte == 0x8C || byte == 0x83;
     },
-
-
-
 });
 
 Object.subclass('users.bert.St78.vm.Primitives',
@@ -1667,9 +1665,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
     doPrimitive: function(index, argCount) {
         this.success = true;
-        debugger;
         switch (index) {
-
             case 0: return this.popNandPushIntIfOK(2,this.stackInteger(0) + this.stackInteger(1));  // Integer.add
             case 1: return this.popNandPushIntIfOK(2,this.stackInteger(0) - this.stackInteger(1));  // Integer.subtract
             case 2: return this.pop2andPushBoolIfOK(this.stackInteger(0) < this.stackInteger(1));   // Integer.less
