@@ -1720,7 +1720,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 8: return this.popNandPushIntIfOK(2,this.stackInteger(0) * this.stackInteger(1));  // Integer.multiply *
             case 9: return this.popNandPushIntIfOK(2,this.doDiv(this.stackInteger(0),this.stackInteger(1)));  // Integer.divide /  
             case 10: return this.popNandPushIntIfOK(2,this.doRem(this.stackInteger(0),this.stackInteger(1)));  // Integer.rem \\
-            case 11: return false; //return this.primitiveMakePoint(argCount);
+            case 11: return this.primitiveMakePoint(argCount);  // @ - make a Point
             case 12: return this.popNandPushIfOK(2,this.doBitShift());  // SmallInt.bitShift
             case 13: return this.popNandPushIfOK(2,this.doBitXor());  // SmallInt.bitXor
             case 14: return this.popNandPushIfOK(2,this.doBitAnd());  // SmallInt.bitAnd
@@ -2026,10 +2026,10 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return newFloat;
 	},
     makePointWithXandY: function(x, y) {
-        var pointClass = this.vm.specialObjects[Squeak.splOb_ClassPoint];
+        var pointClass = this.vm.image.objectFromOop(NoteTaker.OTI_CLPOINT);
         var newPoint = this.vm.instantiateClass(pointClass, 0);
-        newPoint.pointers[Squeak.Point_x] = x;
-        newPoint.pointers[Squeak.Point_y] = y;
+        newPoint.pointers[NoteTaker.PI_POINT_X] = x;
+        newPoint.pointers[NoteTaker.PI_POINT_Y] = y;
         return newPoint;
     },
     makeStString: function(jsString) {
@@ -2171,7 +2171,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
     primitiveMakePoint: function(argCount) {
         var x = this.vm.stackValue(0);
         var y = this.vm.stackValue(1);
-        this.vm.popNandPush(1+argCount, this.makePointWithXandY(x, y));
+        this.vm.popNandPush(2, this.makePointWithXandY(x, y));
         return true;
     },
     primitiveNew: function(argCount) {
