@@ -2589,10 +2589,10 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return true;
     },
     redrawFullDisplay: function() {
-        var displayObj = this.vm.specialObjects[Squeak.splOb_TheDisplay];
-        var display = (new users.bert.St78.vm.BitBlt()).loadForm(displayObj);
-        var bounds = {x: 0, y: 0, w: display.width, h: display.height};
-        this.showOnDisplay(display, bounds);
+        var bitblt = new users.bert.St78.vm.BitBlt(this.vm);
+        bitblt.loadBitBlt(this.displayBlt);
+        var bounds = { x: 0, y: 0, w: bitblt.clipW, h: bitblt.clipH};
+        this.showOnDisplay(bitblt, bounds);
     },
     showOnDisplay: function(bitBlt, rect) {
         if (!rect) return;
@@ -2655,10 +2655,11 @@ Object.subclass('users.bert.St78.vm.BitBlt',
     loadBitBlt: function(bitbltObj) {
         var bitblt = bitbltObj.pointers;
         var func = bitblt[NoteTaker.PI_BITBLT_FUNCTION];
-        this.combinationRule = func & 3;    // set, or, xor, and
-        this.sourceType = (func >> 2) & 3;  // src, ~src, halftone in src, halftone
-        this.mergeFn = this.makeMergeFn(this.combinationRule);
-        this.halftone = this.sourceType >= 2 ? this.loadHalftone(bitblt[NoteTaker.PI_BITBLT_GRAY]) : null;
+        this.destRule = func & 3;           // set, or, xor, and
+        this.sourceRule = (func >> 2) & 3;  // src, ~src, halftone in src, halftone
+        this.sourceFn = this.makeSourceFn(this.sourceRule);
+        this.destFn = this.makeDestFn(this.destRule);
+        this.halftone = this.sourceRule >= 2 ? this.loadHalftone(bitblt[NoteTaker.PI_BITBLT_GRAY]) : null;
         this.destBits = this.loadBits(bitblt[NoteTaker.PI_BITBLT_DESTBITS]);
         this.destPitch = bitblt[NoteTaker.PI_BITBLT_DESTRASTER];
         this.destX = bitblt[NoteTaker.PI_BITBLT_DESTX];
@@ -2677,14 +2678,22 @@ Object.subclass('users.bert.St78.vm.BitBlt',
         this.sourceForm = bitblt[NoteTaker.PI_BITBLT_SOURCE];
         return true;
     },
-    makeMergeFn: function(rule) {
+    makeSourceFn: function(rule) {
         switch(rule) {
-            case 0: return function(src, dst) { return src };
-            case 1: return function(src, dst) { return src | dst };
-            case 2: return function(src, dst) { return src ^ dst };
-            case 3: return function(src, dst) { return src & dst };
+            case 0: return function(src, halftone, dst) { return src };
+            case 1: return function(src, halftone, dst) { return ~src };
+            case 2: return function(src, halftone, dst) { return (src & halftone) | (~src & dst) };
+            case 3: return function(src, halftone, dst) { return halftone };
         }
         throw "bitblt rule not implemented yet";
+    },
+    makeDestFn: function(rule) {
+        switch(rule) {
+            case 0: return function(val, dst) { return val };
+            case 1: return function(val, dst) { return val | dst };
+            case 2: return function(val, dst) { return val ^ dst };
+            case 3: return function(val, dst) { return val & dst };
+        }
     },
     loadBits: function(bitsOop) {
         // make the bytes in bitOop accessible as a word array
@@ -2717,7 +2726,7 @@ Object.subclass('users.bert.St78.vm.BitBlt',
         if (this.bbW <= 0 || this.bbH <= 0) return;
         this.destMaskAndPointerInit();
         /* Choose and perform the actual copy loop. */
-        if (this.sourceType === 3) {
+        if (this.sourceRule === 3) {
             this.copyLoopNoSource();
         } else {
             this.checkSourceOverlap();
@@ -2735,25 +2744,25 @@ Object.subclass('users.bert.St78.vm.BitBlt',
             // First word in row is masked
             var destMask = this.mask1;
             var destWord = this.destBits[this.destIndex];
-            var mergeWord = this.mergeFn(halftoneWord, destWord);
+            var mergeWord = this.destFn(halftoneWord, destWord);
             destWord = (destMask & mergeWord) | (destWord & (~destMask));
             this.destBits[this.destIndex++] = destWord;
             destMask = 0xFFFF;
             //the central horizontal loop requires no store masking */
-            if (this.combinationRule === 0) // Store rule requires no dest merging
+            if (this.destRule === 0) // Store rule requires no dest merging
                 for (var word = 2; word < this.nWords; word++)
                     this.destBits[this.destIndex++] = halftoneWord;
             else
                 for (var word = 2; word < this.nWords; word++) {
                         destWord = this.destBits[this.destIndex];
-                        mergeWord = this.mergeFn(halftoneWord, destWord);
+                        mergeWord = this.destFn(halftoneWord, destWord);
                         this.destBits[this.destIndex++] = mergeWord;
                 }
             //last word in row is masked
             if (this.nWords > 1) {
                     destMask = this.mask2;
                     destWord = this.destBits[this.destIndex];
-                    mergeWord = this.mergeFn(halftoneWord, destWord);
+                    mergeWord = this.destFn(halftoneWord, destWord);
                     destWord = (destMask & mergeWord) | (destWord & (~destMask));
                     this.destBits[this.destIndex++] = destWord;
             }
@@ -2817,15 +2826,15 @@ Object.subclass('users.bert.St78.vm.BitBlt',
                 | (((this.skew < 0) ? ( (thisWord & skewMask) >> -this.skew) : ( (thisWord & skewMask) << this.skew)));
             prevWord = thisWord;
             var destWord = this.destBits[this.destIndex];
-            var mergeWord = this.mergeFn(skewWord & halftoneWord, destWord);
+            var mergeWord = this.destFn(this.sourceFn(skewWord, halftoneWord, destWord), destWord);
             destWord = (destMask & mergeWord) | (destWord & (~destMask));
             this.destBits[this.destIndex] = destWord;
             //The central horizontal loop requires no store masking */
             this.destIndex += hInc;
             destMask = 0xFFFF;
-            if (this.combinationRule === 0) { //Store mode avoids dest merge function
-                if ((this.skew === 0) && (halftoneWord === 0xFFFF)) {
-                    //Non-skewed with no halftone
+            if (this.destRule === 0 && this.sourceRule !== 2) { //Store mode avoids dest merge function
+                if ((this.skew === 0) && (this.sourceRule === 0)) {
+                    //Non-skewed and no sourceFn: fast copy. TODO: destBits.set(sourceBits.subarray(...)) ?
                     if (this.hDir == -1) {
                         for (var word = 2; word < this.nWords; word++) {
                             thisWord = this.sourceBits[this.sourceIndex];
@@ -2842,7 +2851,7 @@ Object.subclass('users.bert.St78.vm.BitBlt',
                         }
                     }
                 } else {
-                    //skewed and/or halftoned
+                    //skewed and/or source function
                     for (var word = 2; word < this.nWords; word++) {
                         thisWord = this.sourceBits[this.sourceIndex];
                         this.sourceIndex += hInc;
@@ -2850,7 +2859,7 @@ Object.subclass('users.bert.St78.vm.BitBlt',
                         skewWord = (((unskew < 0) ? ( (prevWord & notSkewMask) >> -unskew) : ( (prevWord & notSkewMask) << unskew)))
                             | (((this.skew < 0) ? ( (thisWord & skewMask) >> -this.skew) : ( (thisWord & skewMask) << this.skew)));
                         prevWord = thisWord;
-                        this.destBits[this.destIndex] = skewWord & halftoneWord;
+                        this.destBits[this.destIndex] = this.sourceFn(skewWord, halftoneWord, null);
                         this.destIndex += hInc;
                     }
                 }
@@ -2862,7 +2871,8 @@ Object.subclass('users.bert.St78.vm.BitBlt',
                     skewWord = (((unskew < 0) ? ( (prevWord & notSkewMask) >> -unskew) : ( (prevWord & notSkewMask) << unskew)))
                         | (((this.skew < 0) ? ( (thisWord & skewMask) >> -this.skew) : ( (thisWord & skewMask) << this.skew)));
                     prevWord = thisWord;
-                    mergeWord = this.mergeFn(skewWord & halftoneWord, this.destBits[this.destIndex]);
+                    destWord = this.destBits[this.destIndex];
+                    mergeWord = this.destFn(this.sourceFn(skewWord, halftoneWord, destWord), destWord);
                     this.destBits[this.destIndex] = mergeWord;
                     this.destIndex += hInc;
                 }
@@ -2879,7 +2889,7 @@ Object.subclass('users.bert.St78.vm.BitBlt',
                 skewWord = (((unskew < 0) ? ((prevWord & notSkewMask) >> -unskew) : ((prevWord & notSkewMask) << unskew)))
                     | (((this.skew < 0) ? ( (thisWord & skewMask) >> -this.skew) : ( (thisWord & skewMask) << this.skew)));
                 destWord = this.destBits[this.destIndex];
-                mergeWord = this.mergeFn(skewWord & halftoneWord, destWord);
+                mergeWord = this.destFn(this.sourceFn(skewWord, halftoneWord, destWord), destWord);
                 destWord = (destMask & mergeWord) | (destWord & (~destMask));
                 this.destBits[this.destIndex] = destWord;
                 this.destIndex += hInc;
