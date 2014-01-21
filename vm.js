@@ -1644,39 +1644,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.display.vm = this.vm;
         this.initAtCache();
         this.initModules();
-        this.indexedColors = [
-            0xFFFFFFFF, 0xFF000001, 0xFFFFFFFF, 0xFF808080, 0xFFFF0000, 0xFF00FF00, 0xFF0000FF, 0xFF00FFFF,
-            0xFFFFFF00, 0xFFFF00FF, 0xFF202020, 0xFF404040, 0xFF606060, 0xFF9F9F9F, 0xFFBFBFBF, 0xFFDFDFDF,
-            0xFF080808, 0xFF101010, 0xFF181818, 0xFF282828, 0xFF303030, 0xFF383838, 0xFF484848, 0xFF505050,
-            0xFF585858, 0xFF686868, 0xFF707070, 0xFF787878, 0xFF878787, 0xFF8F8F8F, 0xFF979797, 0xFFA7A7A7,
-            0xFFAFAFAF, 0xFFB7B7B7, 0xFFC7C7C7, 0xFFCFCFCF, 0xFFD7D7D7, 0xFFE7E7E7, 0xFFEFEFEF, 0xFFF7F7F7,
-            0xFF000001, 0xFF003300, 0xFF006600, 0xFF009900, 0xFF00CC00, 0xFF00FF00, 0xFF000033, 0xFF003333,
-            0xFF006633, 0xFF009933, 0xFF00CC33, 0xFF00FF33, 0xFF000066, 0xFF003366, 0xFF006666, 0xFF009966,
-            0xFF00CC66, 0xFF00FF66, 0xFF000099, 0xFF003399, 0xFF006699, 0xFF009999, 0xFF00CC99, 0xFF00FF99, 
-            0xFF0000CC, 0xFF0033CC, 0xFF0066CC, 0xFF0099CC, 0xFF00CCCC, 0xFF00FFCC, 0xFF0000FF, 0xFF0033FF, 
-            0xFF0066FF, 0xFF0099FF, 0xFF00CCFF, 0xFF00FFFF, 0xFF330000, 0xFF333300, 0xFF336600, 0xFF339900, 
-            0xFF33CC00, 0xFF33FF00, 0xFF330033, 0xFF333333, 0xFF336633, 0xFF339933, 0xFF33CC33, 0xFF33FF33, 
-            0xFF330066, 0xFF333366, 0xFF336666, 0xFF339966, 0xFF33CC66, 0xFF33FF66, 0xFF330099, 0xFF333399, 
-            0xFF336699, 0xFF339999, 0xFF33CC99, 0xFF33FF99, 0xFF3300CC, 0xFF3333CC, 0xFF3366CC, 0xFF3399CC,
-            0xFF33CCCC, 0xFF33FFCC, 0xFF3300FF, 0xFF3333FF, 0xFF3366FF, 0xFF3399FF, 0xFF33CCFF, 0xFF33FFFF,
-            0xFF660000, 0xFF663300, 0xFF666600, 0xFF669900, 0xFF66CC00, 0xFF66FF00, 0xFF660033, 0xFF663333,
-            0xFF666633, 0xFF669933, 0xFF66CC33, 0xFF66FF33, 0xFF660066, 0xFF663366, 0xFF666666, 0xFF669966, 
-            0xFF66CC66, 0xFF66FF66, 0xFF660099, 0xFF663399, 0xFF666699, 0xFF669999, 0xFF66CC99, 0xFF66FF99, 
-            0xFF6600CC, 0xFF6633CC, 0xFF6666CC, 0xFF6699CC, 0xFF66CCCC, 0xFF66FFCC, 0xFF6600FF, 0xFF6633FF, 
-            0xFF6666FF, 0xFF6699FF, 0xFF66CCFF, 0xFF66FFFF, 0xFF990000, 0xFF993300, 0xFF996600, 0xFF999900, 
-            0xFF99CC00, 0xFF99FF00, 0xFF990033, 0xFF993333, 0xFF996633, 0xFF999933, 0xFF99CC33, 0xFF99FF33, 
-            0xFF990066, 0xFF993366, 0xFF996666, 0xFF999966, 0xFF99CC66, 0xFF99FF66, 0xFF990099, 0xFF993399, 
-            0xFF996699, 0xFF999999, 0xFF99CC99, 0xFF99FF99, 0xFF9900CC, 0xFF9933CC, 0xFF9966CC, 0xFF9999CC, 
-            0xFF99CCCC, 0xFF99FFCC, 0xFF9900FF, 0xFF9933FF, 0xFF9966FF, 0xFF9999FF, 0xFF99CCFF, 0xFF99FFFF, 
-            0xFFCC0000, 0xFFCC3300, 0xFFCC6600, 0xFFCC9900, 0xFFCCCC00, 0xFFCCFF00, 0xFFCC0033, 0xFFCC3333, 
-            0xFFCC6633, 0xFFCC9933, 0xFFCCCC33, 0xFFCCFF33, 0xFFCC0066, 0xFFCC3366, 0xFFCC6666, 0xFFCC9966,
-            0xFFCCCC66, 0xFFCCFF66, 0xFFCC0099, 0xFFCC3399, 0xFFCC6699, 0xFFCC9999, 0xFFCCCC99, 0xFFCCFF99,
-            0xFFCC00CC, 0xFFCC33CC, 0xFFCC66CC, 0xFFCC99CC, 0xFFCCCCCC, 0xFFCCFFCC, 0xFFCC00FF, 0xFFCC33FF, 
-            0xFFCC66FF, 0xFFCC99FF, 0xFFCCCCFF, 0xFFCCFFFF, 0xFFFF0000, 0xFFFF3300, 0xFFFF6600, 0xFFFF9900, 
-            0xFFFFCC00, 0xFFFFFF00, 0xFFFF0033, 0xFFFF3333, 0xFFFF6633, 0xFFFF9933, 0xFFFFCC33, 0xFFFFFF33,
-            0xFFFF0066, 0xFFFF3366, 0xFFFF6666, 0xFFFF9966, 0xFFFFCC66, 0xFFFFFF66, 0xFFFF0099, 0xFFFF3399, 
-            0xFFFF6699, 0xFFFF9999, 0xFFFFCC99, 0xFFFFFF99, 0xFFFF00CC, 0xFFFF33CC, 0xFFFF66CC, 0xFFFF99CC, 
-            0xFFFFCCCC, 0xFFFFFFCC, 0xFFFF00FF, 0xFFFF33FF, 0xFFFF66FF, 0xFFFF99FF, 0xFFFFCCFF, 0xFFFFFFFF];
     },
     initModules: function() {
         this.loadedModules = {};
@@ -1745,8 +1712,9 @@ Object.subclass('users.bert.St78.vm.Primitives',
 
             case 27: return this.primitiveNew(argCount); // argCount = 0 fixed size
             case 28: return this.primitiveNew(argCount); // argCount = 1 variable
-            case 41: return true; // bitBlt install for display **ignored for now
-            case 53: return true; // display bits lock ** ignored for now
+            case 40: return this.primitiveCopyBits(argCount);  // BitBlt.callBLT
+            case 41: return this.primitiveBeDisplay(argCount); // BitBlt install for display
+            case 53: return true; // String.lock/unlock: address of bits (return self on Notetaker)
 /*
             case 29: return false; // primitiveMultiplyLargeIntegers
             case 30: return false; // primitiveDivideLargeIntegers
@@ -2550,8 +2518,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return true;
     },
     primitiveBeDisplay: function(argCount) {
-        var displayObj = this.vm.stackValue(0);
-        this.vm.specialObjects[Squeak.splOb_TheDisplay] = displayObj;
+        this.displayBlt = this.vm.stackValue(0);
         this.vm.popN(argCount); // return self
         return true;
 	},
@@ -2573,10 +2540,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var bitblt = new users.bert.St78.vm.BitBlt(this.vm);
         if (!bitblt.loadBitBlt(bitbltObj)) return false;
         bitblt.copyBits();
-        if (bitblt.combinationRule === 22 || bitblt.combinationRule === 32)
-            this.vm.popNandPush(argCount + 1, bitblt.bitCount);
-        else if (bitblt.destForm === this.vm.specialObjects[Squeak.splOb_TheDisplay])
-            this.showOnDisplay(bitblt.dest, bitblt.affectedRect());
+        if (bitblt.destForm === this.displayBlt.pointers[NoteTaker.PI_BITBLT_DEST])
+            this.showOnDisplay(bitblt, bitblt.affectedRect());
         return true;
 	},
     primitiveKeyboardNext: function(argCount) {
@@ -2618,82 +2583,28 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var bounds = {x: 0, y: 0, w: display.width, h: display.height};
         this.showOnDisplay(display, bounds);
     },
-    showOnDisplay: function(form, rect) {
+    showOnDisplay: function(bitBlt, rect) {
         if (!rect) return;
         var ctx = this.display.ctx;
         var pixels = ctx.createImageData(rect.w, rect.h);
         var dest = new Uint32Array(pixels.data.buffer);
-        switch (form.depth) {
-            case 1:
-            case 2:
-            case 4:
-            case 8:
-                var colors = this.indexedColors;
-                if (this.reverseDisplay) {
-                    if (!this.reversedColors)
-                        this.reversedColors = colors.map(function(c){return c ^ 0x00FFFFFF});
-                    colors = this.reversedColors;
+        var leftMask = 0x8000 >> (rect.x & 15);
+        var srcY = rect.y;
+        for (var y = 0; y < rect.h; y++) {
+            var srcIndex = bitBlt.destPitch * srcY + (rect.x >> 4);
+            var mask = leftMask;
+            var src = bitBlt.destBits[srcIndex];
+            var dstIndex = pixels.width * y;
+            for (var x = 0; x < rect.w; x++) {
+                dest[dstIndex++] = src & mask ? 0xFF000000 : 0xFFFFFFFF;
+                if (!(mask = mask >> 1)) {
+                    mask = 0x8000;
+                    src = bitBlt.destBits[++srcIndex];
                 }
-                var mask = (1 << form.depth) - 1;
-                var leftSrcShift = 32 - (rect.x % form.pixPerWord + 1) * form.depth;
-                var srcY = rect.y;
-                for (var y = 0; y < rect.h; y++) {
-                    var srcIndex = form.pitch * srcY + (rect.x / form.pixPerWord | 0);
-                    var srcShift = leftSrcShift;
-                    var src = form.bits[srcIndex];
-                    var dstIndex = pixels.width * y;
-                    for (var x = 0; x < rect.w; x++) {
-                        dest[dstIndex++] = colors[(src >>> srcShift) & mask]; 
-                        if ((srcShift -= form.depth) < 0) {
-                            srcShift = 32 - form.depth;
-                            src = form.bits[++srcIndex];
-                        }
-                    }
-                    srcY++;
-                };
-                break;
-            case 16:
-                var leftSrcShift = rect.x % 2 ? 0 : 16;
-                var srcY = rect.y;
-                for (var y = 0; y < rect.h; y++) {
-                    var srcIndex = form.pitch * srcY + (rect.x / 2 | 0);
-                    var srcShift = leftSrcShift;
-                    var src = form.bits[srcIndex];
-                    var dstIndex = pixels.width * y;
-                    for (var x = 0; x < rect.w; x++) {
-                        var rgb = src >>> srcShift;
-                        dest[dstIndex++] =
-                            ((rgb & 0x7C00) >> 7)     // shift red   down 2*5, up 0*8 + 3
-                            + ((rgb & 0x03E0) << 6)   // shift green down 1*5, up 1*8 + 3
-                            + ((rgb & 0x001F) << 19)  // shift blue  down 0*5, up 2*8 + 3
-                            + 0xFF000000;             // set alpha to opaque 
-                        if ((srcShift -= 16) < 0) {
-                            srcShift = 16;
-                            src = form.bits[++srcIndex];
-                        }
-                    }
-                    srcY++;
-                };
-                break;
-            case 32:
-                var srcY = rect.y;
-                for (var y = 0; y < rect.h; y++) {
-                    var srcIndex = form.pitch * srcY + rect.x;
-                    var dstIndex = pixels.width * y;
-                    for (var x = 0; x < rect.w; x++) {
-                        var argb = form.bits[srcIndex++];  // convert ARGB -> ABGR
-                        var abgr = (argb & 0x0000FF00)     // green is okay
-                            + ((argb & 0x00FF0000) >> 16)  // shift red down
-                            + ((argb & 0x000000FF) << 16)  // shift blue up
-                            + 0xFF000000;                  // set alpha to opaque
-                        dest[dstIndex++] = abgr;
-                    }
-                    srcY++;
-                };
-                break;
-            default: throw "not implemented yet";
+            }
+            srcY++;
         };
-        ctx.putImageData(pixels, rect.x, rect.y);
+      ctx.putImageData(pixels, rect.x, rect.y);
     },
     primitiveForceDisplayUpdate: function(argCount) {
         // not needed, we show everything immediately
@@ -2729,117 +2640,63 @@ Object.subclass('users.bert.St78.vm.BitBlt',
 'initialization', {
     initialize: function(vm) {
         this.vm = vm;
-        this.maskTable = [
-            // (1<<i)-1 is almost right, except for i == 32 because of JS 32 bit limit
-            // Try: range(0, 32).map(function(i){return ((1<<i)-1).toString(16)})
-            0x0, 0x1, 0x3, 0x7, 0xF, 0x1F, 0x3F, 0x7F, 0xFF, 0x1FF, 0x3FF, 0x7FF, 0xFFF,
-            0x1FFF, 0x3FFF, 0x7FFF, 0xFFFF, 0x1FFFF, 0x3FFFF, 0x7FFFF, 0xFFFFF,
-            0x1FFFFF, 0x3FFFFF, 0x7FFFFF, 0xFFFFFF, 0x1FFFFFF, 0x3FFFFFF, 0x7FFFFFF,
-            0xFFFFFFF, 0x1FFFFFFF, 0x3FFFFFFF, 0x7FFFFFFF, 0xFFFFFFFF];
     }, 
     loadBitBlt: function(bitbltObj) {
         var bitblt = bitbltObj.pointers;
-        this.success = true;
-        this.destForm = bitblt[Squeak.BitBlt_dest];
-        this.dest = this.loadForm(this.destForm);
-        if (!this.dest) return false;
-        this.sourceForm = bitblt[Squeak.BitBlt_source];
-        if (!this.sourceForm.isNil) {
-            this.source = this.loadForm(this.sourceForm);
-            if (!this.source) return false;
-        }
-        this.halftone = this.loadHalftone(bitblt[Squeak.BitBlt_halftone]);
-        this.combinationRule = bitblt[Squeak.BitBlt_combinationRule];
-        this.destX = this.intOrFloatIfNil(bitblt[Squeak.BitBlt_destX], 0);
-        this.destY = this.intOrFloatIfNil(bitblt[Squeak.BitBlt_destY], 0);
-        this.width = this.intOrFloatIfNil(bitblt[Squeak.BitBlt_width], this.dest.width);
-        this.height = this.intOrFloatIfNil(bitblt[Squeak.BitBlt_height], this.dest.height);
-        this.clipX = this.intOrFloatIfNil(bitblt[Squeak.BitBlt_clipX], 0);
-        this.clipY = this.intOrFloatIfNil(bitblt[Squeak.BitBlt_clipY], 0);
-        this.clipW = this.intOrFloatIfNil(bitblt[Squeak.BitBlt_clipW], this.dest.width);
-        this.clipH = this.intOrFloatIfNil(bitblt[Squeak.BitBlt_clipH], this.dest.height);
-        if (!this.success) return false;
-        if (!this.source)
-            this.sourceX = this.sourceY = 0;
-        else {
-            if (!this.loadColorMap(bitblt[Squeak.BitBlt_colorMap])) return false;
-            //if ((this.cmFlags & 8) == 0) this.setUpColorMasks();
-            this.sourceX = this.intOrFloatIfNil(bitblt[Squeak.BitBlt_sourceX], 0);
-            this.sourceY = this.intOrFloatIfNil(bitblt[Squeak.BitBlt_sourceY], 0);
-        }
+        var func = bitblt[NoteTaker.PI_BITBLT_FUNCTION];
+        this.combinationRule = func & 3;    // set, or, xor, and
+        this.sourceType = (func >> 2) & 3;  // src, ~src, halftone in src, halftone
         this.mergeFn = this.makeMergeFn(this.combinationRule);
+        this.halftone = this.sourceType >= 2 ? this.loadHalftone(bitblt[NoteTaker.PI_BITBLT_GRAY]) : null;
+        this.destBits = this.loadBits(bitblt[NoteTaker.PI_BITBLT_DESTBITS]);
+        this.destPitch = bitblt[NoteTaker.PI_BITBLT_DESTRASTER];
+        this.destX = bitblt[NoteTaker.PI_BITBLT_DESTX];
+        this.destY = bitblt[NoteTaker.PI_BITBLT_DESTY];
+        this.width = bitblt[NoteTaker.PI_BITBLT_WIDTH];
+        this.height = bitblt[NoteTaker.PI_BITBLT_HEIGHT];
+        this.sourceBits = this.loadBits(bitblt[NoteTaker.PI_BITBLT_SOURCEBITS]);
+        this.sourcePitch = bitblt[NoteTaker.PI_BITBLT_SOURCERASTER];
+        this.sourceX = bitblt[NoteTaker.PI_BITBLT_SOURCEX];
+        this.sourceY = bitblt[NoteTaker.PI_BITBLT_SOURCEY];
+        this.clipX = bitblt[NoteTaker.PI_BITBLT_CLIPX];
+        this.clipY = bitblt[NoteTaker.PI_BITBLT_CLIPY];
+        this.clipW = bitblt[NoteTaker.PI_BITBLT_CLIPWIDTH];
+        this.clipH = bitblt[NoteTaker.PI_BITBLT_CLIPHEIGHT];
+        this.destForm = bitblt[NoteTaker.PI_BITBLT_DEST];
+        this.sourceForm = bitblt[NoteTaker.PI_BITBLT_SOURCE];
         return true;
     },
     makeMergeFn: function(rule) {
         switch(rule) {
-            case 0: return function(src, dst) { return 0 };
-            case 1: return function(src, dst) { return src & dst };
-            case 2: return function(src, dst) { return src & (~dst) };
-            case 3: return function(src, dst) { return src };
-            case 4: return function(src, dst) { return (~src) & dst };
-            case 5: return function(src, dst) { return dst };
-            case 6: return function(src, dst) { return src ^ dst };
-            case 7: return function(src, dst) { return src | dst };
-            case 8: return function(src, dst) { return (~src) & (~dst) };
-            case 9: return function(src, dst) { return (~src) ^ dst };
-            case 10: return function(src, dst) { return ~dst };
-            case 11: return function(src, dst) { return src | (~dst) };
-            case 12: return function(src, dst) { return ~src };
-            case 13: return function(src, dst) { return (~src) | dst };
-            case 14: return function(src, dst) { return (~src) | (~dst) };
-            case 15: return function(src, dst) { return dst };
-            case 16: return function(src, dst) { return dst };
-            case 17: return function(src, dst) { return dst };
-            case 18: return function(src, dst) { return src + dst };
-            case 19: return function(src, dst) { return src - dst };
-            case 20: return function(src, dst) { return src };
-            case 21: return function(src, dst) { return src };
-            case 22: return function(src, dst) { return src };
-            case 23: return function(src, dst) { return src };
-            case 24: return function(src, dst) { return src };
-            case 25: return function(src, dst) { return src === 0 ? dst
-                : src | this.partitionedANDtonBitsnPartitions(~src, dst, this.dest.depth, this.dest.pixPerWord) };
-            case 26: return function(src, dst) {
-                return this.partitionedANDtonBitsnPartitions(~src, dst, this.dest.depth, this.dest.pixPerWord) };
+            case 0: return function(src, dst) { return src };
+            case 1: return function(src, dst) { return src | dst };
+            case 2: return function(src, dst) { return src ^ dst };
+            case 3: return function(src, dst) { return src & dst };
         }
         throw "bitblt rule not implemented yet";
     },
-    loadHalftone: function(halftoneObj) {
-        return halftoneObj.words;
-    },
-    loadForm: function(formObj) {
-        if (formObj.isNil) return null;
-        var form = {};
-        form.bits = formObj.pointers[Squeak.Form_bits].words;
-        form.depth = formObj.pointers[Squeak.Form_depth];
-        form.width = formObj.pointers[Squeak.Form_width];
-        form.height = formObj.pointers[Squeak.Form_height];
-        if (!(form.width >= 0 && form.height >= 0)) return null; // checks for int
-        if (!form.bits) return null;    // checks for words
-        form.msb = form.depth > 0;
-        if (!form.msb) form.depth = -form.depth;
-        if (!(form.depth > 0)) return null; // happens if not int
-        form.pixPerWord = 32 / form.depth;
-        form.pitch = (form.width + (form.pixPerWord - 1)) / form.pixPerWord | 0;
-        if (form.bits.length !== (form.pitch * form.height)) return null;
-        return form;
-    },
-    loadColorMap: function(colorMapObj) {
-        this.cmLookupTable = colorMapObj.words;
-        if (this.cmLookupTable)
-            this.cmMask = this.cmLookupTable.length - 1;
-        return true;
-    },
-    intOrFloatIfNil: function(intOrFloat, valueIfNil) {
-        if (this.vm.isSmallInt(intOrFloat)) return intOrFloat;
-        if (intOrFloat.isNil) return valueIfNil;
-        if (intOrFloat.isFloat) {
-            var floatValue = intOrFloat.float;
-            if (floatValue >= -0x80000000 && floatValue <= 0x7FFFFFFF)
-                return floatValue | 0; // make int
+    loadBits: function(bitsOop) {
+        // make the bytes in bitOop accessible as a word array
+        if (!bitsOop.bytesAsWords) {
+            // convert its bytes to a Uint8Array
+            bitsOop.bytes = new Uint8Array(bitsOop.bytes);
+            // make a Uint16Array on the same data buffer
+            bitsOop.bytesAsWords = new Uint16Array(bitsOop.bytes.buffer);
         }
-        this.success = false;
-        return 0;
+        return bitsOop.bytesAsWords;
+    },
+    loadHalftone: function(int) {
+        // halftone is 4x4 bits. Expand to 16x4 bits for quick access
+        if (int.pointers)  // large int
+            int = int.largeIntegerValue();
+        var words = [];
+        for (i = 0; i < 4; i++) {
+            var word = (int >> (i * 4)) & 0x000F;
+            word += word << 4;
+            word += word << 8;
+            words.push(word);
+        }
+        return words;
     },
 },
 'blitting', {
@@ -2849,72 +2706,69 @@ Object.subclass('users.bert.St78.vm.BitBlt',
         if (this.bbW <= 0 || this.bbH <= 0) return;
         this.destMaskAndPointerInit();
         /* Choose and perform the actual copy loop. */
-        if (!this.source) {
+        if (this.sourceType === 3) {
             this.copyLoopNoSource();
         } else {
             this.checkSourceOverlap();
-            if (this.source.depth !== this.dest.depth) {
-                this.copyLoopPixMap();
-            } else {
-                this.sourceSkewAndPointerInit();
-                this.copyLoop();
-            }
+            this.sourceSkewAndPointerInit();
+            debugger;
+            this.copyLoop();
         }
     },
     copyLoopNoSource: function() {
         //	Faster copyLoop when source not used.  hDir and vDir are both
         //	positive, and perload and skew are unused
-        var halftoneWord = 0xFFFFFFFF;
+        var halftoneWord = 0xFFFF;
         for (var i = 0; i < this.bbH; i++) { // vertical loop
-            if (this.halftone) halftoneWord = this.halftone[(this.dy + i) % this.halftone.length];
+            if (this.halftone) halftoneWord = this.halftone[(this.dy + i) % 4];
             // First word in row is masked
             var destMask = this.mask1;
-            var destWord = this.dest.bits[this.destIndex];
+            var destWord = this.destBits[this.destIndex];
             var mergeWord = this.mergeFn(halftoneWord, destWord);
             destWord = (destMask & mergeWord) | (destWord & (~destMask));
-            this.dest.bits[this.destIndex++] = destWord;
-            destMask = 0xFFFFFFFF;
+            this.destBits[this.destIndex++] = destWord;
+            destMask = 0xFFFF;
             //the central horizontal loop requires no store masking */
-            if (this.combinationRule === 3) // Store rule requires no dest merging
+            if (this.combinationRule === 0) // Store rule requires no dest merging
                 for (var word = 2; word < this.nWords; word++)
-                    this.dest.bits[this.destIndex++] = halftoneWord;
+                    this.destBits[this.destIndex++] = halftoneWord;
             else
                 for (var word = 2; word < this.nWords; word++) {
-                        destWord = this.dest.bits[this.destIndex];
+                        destWord = this.destBits[this.destIndex];
                         mergeWord = this.mergeFn(halftoneWord, destWord);
-                        this.dest.bits[this.destIndex++] = mergeWord;
+                        this.destBits[this.destIndex++] = mergeWord;
                 }
             //last word in row is masked
             if (this.nWords > 1) {
                     destMask = this.mask2;
-                    destWord = this.dest.bits[this.destIndex];
+                    destWord = this.destBits[this.destIndex];
                     mergeWord = this.mergeFn(halftoneWord, destWord);
                     destWord = (destMask & mergeWord) | (destWord & (~destMask));
-                    this.dest.bits[this.destIndex++] = destWord;
+                    this.destBits[this.destIndex++] = destWord;
             }
             this.destIndex += this.destDelta;
         }
     },
     copyLoop: function() {
         // this version of the inner loop assumes we do have a source
-        var sourceLimit = this.source.bits.length;
+        var sourceLimit = this.sourceBits.length;
         var hInc = this.hDir;
         // init skew (the difference in word alignment of source and dest)
         var unskew;
         var skewMask;
-        if (this.skew == -32) {
+        if (this.skew == -16) {
             this.skew = unskew = skewMask = 0;
         } else {
             if (this.skew < 0) {
-                unskew = this.skew + 32;
-                skewMask = 0xFFFFFFFF << -this.skew;
+                unskew = this.skew + 16;
+                skewMask = 0xFFFF << -this.skew;
             } else {
                 if (this.skew === 0) {
                     unskew = 0;
-                    skewMask = 0xFFFFFFFF;
+                    skewMask = 0xFFFF;
                 } else {
-                    unskew = this.skew - 32;
-                    skewMask = 0xFFFFFFFF >>> this.skew;
+                    unskew = this.skew - 16;
+                    skewMask = 0xFFFF >> this.skew;
                 }
             }
         }
@@ -2926,7 +2780,7 @@ Object.subclass('users.bert.St78.vm.BitBlt',
             halftoneWord = this.halftone[0];
             halftoneHeight = this.halftone.length;
         } else {
-            halftoneWord = 0xFFFFFFFF;
+            halftoneWord = 0xFFFF;
             halftoneHeight = 0;
         }
         // now loop over all lines
@@ -2938,40 +2792,40 @@ Object.subclass('users.bert.St78.vm.BitBlt',
             }
             var prevWord;
             if (this.preload) {
-                prevWord = this.source.bits[this.sourceIndex];
+                prevWord = this.sourceBits[this.sourceIndex];
                 this.sourceIndex += hInc;
             } else {
                 prevWord = 0;
             }
             var destMask = this.mask1;
             /* pick up next word */
-            var thisWord = this.source.bits[this.sourceIndex];
+            var thisWord = this.sourceBits[this.sourceIndex];
             this.sourceIndex += hInc;
-            /* 32-bit rotate */
-            var skewWord = ((unskew < 0 ? ( (prevWord & notSkewMask) >>> -unskew) : ( (prevWord & notSkewMask) << unskew)))
-                | (((this.skew < 0) ? ( (thisWord & skewMask) >>> -this.skew) : ( (thisWord & skewMask) << this.skew)));
+            /* 16-bit rotate */
+            var skewWord = ((unskew < 0 ? ( (prevWord & notSkewMask) >> -unskew) : ( (prevWord & notSkewMask) << unskew)))
+                | (((this.skew < 0) ? ( (thisWord & skewMask) >> -this.skew) : ( (thisWord & skewMask) << this.skew)));
             prevWord = thisWord;
-            var destWord = this.dest.bits[this.destIndex];
+            var destWord = this.destBits[this.destIndex];
             var mergeWord = this.mergeFn(skewWord & halftoneWord, destWord);
             destWord = (destMask & mergeWord) | (destWord & (~destMask));
-            this.dest.bits[this.destIndex] = destWord;
+            this.destBits[this.destIndex] = destWord;
             //The central horizontal loop requires no store masking */
             this.destIndex += hInc;
-            destMask = 0xFFFFFFFF;
-            if (this.combinationRule == 3) { //Store mode avoids dest merge function
-                if ((this.skew === 0) && (halftoneWord === 0xFFFFFFFF)) {
+            destMask = 0xFFFF;
+            if (this.combinationRule === 0) { //Store mode avoids dest merge function
+                if ((this.skew === 0) && (halftoneWord === 0xFFFF)) {
                     //Non-skewed with no halftone
                     if (this.hDir == -1) {
                         for (var word = 2; word < this.nWords; word++) {
-                            thisWord = this.source.bits[this.sourceIndex];
-                            this.dest.bits[this.destIndex] = thisWord;
+                            thisWord = this.sourceBits[this.sourceIndex];
+                            this.destBits[this.destIndex] = thisWord;
                             this.sourceIndex += hInc;
                             this.destIndex += hInc;
                         }
                     } else {
                         for (var word = 2; word < this.nWords; word++) {
-                            this.dest.bits[this.destIndex] = prevWord;
-                            prevWord = this.source.bits[this.sourceIndex];
+                            this.destBits[this.destIndex] = prevWord;
+                            prevWord = this.sourceBits[this.sourceIndex];
                             this.destIndex += hInc;
                             this.sourceIndex += hInc;
                         }
@@ -2979,26 +2833,26 @@ Object.subclass('users.bert.St78.vm.BitBlt',
                 } else {
                     //skewed and/or halftoned
                     for (var word = 2; word < this.nWords; word++) {
-                        thisWord = this.source.bits[this.sourceIndex];
+                        thisWord = this.sourceBits[this.sourceIndex];
                         this.sourceIndex += hInc;
-                        /* 32-bit rotate */
-                        skewWord = (((unskew < 0) ? ( (prevWord & notSkewMask) >>> -unskew) : ( (prevWord & notSkewMask) << unskew)))
-                            | (((this.skew < 0) ? ( (thisWord & skewMask) >>> -this.skew) : ( (thisWord & skewMask) << this.skew)));
+                        /* 16-bit rotate */
+                        skewWord = (((unskew < 0) ? ( (prevWord & notSkewMask) >> -unskew) : ( (prevWord & notSkewMask) << unskew)))
+                            | (((this.skew < 0) ? ( (thisWord & skewMask) >> -this.skew) : ( (thisWord & skewMask) << this.skew)));
                         prevWord = thisWord;
-                        this.dest.bits[this.destIndex] = skewWord & halftoneWord;
+                        this.destBits[this.destIndex] = skewWord & halftoneWord;
                         this.destIndex += hInc;
                     }
                 }
             } else { //Dest merging here...
                 for (var word = 2; word < this.nWords; word++) {
-                    thisWord = this.source.bits[this.sourceIndex]; //pick up next word
+                    thisWord = this.sourceBits[this.sourceIndex]; //pick up next word
                     this.sourceIndex += hInc;
-                    /* 32-bit rotate */
-                    skewWord = (((unskew < 0) ? ( (prevWord & notSkewMask) >>> -unskew) : ( (prevWord & notSkewMask) << unskew)))
-                        | (((this.skew < 0) ? ( (thisWord & skewMask) >>> -this.skew) : ( (thisWord & skewMask) << this.skew)));
+                    /* 16-bit rotate */
+                    skewWord = (((unskew < 0) ? ( (prevWord & notSkewMask) >> -unskew) : ( (prevWord & notSkewMask) << unskew)))
+                        | (((this.skew < 0) ? ( (thisWord & skewMask) >> -this.skew) : ( (thisWord & skewMask) << this.skew)));
                     prevWord = thisWord;
-                    mergeWord = this.mergeFn(skewWord & halftoneWord, this.dest.bits[this.destIndex]);
-                    this.dest.bits[this.destIndex] = mergeWord;
+                    mergeWord = this.mergeFn(skewWord & halftoneWord, this.destBits[this.destIndex]);
+                    this.destBits[this.destIndex] = mergeWord;
                     this.destIndex += hInc;
                 }
             } 
@@ -3008,86 +2862,17 @@ Object.subclass('users.bert.St78.vm.BitBlt',
                 if (this.sourceIndex >= 0 && this.sourceIndex < sourceLimit)
                 //NOTE: we are currently overrunning source bits in some cases
                 //this test makes up for it.
-                    thisWord = this.source.bits[this.sourceIndex]; //pick up next word
+                    thisWord = this.sourceBits[this.sourceIndex]; //pick up next word
                 this.sourceIndex += hInc;
-                /* 32-bit rotate */
-                skewWord = (((unskew < 0) ? ((prevWord & notSkewMask) >>> -unskew) : ((prevWord & notSkewMask) << unskew)))
-                    | (((this.skew < 0) ? ( (thisWord & skewMask) >>> -this.skew) : ( (thisWord & skewMask) << this.skew)));
-                destWord = this.dest.bits[this.destIndex];
+                /* 16-bit rotate */
+                skewWord = (((unskew < 0) ? ((prevWord & notSkewMask) >> -unskew) : ((prevWord & notSkewMask) << unskew)))
+                    | (((this.skew < 0) ? ( (thisWord & skewMask) >> -this.skew) : ( (thisWord & skewMask) << this.skew)));
+                destWord = this.destBits[this.destIndex];
                 mergeWord = this.mergeFn(skewWord & halftoneWord, destWord);
                 destWord = (destMask & mergeWord) | (destWord & (~destMask));
-                this.dest.bits[this.destIndex] = destWord;
+                this.destBits[this.destIndex] = destWord;
                 this.destIndex += hInc;
             }
-            this.sourceIndex += this.sourceDelta;
-            this.destIndex += this.destDelta;
-        }
-    },
-    copyLoopPixMap: function() {
-        /*	This version of the inner loop maps source pixels
-        to a destination form with different depth.  Because it is already
-        unweildy, the loop is not unrolled as in the other versions.
-        Preload, skew and skewMask are all overlooked, since pickSourcePixels
-        delivers its destination word already properly aligned.
-        Note that pickSourcePixels could be copied in-line at the top of
-        the horizontal loop, and some of its inits moved out of the loop. */
-        /*	The loop has been rewritten to use only one pickSourcePixels call.
-        The idea is that the call itself could be inlined. If we decide not
-        to inline pickSourcePixels we could optimize the loop instead. */
-        var sourcePixMask = this.maskTable[this.source.depth];
-        var destPixMask = this.maskTable[this.dest.depth];
-        //var mapperFlags = cmFlags & (~8);
-        this.sourceIndex = (this.sy * this.source.pitch) + (this.sx / this.source.pixPerWord | 0);
-        var scrStartBits = this.source.pixPerWord - (this.sx & (this.source.pixPerWord - 1));
-        var nSourceIncs = (this.bbW < scrStartBits) ? 0 : ((this.bbW - scrStartBits) / this.source.pixPerWord | 0) + 1;
-        /* Note following two items were already calculated in destmask setup! */
-        this.sourceDelta = this.source.pitch - nSourceIncs;
-        var startBits = this.dest.pixPerWord - (this.dx & (this.dest.pixPerWord - 1));
-        var endBits = (((this.dx + this.bbW) - 1) & (this.dest.pixPerWord - 1)) + 1;
-        if (this.bbW < startBits) startBits = this.bbW; // ?!
-        var srcShift = (this.sx & (this.source.pixPerWord - 1)) * this.source.depth;
-        var dstShift = (this.dx & (this.dest.pixPerWord - 1)) * this.dest.depth;
-        var srcShiftInc = this.source.depth;
-        var dstShiftInc = this.dest.depth;
-        var dstShiftLeft = 0;
-        if (this.source.msb) {
-            srcShift = (32 - this.source.depth) - srcShift;
-            srcShiftInc = -srcShiftInc;
-        }
-        if (this.dest.msb) {
-            dstShift = (32 - this.dest.depth) - dstShift;
-            dstShiftInc = -dstShiftInc;
-            dstShiftLeft = 32 - this.dest.depth;
-        }
-        for (var i = 0; i < this.bbH; i++) {
-            var halftoneWord = this.halftone ? this.halftone[(this.dy + i) % this.halftone.length] : 0xFFFFFFFF;
-		    this.srcBitShift = srcShift;
-		    this.dstBitShift = dstShift;
-		    this.destMask = this.mask1;
-            var nPix = startBits;
-            var words = this.nWords;
-            /* Here is the horizontal loop... */
-            do {
-                var skewWord = this.pickSourcePixels(nPix, sourcePixMask, destPixMask, srcShiftInc, dstShiftInc);
-                /* align next word to leftmost pixel */
-                this.dstBitShift = dstShiftLeft;
-                if (this.destMask === 0xFFFFFFFF) { // avoid read-modify-write
-                    this.dest.bits[this.destIndex] = this.mergeFn(skewWord & halftoneWord, this.dest.bits[this.destIndex]);
-                } else { // General version using dest masking
-                    var destWord = this.dest.bits[this.destIndex];
-                    var mergeWord = this.mergeFn(skewWord & halftoneWord, destWord & this.destMask);
-                    destWord = (this.destMask & mergeWord) | (destWord & (~this.destMask));
-                    this.dest.bits[this.destIndex] = destWord;
-                }
-                this.destIndex++;
-                if (words === 2) { // is the next word the last word?
-                    this.destMask = this.mask2;
-                    nPix = endBits;
-                } else { // use fullword mask for inner loop
-                    this.destMask = 0xFFFFFFFF;
-                    nPix = this.dest.pixPerWord;
-                }
-            } while (--words);
             this.sourceIndex += this.sourceDelta;
             this.destIndex += this.destDelta;
         }
@@ -3095,95 +2880,80 @@ Object.subclass('users.bert.St78.vm.BitBlt',
     pickSourcePixels: function(nPixels, srcMask, dstMask, srcShiftInc, dstShiftInc) {
         /*	Pick nPix pixels starting at srcBitIndex from the source, map by the
         color map, and justify them according to dstBitIndex in the resulting destWord. */
-        var sourceWord = this.source.bits[this.sourceIndex];
+        var sourceWord = this.sourceBits[this.sourceIndex];
         var destWord = 0;
         var srcShift = this.srcBitShift; // put into temp for speed
         var dstShift = this.dstBitShift;
         var nPix = nPixels;
         // always > 0 so we can use do { } while(--nPix);
-        if (this.cmLookupTable) { // a little optimization for (pretty crucial) blits using indexed lookups only
-            do {
-                var sourcePix = (sourceWord >>> srcShift) & srcMask;
-                var destPix = this.cmLookupTable[sourcePix & this.cmMask];
-                // adjust dest pix index
-                destWord = destWord | ((destPix & dstMask) << dstShift);
-                // adjust source pix index
-                dstShift += dstShiftInc;
-                if ((srcShift += srcShiftInc) & 0xFFFFFFE0) {
-                    if (this.source.msb) { srcShift += 32; }
-                    else { srcShift -= 32; }
-                    sourceWord = this.source.bits[++this.sourceIndex];
-                }
-            } while (--nPix);
-		} else {
-           do {
-                var sourcePix = (sourceWord >>> srcShift) & srcMask;
-                var destPix = this.mapPixel(sourcePix);
-                // adjust dest pix index
-                destWord = destWord | ((destPix & dstMask) << dstShift);
-                // adjust source pix index
-                dstShift += dstShiftInc;
-                if ((srcShift += srcShiftInc) & 0xFFFFFFE0) {
-                    if (this.source.msb) { srcShift += 32; }
-                    else { srcShift -= 32; }
-                    sourceWord = this.src.bits[++sourceIndex];
-                }
-            } while (--nPix);
-        }
+       do {
+            var sourcePix = (sourceWord >>> srcShift) & srcMask;
+            var destPix = this.mapPixel(sourcePix);
+            // adjust dest pix index
+            destWord = destWord | ((destPix & dstMask) << dstShift);
+            // adjust source pix index
+            dstShift += dstShiftInc;
+            if ((srcShift += srcShiftInc) & 0xFFFFFFE0) {
+                srcShift += 16;
+                sourceWord = this.src.bits[++sourceIndex];
+            }
+        } while (--nPix);
         this.srcBitShift = srcShift;  // Store back
         return destWord;
     },
     sourceSkewAndPointerInit: function() {
-        var pixPerM1 = this.dest.pixPerWord - 1;  //Pix per word is power of two, so this makes a mask
-        var sxLowBits = this.sx & pixPerM1;
-        var dxLowBits = this.dx & pixPerM1;
+        var sxLowBits = this.sx & 15;
+        var dxLowBits = this.dx & 15;
         // check if need to preload buffer
         // (i.e., two words of source needed for first word of destination)
         var dWid;
         if (this.hDir > 0) {
-            dWid = ((this.bbW < (this.dest.pixPerWord - dxLowBits)) ? this.bbW : (this.dest.pixPerWord - dxLowBits));
-            this.preload = (sxLowBits + dWid) > pixPerM1;
+            dWid = ((this.bbW < (16 - dxLowBits)) ? this.bbW : (16 - dxLowBits));
+            this.preload = (sxLowBits + dWid) > 15;
         } else {
             dWid = ((this.bbW < (dxLowBits + 1)) ? this.bbW : (dxLowBits + 1));
             this.preload = ((sxLowBits - dWid) + 1) < 0;
         }
-        this.skew = (this.source.msb) ? (sxLowBits - dxLowBits) * this.dest.depth
-            : (dxLowBits - sxLowBits) * this.dest.depth;
+        this.skew = (sxLowBits - dxLowBits) * 16;
         if (this.preload) {
-            if (this.skew < 0) this.skew += 32;
-            else this.skew -= 32;
+            if (this.skew < 0) this.skew += 16;
+            else this.skew -= 16;
         }
         /* calculate increments from end of one line to start of next */
-        this.sourceIndex = (this.sy * this.source.pitch) + (this.sx / (32 / this.source.depth) |0);
-        this.sourceDelta = (this.source.pitch * this.vDir) - (this.nWords * this.hDir);
+        this.sourceIndex = (this.sy * this.sourcePitch) + (this.sx / 16 | 0);
+        this.sourceDelta = (this.sourcePitch * this.vDir) - (this.nWords * this.hDir);
         if (this.preload) this.sourceDelta -= this.hDir;
     },
     destMaskAndPointerInit: function() {
-        var pixPerM1 = this.dest.pixPerWord - 1;  //Pix per word is power of two, so this makes a mask
-        var startBits = this.dest.pixPerWord - (this.dx & pixPerM1); //how many pixels in first word
-        var endBits = (((this.dx + this.bbW) - 1) & pixPerM1) + 1;
-        this.mask1 = this.dest.msb ? 0xFFFFFFFF >>> (32 - (startBits * this.dest.depth))
-            : 0xFFFFFFFF << (32 - (startBits * this.dest.depth));
-        this.mask2 = this.dest.msb ? 0xFFFFFFFF << (32 - (endBits * this.dest.depth))
-            : 0xFFFFFFFF >>> (32 - (endBits * this.dest.depth));
+        var startBits = 16 - (this.dx & 15); //how many pixels in first word
+        var endBits = (((this.dx + this.bbW) - 1) & 15) + 1;
+        this.mask1 = 0xFFFF >> (16 - startBits);
+        this.mask2 = 0xFFFF << (16 - endBits);
         if (this.bbW < startBits) { //start and end in same word, so merge masks
             this.mask1 = this.mask1 & this.mask2;
             this.mask2 = 0;
             this.nWords = 1;
         } else
-            this.nWords = (((this.bbW - startBits) + pixPerM1) / this.dest.pixPerWord | 0) + 1;
+            this.nWords = (((this.bbW - startBits) + 15) / 16 | 0) + 1;
         this.hDir = this.vDir = 1; //defaults for no overlap with source
-        this.destIndex = (this.dy * this.dest.pitch) + (this.dx / this.dest.pixPerWord | 0); //both these in words, not bytes
-        this.destDelta = (this.dest.pitch * this.vDir) - (this.nWords * this.hDir);
+        this.destIndex = (this.dy * this.destPitch) + (this.dx / 16 | 0); //both these in words, not bytes
+        this.destDelta = (this.destPitch * this.vDir) - (this.nWords * this.hDir);
     },
     clipRange: function() {
         // initialize sx,sy, dx,dy, bbW,bbH to the intersection of source, dest, and clip
-        
+        // let's assume everything is alright ... 
+        this.sx = this.sourceX;
+        this.sy = this.sourceY;
+        this.dx = this.destX;
+        this.dy = this.destY;
+        this.bbW = this.width;
+        this.bbH = this.height;
+/*        
         // intersect with destForm bounds
         if (this.clipX < 0) {this.clipW += this.clipX; this.clipX = 0; }
         if (this.clipY < 0) {this.clipH += this.clipY; this.clipY = 0; }
-        if ((this.clipX + this.clipW) > this.dest.width) {this.clipW = this.dest.width - this.clipX; }
-        if ((this.clipY + this.clipH) > this.dest.height) {this.clipH = this.dest.height - this.clipY; }
+        if ((this.clipX + this.clipW) > this.destWidth) {this.clipW = this.destWidth - this.clipX; }
+        if ((this.clipY + this.clipH) > this.destHeight) {this.clipH = this.destHeight - this.clipY; }
         // intersect with clipRect
         var leftOffset = Math.max(this.clipX - this.destX, 0);
         this.sx = this.sourceX + leftOffset;
@@ -3206,15 +2976,16 @@ Object.subclass('users.bert.St78.vm.BitBlt',
     		this.bbW += this.sx;
     		this.sx = 0;
     	}
-    	if ((this.sx + this.bbW) > this.source.width)
-    		this.bbW -= (this.sx + this.bbW) - this.source.width;
+    	if ((this.sx + this.bbW) > this.sourceWidth)
+    		this.bbW -= (this.sx + this.bbW) - this.sourceWidth;
     	if (this.sy < 0) {
     		this.dy -= this.sy;
     		this.bbH += this.sy;
     		this.sy = 0;
     	}
-    	if ((this.sy + this.bbH) > this.source.height)
-    		this.bbH -= (this.sy + this.bbH) - this.source.height;
+    	if ((this.sy + this.bbH) > this.sourceHeight)
+    		this.bbH -= (this.sy + this.bbH) - this.sourceHeight;
+*/
 	},
     checkSourceOverlap: function() {
         if (this.sourceForm === this.destForm && this.dy >= this.sy) {
@@ -3234,13 +3005,10 @@ Object.subclass('users.bert.St78.vm.BitBlt',
                     }
                 }
             }
-            this.destIndex = (this.dy * this.dest.pitch) + (this.dx / this.dest.pixPerWord | 0); //recompute since dx, dy change
-            this.destDelta = (this.dest.pitch * this.vDir) - (this.nWords * this.hDir);
+            this.destIndex = (this.dy * this.destPitch) + (this.dx / 16 | 0); //recompute since dx, dy change
+            this.destDelta = (this.destPitch * this.vDir) - (this.nWords * this.hDir);
 		}
     },
-    partitionedANDtonBitsnPartitions: function(word1, word2, nBits, nParts) {
-        
-	},
 },
 'accessing', {
     affectedRect: function() {
