@@ -1082,7 +1082,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
     doStore: function (value, addrByte) {
 		// ** under construction
-		console.log("doStore " + addrByte);
+		// console.log("doStore " + addrByte);
 		// debugger;
 		switch (addrByte >> 4) {
 			case 0x0:	// store inst
@@ -1234,10 +1234,10 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 },
 'sending', {
     send: function(selector, argCountOrUndefined) {
-        console.log("sending " + selector.stInstName() + ", super= " + this.doSuper);
+        //console.log("sending " + selector.stInstName() + ", super= " + this.doSuper);
         var newRcvr = this.top();
         var lookupClass = this.getClass(newRcvr);
-        console.log("rcvr " + newRcvr + ", lookupClass= " + lookupClass);
+        //console.log("rcvr " + newRcvr + ", lookupClass= " + lookupClass);
         if (this.doSuper) {
             this.doSuper = false;
             lookupClass = this.activeContextPointers[this.currentFrame + NoteTaker.FI_MCLASS].superclass();
