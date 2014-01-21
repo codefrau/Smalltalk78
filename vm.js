@@ -924,16 +924,23 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
         
         // Temporary patch to skip over remoteCopy logic in Process>>run
-        var methodA = this.image.objectFromOop(26276);
-        methodA.bytes[12] = 0xA4; methodA.bytes[13] = 0x0A; // jumps to pc=24
+        var method = this.image.objectFromOop(26276);
+        method.bytes[12] = 0xA4; method.bytes[13] = 0x0A; // jumps to pc=24
 
         // Permanent patch to act as NoteTaker=true in Rectangle>>color:mode:
-        var methodB = this.image.objectFromOop(1052);
-        methodB.bytes[14] = 0x7F; // push true
+        method = this.image.objectFromOop(1052);
+        method.bytes[14] = 0x7F; // push true
 
         // Permanent patch to act as NoteTaker=true in TextScanner>>toDisplay
-        var methodC = this.image.objectFromOop(3992);
-        methodC.bytes[20] = 0x7F; // push true
+        method = this.image.objectFromOop(3992);
+        method.bytes[20] = 0x7F; // push true
+        // and TextScanner>>frame:window:para:style:printing:
+        method = this.image.objectFromOop(4004);
+        method.bytes[59] = 0x7F; // push true
+
+        // Permanent patch to act as NoteTaker=true in BitBlt>>window:
+        method = this.image.objectFromOop(1820);
+        method.bytes[12] = 0x7F; // push true
         
         // Permanent patch to make all LargeIntegers in range +-32K small again:
         // Note: this does not yet work :-(
@@ -1617,7 +1624,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                     ? ('   arg ' + (bp + NoteTaker.FI_RECEIVER + numArgs - i) + ': ') :
                 this.sp == i ? '   sp ==> ' : 
                 '          ', value);
-            if (i === bp + NoteTaker.FI_RECEIVER + numArgs && i+1 < ctx.length) {
+            if (i >= bp + NoteTaker.FI_RECEIVER + numArgs && i+1 < ctx.length) {
                 if (!printAll) return stack;
                 bp = ctx[bp + NoteTaker.FI_SAVED_BP];
                 numArgs = ctx[bp + NoteTaker.FI_NUMARGS];
@@ -1717,6 +1724,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 28: return this.primitiveNew(argCount); // argCount = 1 variable
             case 40: return this.primitiveCopyBits(argCount);  // BitBlt.callBLT
             case 41: return this.primitiveBeDisplay(argCount); // BitBlt install for display
+            case 50: return false; // TextScanner.scanword:
             case 53: return true; // String.lock/unlock: address of bits (return self on Notetaker)
 /*
             case 29: return false; // primitiveMultiplyLargeIntegers
