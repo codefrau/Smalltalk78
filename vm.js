@@ -2048,6 +2048,9 @@ Object.subclass('users.bert.St78.vm.Primitives',
 'indexing', {
     indexableSize: function(obj) {
         if (this.vm.isSmallInt(obj)) return -1; // -1 means not indexable
+        var instSize = obj.stClass.pointers[NoteTaker.PI_CLASS_INSTSIZE];
+        if ((instSize & NoteTaker.FMT_ISVARIABLE) == 0) return -1;  // fail if not indexable
+
         if (obj.bytes) return obj.bytes.length;
         if (obj.words) return obj.words.length;
         return obj.pointersSize() - obj.stClass.classInstSize();
