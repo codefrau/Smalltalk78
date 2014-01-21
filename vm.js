@@ -667,13 +667,17 @@ Object.subclass('users.bert.St78.vm.Object',
     },
     bytesAsString: function(maxLength) {
         if (!this.bytes) return '';
-        var bytes = this.bytes;
-        if (maxLength && this.bytes.length > maxLength)
-            bytes = bytes.slice(0, maxLength);
-        var string = bytes.map(function(char) {
-            return char == 95 ? '←' : char >= 32 ? String.fromCharCode(char)
-                : '␀≤␂▹␄␅≡◦␈\x09◢␋␌\x0A≠↪␐↑≥ⓢ◣¬∢⌾▱␙␚⇒␜␝␞␟'[char]; }).join('');
-        if (maxLength && this.bytes.length > maxLength)
+        var bytes = this.bytes; // can be Uint8Array
+        var n = bytes.length;
+        if (maxLength && maxLength < n) n = maxLength;
+        var chars = [];
+        for (var i = 0; i < n; i++)  {
+            var char = bytes[i];
+            chars.push(char == 95 ? '←' : char >= 32 ? String.fromCharCode(char)
+                : '␀≤␂▹␄␅≡◦␈\x09◢␋␌\x0A≠↪␐↑≥ⓢ◣¬∢⌾▱␙␚⇒␜␝␞␟'[char]);
+        }
+        var string = chars.join('');
+        if (n < bytes.length)
             string += '…';
         return string;
     },
