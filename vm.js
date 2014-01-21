@@ -746,7 +746,7 @@ Object.subclass('users.bert.St78.vm.Object',
         var vars = superclass.isNil ? [] : superclass.allInstVarNames();
         var string = this.pointers[1].bytesAsString();
         // remove comments, make comma-separated
-        string = string.replace(/"[^"]*"/g, ' ').replace(/\s+/g, ',');
+        string = string.replace(/"[^"]*"/g, ' ').replace(/\s+/g, ',').replace(/,$/, '');
         if (string.length)
             vars = vars.concat(string.split(','));
         return vars;
