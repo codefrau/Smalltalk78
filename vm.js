@@ -1591,15 +1591,17 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.breakOnFrameChanged = true;
         this.breakOnFrameReturned = null;
     },
-    printActiveContext: function() {
+    printActiveContext: function(printAll, debugFrame) {
         // temps and stack in current context
         var ctx = this.activeContextPointers,
             bp = this.currentFrame,
             numArgs = ctx[bp + NoteTaker.FI_NUMARGS],
             numTemps = ctx[bp + NoteTaker.FI_METHOD].methodNumTemps();
-        var stack = Strings.format("\npc: %s sp: %s bp: %s numArgs: %s\n",
+        var stack = '';
+        if (debugFrame) stack += Strings.format("\npc: %s sp: %s bp: %s numArgs: %s\n",
             this.pc, this.sp, this.currentFrame, numArgs);
         for (var i = this.sp; i < ctx.length; i++) {
+            if (!debugFrame && bp + NoteTaker.FI_SAVED_BP <= i && bp + NoteTaker.FI_RECEIVER >= i) continue;
             var obj = ctx[i];
             var value = typeof obj === 'number' ? obj : obj.stInstName();
             stack += Strings.format('\n[%s] %s%s', i, 
@@ -1616,10 +1618,11 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                 this.sp == i ? '   sp ==> ' : 
                 '          ', value);
             if (i === bp + NoteTaker.FI_RECEIVER + numArgs && i+1 < ctx.length) {
+                if (!printAll) return stack;
                 bp = ctx[bp + NoteTaker.FI_SAVED_BP];
                 numArgs = ctx[bp + NoteTaker.FI_NUMARGS];
                 numTemps = ctx[bp + NoteTaker.FI_METHOD].methodNumTemps();
-                stack += '\n' + this.printMethod(ctx[bp + NoteTaker.FI_METHOD]);
+                stack += '\n\n' + this.printMethod(ctx[bp + NoteTaker.FI_METHOD]);
             }
         }
         return stack;
