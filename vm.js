@@ -930,6 +930,10 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         // Permanent patch to act as NoteTaker=true in Rectangle>>color:mode:
         var methodB = this.image.objectFromOop(1052);
         methodB.bytes[14] = 0x7F; // push true
+
+        // Permanent patch to act as NoteTaker=true in TextScanner>>toDisplay
+        var methodC = this.image.objectFromOop(3992);
+        methodC.bytes[20] = 0x7F; // push true
         
         // Permanent patch to make all LargeIntegers in range +-32K small again:
         // Note: this does not yet work :-(
