@@ -358,6 +358,25 @@ Object.subclass('users.bert.St78.vm.Image',
         debugger;
         throw "oop not found";
     },
+    smallifyLargeInts: function() {
+        // visit every filed of every object, converting smallable LargeInts to Integers
+        // We do this because the normal ST-76 range is +-32K
+        var lgIntClass = this.objectFromOop(NoteTaker.OTI_CLLARGEINTEGER),
+            obj = this.firstOldObject;
+        while (obj) {
+            var body = obj.pointers;
+            if (body) {
+                for (var i=0; i<body.length; i++) {
+                    if (body[i].stClass === lgIntClass) {
+                        var value = body[i].largeIntegerValue();
+                        if (value <= 32767 && value >= -32768) body[i] = value
+                    }
+                }
+            }
+            obj = obj.nextObject;
+        }
+    }
+
 },
 'garbage collection', {
     partialGC: function() {
@@ -557,6 +576,18 @@ Object.subclass('users.bert.St78.vm.Image',
         };
         return result
     },
+    largeInts: function() {  // this.largeInts()
+        // enumerate largeIntegers
+        var cl = this.objectFromOop(NoteTaker.OTI_CLLARGEINTEGER),
+            large = this.someInstanceOf(cl),
+            result = [];
+        while (large) {
+            result.push(large.largeIntegerValue());
+            large = this.nextInstanceAfter(large);
+            }
+        return result
+    },
+
     labelObjRefs: function() {
         // label object refs with their keys in all symbol tables
         var tableClass = this.globalNamed('SymbolTable'),
@@ -676,6 +707,15 @@ Object.subclass('users.bert.St78.vm.Object',
         return Strings.format('stObj(%s)',
             this.stClass.constructor == users.bert.St78.vm.Object ? this.stInstName() : this.stClass);
     },
+    largeIntegerValue: function() {
+        // Return numeric value of a LargeInteger
+        var nat = this.pointers[NoteTaker.PI_LARGEINTEGER_BYTES],
+            value = 0;
+        for (var i=0; i<nat.bytes.length; i++) value = value*256 + nat.bytes[nat.bytes.length - (i+1)];
+        if (this.pointers[NoteTaker.PI_LARGEINTEGER_NEG].isTrue) value = - value;
+        return value
+    },
+
     className: function() {
         var classNameObj = this.pointers[NoteTaker.PI_CLASS_TITLE];
         if (!classNameObj.stClass) return "???";
@@ -883,10 +923,13 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         var methodA = this.image.objectFromOop(26276);
         methodA.bytes[12] = 0xA4; methodA.bytes[13] = 0x0A; // jumps to pc=24
 
-        
         // Permanent patch to act as NoteTaker=true in Rectangle>>color:mode:
         var methodB = this.image.objectFromOop(1052);
         methodB.bytes[14] = 0x7F; // push true
+        
+        // Permanent patch to make all LargeIntegers in range +-32K small again:
+        // Note: this does not yet work :-(
+        // this.image.smallifyLargeInts();
 
     },
 },
