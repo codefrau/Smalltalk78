@@ -938,6 +938,10 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         method = this.image.objectFromOop(1820);
         method.bytes[12] = 0x7F; // push true
         
+        // Permanent patch to make the screen 400 high
+        // method = this.image.objectFromOop(21052);
+        // method.pointers[17] = 400; // was 192
+
         // Permanent patch to make all LargeIntegers in range +-32K small again:
         // Note: this does not yet work :-(
         // this.image.smallifyLargeInts();
