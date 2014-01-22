@@ -1265,10 +1265,11 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             }  
             currentClass = currentClass.pointers[NoteTaker.PI_CLASS_SUPERCLASS];
         }
-        //Cound not find a normal message -- send #error
+        //Could not find a normal message -- send #error
         var errorSel = this.image.objectFromOop(NoteTaker.OTI_ERROR_SEL);
         if (selector === errorSel) // Cannot find #error -- unrecoverable error.
             throw "Recursive not understood error encountered";
+        debugger;
         return this.findSelectorInClass(errorSel, 0, startingClass);
     },
     lookupSelectorInDict: function(mDict, messageSelector) {
@@ -1316,15 +1317,12 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
     doRemoteReturn: function() {
         // reverse of primitiveValue()
-        var reply = this.top();
-        var oldFrame = this.currentFrame;
-        var newFrame = this.activeContextPointers[oldFrame + NoteTaker.FI_SAVED_BP];
-        var newPC = this.activeContextPointers[oldFrame + NoteTaker.FI_CALLER_PC];
-        var newSP = oldFrame + NoteTaker.FI_LAST_ARG + this.methodNumArgs; // pop past old frame and args
+        var reply = this.pop();
+        var returnFrame = this.pop();
+        var returnPC = this.pop();
         /////// Whoosh //////
-        this.currentFrame = this.loadFromFrame(newFrame);
-        this.pc = newPC;
-        this.sp = newSP;
+        this.currentFrame = this.loadFromFrame(returnFrame);
+        this.pc = returnPC;
         this.push(reply);
         if (this.breakOnFrameChanged) {
             this.breakOnFrameChanged = false;
@@ -1741,7 +1739,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 22: return false; // primitiveSubtractLargeIntegers
             case 23: return false; // primitiveLessThanLargeIntegers
             case 24: return false; // primitiveGreaterThanLargeIntegers
-            case 25: return this.popNandPushIfOK(1,this.doRemoteCopy(this.vm.top())); // Process.remoteCopy
+            case 25: return this.primitiveRemoteCopy(argCount); // Process.remoteCopy
             case 26: return this.primitiveValue(argCount); // RemoteCode.value
             case 27: return this.primitiveNew(argCount); // argCount = 0 fixed size
             case 28: return this.primitiveNew(argCount); // argCount = 1 variable
@@ -2278,17 +2276,21 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
 },
 'blocks', {
-    doRemoteCopy: function(rcvr) {
+    primitiveRemoteCopy: function(argCount) {
         // Make a block-like outrigger to rcvr, a process
-	    if (rcvr !== this.vm.activeContext) return null;
+        debugger;
+        var rcvr = this.vm.stackValue(0);
+	    if (rcvr !== this.vm.activeContext) return false;
 		var pc = this.vm.pc;
+		var bp = this.vm.currentFrame;
 		var jumpInstr = this.vm.method.bytes[pc];
 		pc += jumpInstr < 0xA0 ? 1 : 2;
 		var rCode = this.vm.instantiateClass(this.remoteCodeClass, 0);
-		var relBP = this.indexableSize(rcvr) - this.vm.currentFrame;
+		var relBP = this.indexableSize(rcvr) - bp;
 		rCode.pointers[NoteTaker.PI_RCODE_FRAMEOFFSET] = relBP;
 		rCode.pointers[NoteTaker.PI_RCODE_STARTINGPC] = pc;
-		return rCode;
+		this.vm.popNandPush(1, rCode);
+		return true;
     },
     primitiveValue: function(argCount) {
         debugger;
@@ -2296,6 +2298,9 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (rCode.stClass !== this.remoteCodeClass)
             return false;
         var frame = this.indexableSize(this.vm.activeContext) - rCode.pointers[NoteTaker.PI_RCODE_FRAMEOFFSET];
+        this.vm.pop(); // drop self
+        this.vm.push(this.vm.pc);           // save PC and BP for remoteReturn
+        this.vm.push(this.vm.currentFrame);
 		this.vm.currentFrame = this.vm.loadFromFrame(frame);
 		this.vm.pc = rCode.pointers[NoteTaker.PI_RCODE_STARTINGPC];
         return true;
