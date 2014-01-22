@@ -1243,6 +1243,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             lookupClass = this.activeContextPointers[this.currentFrame + NoteTaker.FI_MCLASS].superclass();
         }
         var entry = this.findSelectorInClass(selector, argCountOrUndefined, lookupClass);
+        if (this.debugSelectors && this.debugSelectors.indexOf(selector.bytesAsString()) >= 0) debugger;
         this.executeNewMethod(newRcvr, entry.method, entry.methodClass, entry.argCount, entry.primIndex);
     },
     findSelectorInClass: function(selector, argCountOrUndefined, startingClass) {
