@@ -998,10 +998,10 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 			case 0x82:
 				this.pop(); break;	// POP
 			case 0x83:	// RETURN
-			    this.doReturn();
+			    this.doReturn(); // method return
 				break;
 			case 0x84:	// REMLV
-				leave(pop_());	
+				this.doRemoteReturn(); // block return
 				break;
 			case 0x85:	// PUSHCURRENT
 				this.push(this.activeContext);
@@ -1314,6 +1314,23 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             throw "receivers don't match";
         this.checkForInterrupts();
     },
+    doRemoteReturn: function() {
+        // reverse of primitiveValue()
+        var reply = this.top();
+        var oldFrame = this.currentFrame;
+        var newFrame = this.activeContextPointers[oldFrame + NoteTaker.FI_SAVED_BP];
+        var newPC = this.activeContextPointers[oldFrame + NoteTaker.FI_CALLER_PC];
+        var newSP = oldFrame + NoteTaker.FI_LAST_ARG + this.methodNumArgs; // pop past old frame and args
+        /////// Whoosh //////
+        this.currentFrame = this.loadFromFrame(newFrame);
+        this.pc = newPC;
+        this.sp = newSP;
+        this.push(reply);
+        if (this.breakOnFrameChanged) {
+            this.breakOnFrameChanged = false;
+            this.breakNow();
+        }
+    },
     doReturn: function() {
         // reverse of executeNewMethod()
         if (this.breakOnFrameReturned === this.currentFrame) {
@@ -1323,21 +1340,26 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         var reply = this.top();
         var oldFrame = this.currentFrame;
         var newFrame = this.activeContextPointers[oldFrame + NoteTaker.FI_SAVED_BP];
+        var newPC = this.activeContextPointers[oldFrame + NoteTaker.FI_CALLER_PC];
         var newSP = oldFrame + NoteTaker.FI_LAST_ARG + this.methodNumArgs; // pop past old frame and args
         /////// Whoosh //////
-        this.currentFrame = newFrame;
-        this.method = this.activeContextPointers[newFrame + NoteTaker.FI_METHOD];
-        this.methodBytes = this.method.bytes;
-        this.methodNumArgs = this.activeContextPointers[newFrame + NoteTaker.FI_NUMARGS];
-        this.pc = this.activeContextPointers[oldFrame + NoteTaker.FI_CALLER_PC];
+        this.currentFrame = this.loadFromFrame(newFrame);
+        this.pc = newPC;
         this.sp = newSP;
-        this.receiver = this.activeContextPointers[newFrame + NoteTaker.FI_RECEIVER];
         this.push(reply);
         if (this.breakOnFrameChanged) {
             this.breakOnFrameChanged = false;
             this.breakNow();
         }
 },
+    loadFromFrame: function(aFrame) {
+        // cache values from aFrame in slots
+        this.method = this.activeContextPointers[aFrame + NoteTaker.FI_METHOD];
+        this.methodBytes = this.method.bytes;
+        this.methodNumArgs = this.activeContextPointers[aFrame + NoteTaker.FI_NUMARGS];
+        this.receiver = this.activeContextPointers[aFrame + NoteTaker.FI_RECEIVER];
+        return aFrame;
+    },
     doQuickSend: function(obj, index) {
         // pop receiver, push self or my inst var at index
         if (index === 255)
@@ -1655,6 +1677,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.display.vm = this.vm;
         this.initAtCache();
         this.initModules();
+		this.remoteCodeClass = vm.image.objectFromOop(NoteTaker.OTI_CLREMOTECODE);
     },
     initModules: function() {
         this.loadedModules = {};
@@ -1718,11 +1741,11 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 22: return false; // primitiveSubtractLargeIntegers
             case 23: return false; // primitiveLessThanLargeIntegers
             case 24: return false; // primitiveGreaterThanLargeIntegers
-            case 25: return this.popNandPushIfOK(1,this.doRemoteCopy(this.top())); // <Process> remoteCopy
-            case 26: return false; // primitiveGreaterOrEqualLargeIntegers
-
+            case 25: return this.popNandPushIfOK(1,this.doRemoteCopy(this.vm.top())); // Process.remoteCopy
+            case 26: return this.primitiveValue(argCount); // RemoteCode.value
             case 27: return this.primitiveNew(argCount); // argCount = 0 fixed size
             case 28: return this.primitiveNew(argCount); // argCount = 1 variable
+            case 39: return this.primitiveValueGets(argCount); // RemoteCode.value_
             case 40: return this.primitiveCopyBits(argCount);  // BitBlt.callBLT
             case 41: return this.primitiveBeDisplay(argCount); // BitBlt install for display
             case 50: return false; // TextScanner.scanword:
@@ -2255,79 +2278,36 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
 },
 'blocks', {
-    doBlockCopy: function() {
-        var rcvr = this.vm.stackValue(1);
-        var sqArgCount = this.stackInteger(0);
-        var homeCtxt = rcvr;
-        if(!this.vm.isContext(homeCtxt)) this.success = false;
-        if(!this.success) return rcvr;
-        if (this.vm.isSmallInt(homeCtxt.pointers[Squeak.Context_method]))
-            // ctxt is itself a block; get the context for its enclosing method
-            homeCtxt = homeCtxt.pointers[Squeak.BlockContext_home];
-        var blockSize = homeCtxt.pointersSize() - homeCtxt.instSize(); // could use a const for instSize
-        var newBlock = this.vm.instantiateClass(this.vm.specialObjects[Squeak.splOb_ClassBlockContext], blockSize);
-        var initialPC = this.vm.encodeSqueakPC(this.vm.pc + 2, this.vm.method); //*** check this...
-        newBlock.pointers[Squeak.BlockContext_initialIP] = initialPC;
-        newBlock.pointers[Squeak.Context_instructionPointer] = initialPC; // claim not needed; value will set it
-        newBlock.pointers[Squeak.Context_stackPointer] = 0;
-        newBlock.pointers[Squeak.BlockContext_argumentCount] = sqArgCount;
-        newBlock.pointers[Squeak.BlockContext_home] = homeCtxt;
-        newBlock.pointers[Squeak.Context_sender] = this.vm.nilObj; // claim not needed; just initialized
-        return newBlock;
-    },
     doRemoteCopy: function(rcvr) {
         // Make a block-like outrigger to rcvr, a process
-	    if (rcvr.stClass.oop !== NoteTaker.OTI_CLPROCESS) return null;
-/*
-        this.vm.popPCBP();
-		var pc= this.vm.getPC();
-		var cm= this.vm.getFrameValue(NoteTaker.FI_METHOD);
-		int jump= this.vm.body(cm).bytes()[pc] & 0xff;
-		pc+= jump < 0xA0? 1 : 2;
-		short rcode= this.vm.cinst(St78VM.kRemoteCodeClass, 0);
-		int relBP= this.vm.getProcessEnd()-this.vm.getBP();
-		St78Object rcodeBody= this.vm.body(rcode);
-		rcodeBody.setPointer(NoteTaker.PI_RCODE_FRAMEOFFSET, St78VM.small(relBP));
-		rcodeBody.setPointer(NoteTaker.PI_RCODE_STARTINGPC, St78VM.small(pc));
-		this.vm.pushPCBP();	// reinstall the alibi frame
-		return rcode; 	// leavep will refi the RCode instance
-*/
-	    },
-
-    primitiveBlockValue: function(argCount) {
-        var rcvr = this.vm.stackValue(argCount);
-        if (!this.isA(rcvr, Squeak.splOb_ClassBlockContext)) return false;
-        var block = rcvr;
-        var blockArgCount = block.pointers[Squeak.BlockContext_argumentCount];
-        if (!this.vm.isSmallInt(blockArgCount)) return false;
-        if (blockArgCount != argCount) return false;
-        if (!block.pointers[Squeak.BlockContext_caller].isNil) return false;
-        this.vm.arrayCopy(this.vm.activeContext.pointers, this.vm.sp-argCount+1, block.pointers, Squeak.Context_tempFrameStart, argCount);
-        var initialIP = block.pointers[Squeak.BlockContext_initialIP];
-        block.pointers[Squeak.Context_instructionPointer] = initialIP;
-        block.pointers[Squeak.Context_stackPointer] = argCount;
-        block.pointers[Squeak.BlockContext_caller] = this.vm.activeContext;
-        this.vm.popN(argCount+1);
-        this.vm.newActiveContext(block);
+	    if (rcvr !== this.vm.activeContext) return null;
+		var pc = this.vm.pc;
+		var jumpInstr = this.vm.method.bytes[pc];
+		pc += jumpInstr < 0xA0 ? 1 : 2;
+		var rCode = this.vm.instantiateClass(this.remoteCodeClass, 0);
+		var relBP = this.indexableSize(rcvr) - this.vm.currentFrame;
+		rCode.pointers[NoteTaker.PI_RCODE_FRAMEOFFSET] = relBP;
+		rCode.pointers[NoteTaker.PI_RCODE_STARTINGPC] = pc;
+		return rCode;
+    },
+    primitiveValue: function(argCount) {
+        debugger;
+        var rCode = this.vm.stackValue(0);
+        if (rCode.stClass !== this.remoteCodeClass)
+            return false;
+        var frame = this.indexableSize(this.vm.activeContext) - rCode.pointers[NoteTaker.PI_RCODE_FRAMEOFFSET];
+		this.vm.currentFrame = this.vm.loadFromFrame(frame);
+		this.vm.pc = rCode.pointers[NoteTaker.PI_RCODE_STARTINGPC];
         return true;
     },
-    primitiveValueWithArgs: function(argCount) {
-        var block = this.vm.stackValue(1);
-        var array = this.vm.stackValue(0);
-        if (!this.isA(block, Squeak.splOb_ClassBlockContext)) return false;
-        if (!this.isA(array, Squeak.splOb_ClassArray)) return false;
-        var blockArgCount = block.pointers[Squeak.BlockContext_argumentCount];
-        if (!this.vm.isSmallInt(blockArgCount)) return false;
-        if (blockArgCount != array.pointersSize()) return false;
-        if (!block.pointers[Squeak.BlockContext_caller].isNil) return false;
-        this.vm.arrayCopy(array.pointers, 0, block.pointers, Squeak.Context_tempFrameStart, blockArgCount);
-        var initialIP = block.pointers[Squeak.BlockContext_initialIP];
-        block.pointers[Squeak.Context_instructionPointer] = initialIP;
-        block.pointers[Squeak.Context_stackPointer] = blockArgCount;
-        block.pointers[Squeak.BlockContext_caller] = this.vm.activeContext;
-        this.vm.popN(argCount+1);
-        this.vm.newActiveContext(block);
-        return true;
+    primitiveValueGets: function(argCount) {
+        debugger;
+		var value = this.vm.stackValue(1);
+        if (!this.primitiveValue(0))
+            return false;
+		this.vm.push(value);		// for remote return (if there is only a ld/store opcode)
+		this.vm.doStore(value, this.vm.nextByte());		// TODO emulate STOREMODE
+		return true;
     },
 },
 'scheduling',
@@ -2933,10 +2913,10 @@ Object.subclass('users.bert.St78.vm.BitBlt',
         var dWid;
         if (this.hDir > 0) {
             dWid = ((this.bbW < (16 - dxLowBits)) ? this.bbW : (16 - dxLowBits));
-            this.preload = (sxLowBits + dWid) > 15;
+            this.preload = (sxLowBits + dWid) + 1 > 16;
         } else {
             dWid = ((this.bbW < (dxLowBits + 1)) ? this.bbW : (dxLowBits + 1));
-            this.preload = ((sxLowBits - dWid) + 1) < 0;
+            this.preload = (sxLowBits - dWid) + 1 < 0;
         }
         this.skew = sxLowBits - dxLowBits;
         if (this.preload) {
