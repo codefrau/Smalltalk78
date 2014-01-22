@@ -923,12 +923,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.image.objectFromOop(NoteTaker.OTI_CLCOMPILEDMETHOD).stClass =
             this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
         
-        // Temporary patch to skip over remoteCopy logic in Process>>run
-        var method = this.image.objectFromOop(26276);
-        method.bytes[12] = 0xA4; method.bytes[13] = 0x0A; // jumps to pc=24
-
         // Permanent patch to act as NoteTaker=true in Rectangle>>color:mode:
-        method = this.image.objectFromOop(1052);
+        var method = this.image.objectFromOop(1052);
         method.bytes[14] = 0x7F; // push true
 
         // Permanent patch to act as NoteTaker=true in TextScanner>>toDisplay
