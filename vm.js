@@ -2951,13 +2951,6 @@ Object.subclass('users.bert.St78.vm.BitBlt',
     clipRange: function() {
         // initialize sx,sy, dx,dy, bbW,bbH to the intersection of source, dest, and clip
         // let's assume everything is alright ... 
-        this.sx = this.sourceX;
-        this.sy = this.sourceY;
-        this.dx = this.destX;
-        this.dy = this.destY;
-        this.bbW = this.width;
-        this.bbH = this.height;
-/*        
         // intersect with destForm bounds
         if (this.clipX < 0) {this.clipW += this.clipX; this.clipX = 0; }
         if (this.clipY < 0) {this.clipH += this.clipY; this.clipY = 0; }
@@ -2994,7 +2987,6 @@ Object.subclass('users.bert.St78.vm.BitBlt',
     	}
     	if ((this.sy + this.bbH) > this.sourceHeight)
     		this.bbH -= (this.sy + this.bbH) - this.sourceHeight;
-*/
 	},
     checkSourceOverlap: function() {
         if (this.sourceForm === this.destForm && this.dy >= this.sy) {
