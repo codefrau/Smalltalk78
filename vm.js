@@ -2938,7 +2938,7 @@ Object.subclass('users.bert.St78.vm.BitBlt',
             dWid = ((this.bbW < (dxLowBits + 1)) ? this.bbW : (dxLowBits + 1));
             this.preload = ((sxLowBits - dWid) + 1) < 0;
         }
-        this.skew = (sxLowBits - dxLowBits) * 16;
+        this.skew = sxLowBits - dxLowBits;
         if (this.preload) {
             if (this.skew < 0) this.skew += 16;
             else this.skew -= 16;
