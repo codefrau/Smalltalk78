@@ -931,8 +931,11 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         // Permanent patch to act as NoteTaker=true
         this.patchByteCode(1052, 14, 0x7F); // Rectangle>>color:mode:
         this.patchByteCode(23988, 12, 0x7F); // Integer>>lshift:
+        this.patchByteCode(24620, 8, 0x7F); // Integer>>minVal
+        this.patchByteCode(24608, 8, 0x7F); // Integer>>maxVal
         this.patchByteCode(26836, 24, 0x7F); // LargeInteger>>lshift:
         this.patchByteCode(27024, 20, 0x7F); // LargeInteger>>land:
+        this.patchByteCode(26996, 30, 0x7F); // LargeInteger>>asSmall
         this.patchByteCode(3992, 20, 0x7F); // TextScanner>>toDisplay
         this.patchByteCode(4004, 59, 0x7F); // TextScanner>>frame:window:para:style:printing:
         this.patchByteCode(1820, 12, 0x7F); // BitBlt>>window:
@@ -941,6 +944,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.patchByteCode(18864, 20, 0x7F); // UserView>>rawkbck
         this.patchByteCode(18488, 19, 0x7F); // UserView>>kbck
         this.patchByteCode(19104, 14, 0x7F); // UserView>>keyset
+        this.patchByteCode(18552, 16, 0x7F); // UserView>>cursorloc←
+        this.patchByteCode(428, 57, 0x7F); // UserView>>currentCursor:
 
         // Permanent patch to make all LargeIntegers in range +-32K small again:
         // Note: this does not yet work :-(
@@ -1142,8 +1147,16 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
     methodLiteral: function(index) {
         var literal = this.method.pointers[index];
-        if (this.breakOnLiteral === literal)
-            this.breakNow();
+        if (this.breakOnLiteral === literal) {
+            var seen = this.printMethod() + ' oop: ' + this.method.oop + ' pc: ' + this.pc;
+            if (!this.breakOnLiteralSeen) this.breakOnLiteralSeen;
+            if (this.breakOnLiteralSeen[seen]) {
+                this.breakOnLiteralSeen[seen] += 1;
+            } else {
+                this.breakOnLiteralSeen[seen] = 1;
+                this.breakNow();
+            }
+        }
         return literal;
     },
 
@@ -1607,6 +1620,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
     breakOnGlobal: function(name) {
         this.breakOnLiteral = this.image.globalRefNamed(name);
+        return this.breakOnLiteral;
     },
 
     breakNow: function() {
@@ -1750,6 +1764,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 50: return false; // TextScanner.scanword:
             case 53: return true; // String.lock/unlock: address of bits (return self on Notetaker)
             case 58: return this.primitiveMousePoint(argCount);
+            case 59: return true; //UserView.primCursorLoc←
             case 61: return this.primitiveKeyboardPeek(argCount);
             case 68: return this.primitiveMouseButtons(argCount);
 /*
