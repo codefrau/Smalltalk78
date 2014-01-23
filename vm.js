@@ -1314,6 +1314,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                 return;  //Primitive succeeded -- end of story
         // sp points to new receiver, so this is where we base the new frame off
         var newFrame = this.sp - NoteTaker.FI_RECEIVER;
+        if (newFrame <= NoteTaker.PI_PROCESS_STACK)
+            throw "stack overflow"
         this.activeContextPointers[newFrame + NoteTaker.FI_SAVED_BP] = this.currentFrame;
         this.activeContextPointers[newFrame + NoteTaker.FI_CALLER_PC] = this.pc;
         this.activeContextPointers[newFrame + NoteTaker.FI_NUMARGS] = argumentCount;
