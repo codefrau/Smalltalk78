@@ -3081,6 +3081,8 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
         this.indent = indent;           // prepend to every line except if highlighted
         this.highlight = highlight;     // prepend to highlighted line
         this.highlightPC = highlightPC; // PC of highlighted line
+        if (this.method.stClass.oop !== NoteTaker.OTI_CLCOMPILEDMETHOD)
+            return "<not a CompiledMethod>";
         this.result = '';
         this.scanner = new users.bert.St78.vm.InstructionStream(this.method, this.vm);
         this.oldPC = this.scanner.pc;
@@ -3109,7 +3111,13 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
             this.result = this.result.slice(0,-1) + " <partial instr>\n";
         }
         this.oldPC = this.scanner.pc;
-    }
+    },
+    printLiteral: function(index) {
+        var literals = this.method.pointers,
+            literal = literals && literals[index];
+        if (!literal) return "invalid literal";
+        return literal.stInstName ? literal.stInstName() : literal.toString();
+    },
 },
 'decoding', {
 
@@ -3141,9 +3149,8 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
     	this.print('pushConst: ' + (obj.stInstName ? obj.stInstName() : obj));
     },
     pushLiteralVariable: function(index) {
-        var objRef = this.method.methodGetLiteral(index),
-            refName = objRef.stInstName();
-        this.print('pushLitRef: ' + index + ' (' + refName + ')');
+        var lit = this.printLiteral(index);
+        this.print('pushLitRef: ' + index + ' (' + lit + ')');
     },
 	pushReceiver: function() {
 	    this.print('push: self');
@@ -3158,9 +3165,8 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
     	this.print( 'send: #' + (selector.bytesAsString ? selector.bytesAsString() : selector));
     },
     storeIntoLiteralVariable: function(index, doPop) {
-        var objRef = this.method.methodGetLiteral(index),
-            refName = objRef.stInstName();
-        this.print((doPop ? 'pop' : 'store') + 'IntoLitRef: ' + index + ' (' + refName + ')');
+        var lit = this.printLiteral(index);
+        this.print((doPop ? 'pop' : 'store') + 'IntoLitRef: ' + index + ' (' + lit + ')');
     },
     storeIntoReceiverVariable: function(offset, doPop) { 
     	this.print((doPop ? 'pop' : 'store') + 'IntoInstVar: ' + offset);
