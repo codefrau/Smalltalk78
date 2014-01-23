@@ -482,9 +482,9 @@ Object.subclass('users.bert.St78.vm.Image',
         this.newSpaceCount++;
         return this.lastOop += 4;
     },
-    instantiateClass: function(aClass, indexableSize, filler) {
+    instantiateClass: function(aClass, indexableSize, nilObj) {
         var newObject = new users.bert.St78.vm.Object(this.newOop());
-        newObject.initInstanceOf(aClass, indexableSize, filler);
+        newObject.initInstanceOf(aClass, indexableSize, nilObj);
         return newObject;
     },
     clone: function(object) {
@@ -638,14 +638,14 @@ Object.subclass('users.bert.St78.vm.Object',
             }
         }
     },
-    initInstanceOf: function(aClass, indexableSize, filler) {
+    initInstanceOf: function(aClass, indexableSize, nilObj) {
         this.stClass = aClass;
         var instSpec = aClass.pointers[NoteTaker.PI_CLASS_INSTSIZE];
 
         if (instSpec & NoteTaker.FMT_HASPOINTERS) {
             var instSize = ((instSpec & NoteTaker.FMT_BYTELENGTH) >> 1) - 1; // words, sans header
             if (instSize + indexableSize > 0)
-                this.pointers = this.fillArray(instSize + indexableSize, filler);
+                this.pointers = this.fillArray(instSize + indexableSize, nilObj);
         } else
             if (indexableSize > 0)
                 if (instSpec & NoteTaker.FMT_HASWORDS)
@@ -1538,9 +1538,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.success = false;
         return 1;
     },
-
-
-
     safeShift: function(bitsToShift, shiftCount) {
         if (shiftCount<0) return bitsToShift>>-shiftCount; //OK to lose bits shifting right
         //check for lost bits by seeing if computation is reversible
@@ -1700,6 +1697,9 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.initAtCache();
         this.initModules();
 		this.remoteCodeClass = vm.image.objectFromOop(NoteTaker.OTI_CLREMOTECODE);
+        this.pointClass = this.vm.image.objectFromOop(NoteTaker.OTI_CLPOINT);
+        this.floatClass = this.vm.image.objectFromOop(NoteTaker.OTI_CLFLOAT);
+        this.stringClass = this.vm.image.objectFromOop(NoteTaker.OTI_CLSTRING);
     },
     initModules: function() {
         this.loadedModules = {};
@@ -1739,18 +1739,19 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
     doPrimitive: function(index, argCount) {
         this.success = true;
+        this.gotFloat = false;
         switch (index) {
-            case 0: return this.popNandPushIntIfOK(2,this.stackInteger(0) + this.stackInteger(1));  // Integer.add
-            case 1: return this.popNandPushIntIfOK(2,this.stackInteger(0) - this.stackInteger(1));  // Integer.subtract
-            case 2: return this.pop2andPushBoolIfOK(this.stackInteger(0) < this.stackInteger(1));   // Integer.less
-            case 3: return this.pop2andPushBoolIfOK(this.stackInteger(0) > this.stackInteger(1));   // Integer.greater
-            case 4: return this.pop2andPushBoolIfOK(this.stackInteger(0) <= this.stackInteger(1));  // Integer.leq
-            case 5: return this.pop2andPushBoolIfOK(this.stackInteger(0) >= this.stackInteger(1));  // Integer.geq
-            case 6: return this.pop2andPushBoolIfOK(this.stackInteger(0) === this.stackInteger(1)); // Integer.equal
-            case 7: return this.pop2andPushBoolIfOK(this.stackInteger(0) !== this.stackInteger(1)); // Integer.notequal
-            case 8: return this.popNandPushIntIfOK(2,this.stackInteger(0) * this.stackInteger(1));  // Integer.multiply *
-            case 9: return this.popNandPushIntIfOK(2,this.doDiv(this.stackInteger(0),this.stackInteger(1)));  // Integer.divide /  
-            case 10: return this.popNandPushIntIfOK(2,this.doRem(this.stackInteger(0),this.stackInteger(1)));  // Integer.rem \\
+            case 0: return this.popNandPushNumIfOK(2,this.stackIntOrFloat(0) + this.stackIntOrFloat(1));  // add
+            case 1: return this.popNandPushNumIfOK(2,this.stackIntOrFloat(0) - this.stackIntOrFloat(1));  // subtract
+            case 2: return this.pop2andPushBoolIfOK(this.stackIntOrFloat(0) < this.stackIntOrFloat(1));   // less
+            case 3: return this.pop2andPushBoolIfOK(this.stackIntOrFloat(0) > this.stackIntOrFloat(1));   // greater
+            case 4: return this.pop2andPushBoolIfOK(this.stackIntOrFloat(0) <= this.stackIntOrFloat(1));  // leq
+            case 5: return this.pop2andPushBoolIfOK(this.stackIntOrFloat(0) >= this.stackIntOrFloat(1));  // geq
+            case 6: return this.pop2andPushBoolIfOK(this.stackIntOrFloat(0) === this.stackIntOrFloat(1)); // equal
+            case 7: return this.pop2andPushBoolIfOK(this.stackIntOrFloat(0) !== this.stackIntOrFloat(1)); // notequal
+            case 8: return this.popNandPushNumIfOK(2,this.stackIntOrFloat(0) * this.stackIntOrFloat(1));  // multiply *
+            case 9: return this.popNandPushNumIfOK(2,this.doDiv(this.stackIntOrFloat(0),this.stackIntOrFloat(1)));  // divide /  
+            case 10: return this.popNandPushNumIfOK(2,this.doRem(this.stackInteger(0),this.stackInteger(1)));  // rem \\
             case 11: return this.primitiveMakePoint(argCount);  // @ - make a Point
             case 12: return this.popNandPushIfOK(2,this.doBitShift());  // SmallInt.bitShift
             case 13: return this.popNandPushIfOK(2,this.doBitXor());  // SmallInt.bitXor
@@ -1767,6 +1768,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 26: return this.primitiveValue(argCount); // RemoteCode.value
             case 27: return this.primitiveNew(argCount); // argCount = 0 fixed size
             case 28: return this.primitiveNew(argCount); // argCount = 1 variable
+            case 32: return this.popNandPushFloatIfOK(1,this.stackInteger(0)); // primitiveAsFloat
             case 39: return this.primitiveValueGets(argCount); // RemoteCode.value_
             case 40: return this.primitiveCopyBits(argCount);  // BitBlt.callBLT
             case 41: return this.primitiveBeDisplay(argCount); // BitBlt install for display
@@ -1935,13 +1937,18 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.vm.popNandPush(nToPop, returnValue);
         return true;
     },
-    popNandPushIntIfOK: function(nToPop, returnValue) {
-        if (!this.success || !this.vm.canBeSmallInt(returnValue)) return false; 
-        return this.popNandPushIfOK(nToPop, returnValue);
+    popNandPushNumIfOK: function(nToPop, returnValue) {
+        if (!this.success) return false;
+        if (this.gotFloat)
+           returnValue = this.makeFloat(returnValue);
+        else if (!this.vm.canBeSmallInt(returnValue)) return false;
+        this.vm.popNandPush(nToPop, returnValue);
+        return true;
     },
     popNandPushFloatIfOK: function(nToPop, returnValue) {
-        if (!this.success) return false;
-        return this.popNandPushIfOK(nToPop, this.makeFloat(returnValue));
+        if (this.success)
+            this.vm.popNandPush(nToPop, this.makeFloat(returnValue));
+        return this.success;
     },
     stackNonInteger: function(nDeep) {
         return this.checkNonInteger(this.vm.stackValue(nDeep));
@@ -1971,8 +1978,15 @@ Object.subclass('users.bert.St78.vm.Primitives',
             bytes[i] = (pos16Val>>>(8*i))&255;
         return lgIntObj;
     },
-    stackFloat: function(nDeep) {
-        return this.checkFloat(this.vm.stackValue(nDeep));
+    stackIntOrFloat: function(nDeep) {
+        var obj = this.vm.stackValue(nDeep);
+        if (this.vm.isSmallInt(obj)) return obj;
+        if (obj.isFloat) {
+            this.gotFloat = true;
+            return obj.float;
+        }
+        this.success = false;
+        return 0;
     },
 },
 'numbers', {
@@ -2014,7 +2028,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
     doDiv: function(rcvr, arg) {
         if (arg === 0) return NoteTaker.NON_INT;  // fail if divide by zero
-        return Math.floor(rcvr/arg);
+        return this.gotFloat ? rcvr/arg : Math.floor(rcvr/arg);
     },
     doRem: function(rcvr, arg) {
         if (arg === 0) return NoteTaker.NON_INT;  // fail if divide by zero
@@ -2056,14 +2070,13 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return charTable.pointers[ascii];
     },
     makeFloat: function(value) {
-        var floatClass = this.vm.specialObjects[Squeak.splOb_ClassFloat];
-        var newFloat = this.vm.instantiateClass(floatClass, 2);
+        var newFloat = this.vm.instantiateClass(this.floatClass, 2);
+        newFloat.isFloat = true;
         newFloat.float = value;
         return newFloat;
 	},
     makePointWithXandY: function(x, y) {
-        var pointClass = this.vm.image.objectFromOop(NoteTaker.OTI_CLPOINT);
-        var newPoint = this.vm.instantiateClass(pointClass, 0);
+        var newPoint = this.vm.instantiateClass(this.pointClass, 0);
         newPoint.pointers[NoteTaker.PI_POINT_X] = x;
         newPoint.pointers[NoteTaker.PI_POINT_Y] = y;
         return newPoint;
@@ -2072,7 +2085,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var bytes = [];
         for (var i = 0; i < jsString.length; ++i)
             bytes.push(jsString.charCodeAt(i) & 0xFF);
-        var stString = this.vm.instantiateClass(this.vm.specialObjects[Squeak.splOb_ClassString], bytes.length);
+        var stString = this.vm.instantiateClass(this.stringClass, bytes.length);
         stString.bytes = bytes;
         return stString;
     },
@@ -2228,9 +2241,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (!((rcvr.pointers[NoteTaker.PI_CLASS_INSTSIZE] & NoteTaker.FMT_ISVARIABLE) > 0)) return false
         return this.popNandPushIfOK(2, this.vm.instantiateClass(rcvr, size));
     },
-
-
-
     primitiveNewMethod: function(argCount) {
         var header = this.stackInteger(0);
         var byteCount = this.stackInteger(1);
