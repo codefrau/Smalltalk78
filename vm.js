@@ -924,45 +924,19 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.image.objectFromOop(NoteTaker.OTI_CLCOMPILEDMETHOD).stClass =
             this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
         
-        // Permanent patch to act as NoteTaker=true in Rectangle>>color:mode:
-        var method = this.image.objectFromOop(1052);
-        method.bytes[14] = 0x7F; // push true
-
-        // Permanent patch to act as NoteTaker=true in TextScanner>>toDisplay
-        method = this.image.objectFromOop(3992);
-        method.bytes[20] = 0x7F; // push true
-        // and TextScanner>>frame:window:para:style:printing:
-        method = this.image.objectFromOop(4004);
-        method.bytes[59] = 0x7F; // push true
-
-        // Permanent patch to act as NoteTaker=true in BitBlt>>window:
-        method = this.image.objectFromOop(1820);
-        method.bytes[12] = 0x7F; // push true
-        
-        // Permanent patch to act as NoteTaker=true in UserView>>mp
-        method = this.image.objectFromOop(18912);
-        method.bytes[20] = 0x7F; // push true
-        
-        // Permanent patch to act as NoteTaker=true in UserView>>buttons
-        method = this.image.objectFromOop(18800);
-        method.bytes[14] = 0x7F; // push true
-
-        // Permanent patch to act as NoteTaker=true in UserView>>rawkbck
-        method = this.image.objectFromOop(18864);
-        method.bytes[20] = 0x7F; // push true
-
-        // Permanent patch to act as NoteTaker=true in UserView>>kbck
-        method = this.image.objectFromOop(18488);
-        method.bytes[19] = 0x7F; // push true
-        
-        // Permanent patch to act as NoteTaker=true in UserView>>keyset
-        method = this.image.objectFromOop(19104);
-        method.bytes[14] = 0x7F; // push true
-
-        // Permanent patch to make the screen 400 high
-        // Causes largeInteger problems still
-        //method = this.image.objectFromOop(21052);
-        //method.pointers[17] = 400; // was 192
+        // Permanent patch to act as NoteTaker=true
+        this.patchByteCode(1052, 14, 0x7F); // Rectangle>>color:mode:
+        this.patchByteCode(23988, 12, 0x7F); // Integer>>lshift:
+        this.patchByteCode(26836, 24, 0x7F); // LargeInteger>>lshift:
+        this.patchByteCode(27024, 20, 0x7F); // LargeInteger>>land:
+        this.patchByteCode(3992, 20, 0x7F); // TextScanner>>toDisplay
+        this.patchByteCode(4004, 59, 0x7F); // TextScanner>>frame:window:para:style:printing:
+        this.patchByteCode(1820, 12, 0x7F); // BitBlt>>window:
+        this.patchByteCode(18912, 20, 0x7F); // UserView>>mp
+        this.patchByteCode(18800, 14, 0x7F); // UserView>>buttons
+        this.patchByteCode(18864, 20, 0x7F); // UserView>>rawkbck
+        this.patchByteCode(18488, 19, 0x7F); // UserView>>kbck
+        this.patchByteCode(19104, 14, 0x7F); // UserView>>keyset
 
         // Permanent patch to make all LargeIntegers in range +-32K small again:
         // Note: this does not yet work :-(
@@ -972,6 +946,11 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         //NoteTaker.NON_INT; -0x9000; // non-small and neg (so non pos16 too)
 
     },
+    patchByteCode: function(oop, index, value) {
+        var method = this.image.objectFromOop(oop);
+        method.bytes[index] = value;
+    },
+
 },
 'interpreting', {
     interpretOne: function() {
