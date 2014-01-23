@@ -2660,6 +2660,7 @@ Object.subclass('users.bert.St78.vm.BitBlt',
         var func = bitblt[NoteTaker.PI_BITBLT_FUNCTION];
         this.destRule = func & 3;           // set, or, xor, and
         this.sourceRule = (func >> 2) & 3;  // src, ~src, halftone in src, halftone
+        this.noSource = this.sourceRule === 3;
         this.sourceFn = this.makeSourceFn(this.sourceRule);
         this.destFn = this.makeDestFn(this.destRule);
         this.halftone = this.sourceRule >= 2 ? this.loadHalftone(bitblt[NoteTaker.PI_BITBLT_GRAY]) : null;
@@ -2669,16 +2670,18 @@ Object.subclass('users.bert.St78.vm.BitBlt',
         this.destY = bitblt[NoteTaker.PI_BITBLT_DESTY];
         this.width = bitblt[NoteTaker.PI_BITBLT_WIDTH];
         this.height = bitblt[NoteTaker.PI_BITBLT_HEIGHT];
-        this.sourceBits = this.loadBits(bitblt[NoteTaker.PI_BITBLT_SOURCEBITS]);
-        this.sourcePitch = bitblt[NoteTaker.PI_BITBLT_SOURCERASTER];
-        this.sourceX = bitblt[NoteTaker.PI_BITBLT_SOURCEX];
-        this.sourceY = bitblt[NoteTaker.PI_BITBLT_SOURCEY];
+        if (!this.noSource) {
+            this.sourceBits = this.loadBits(bitblt[NoteTaker.PI_BITBLT_SOURCEBITS]);
+            this.sourcePitch = bitblt[NoteTaker.PI_BITBLT_SOURCERASTER];
+            this.sourceX = bitblt[NoteTaker.PI_BITBLT_SOURCEX];
+            this.sourceY = bitblt[NoteTaker.PI_BITBLT_SOURCEY];
+            this.sourceForm = bitblt[NoteTaker.PI_BITBLT_SOURCE];
+        }
         this.clipX = bitblt[NoteTaker.PI_BITBLT_CLIPX];
         this.clipY = bitblt[NoteTaker.PI_BITBLT_CLIPY];
         this.clipW = bitblt[NoteTaker.PI_BITBLT_CLIPWIDTH];
         this.clipH = bitblt[NoteTaker.PI_BITBLT_CLIPHEIGHT];
         this.destForm = bitblt[NoteTaker.PI_BITBLT_DEST];
-        this.sourceForm = bitblt[NoteTaker.PI_BITBLT_SOURCE];
         return true;
     },
     makeSourceFn: function(rule) {
@@ -2729,7 +2732,7 @@ Object.subclass('users.bert.St78.vm.BitBlt',
         if (this.bbW <= 0 || this.bbH <= 0) return;
         this.destMaskAndPointerInit();
         /* Choose and perform the actual copy loop. */
-        if (this.sourceRule === 3) {
+        if (this.noSource) {
             this.copyLoopNoSource();
         } else {
             this.checkSourceOverlap();
@@ -2986,7 +2989,7 @@ Object.subclass('users.bert.St78.vm.BitBlt',
     	if (bottomOffset > 0)
     		this.bbH -= bottomOffset;
         // intersect with sourceForm bounds
-    	if (!this.source) return;
+    	if (this.noSource) return;
     	if (this.sx < 0) {
     		this.dx -= this.sx;
     		this.bbW += this.sx;
