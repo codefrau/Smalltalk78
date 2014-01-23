@@ -947,6 +947,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.patchByteCode(18800, 14, 0x7F); // UserView>>buttons
         this.patchByteCode(18864, 20, 0x7F); // UserView>>rawkbck
         this.patchByteCode(18488, 19, 0x7F); // UserView>>kbck
+        this.patchByteCode(6312, 12, 0x7F); // UserView>>rawkbck
+        this.patchByteCode(18844, 20, 0x7F); // UserView>>kbdnext
         this.patchByteCode(19104, 14, 0x7F); // UserView>>keyset
         this.patchByteCode(18552, 16, 0x7F); // UserView>>cursorloc←
         this.patchByteCode(428, 57, 0x7F); // UserView>>currentCursor:
@@ -1769,6 +1771,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 58: return this.primitiveMousePoint(argCount);
             case 59: return true; //UserView.primCursorLoc←
             case 61: return this.primitiveKeyboardPeek(argCount);
+            case 62: return this.primitiveKeyboardNext(argCount);
             case 68: return this.primitiveMouseButtons(argCount);
 /*
             case 29: return false; // primitiveMultiplyLargeIntegers
@@ -1847,7 +1850,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 104: return false; // primitiveDrawLoop
             case 105: return this.popNandPushIfOK(5, this.doStringReplace()); // string and array replace
             case 106: return this.primitiveScreenSize(argCount); // actualScreenSize
-            case 108: return this.primitiveKeyboardNext(argCount); // Sensor kbdNext
             case 110: return this.pop2andPushBoolIfOK(this.vm.stackValue(0) === this.vm.stackValue(1)); // ==
             case 111: return this.popNandPushIfOK(1, this.vm.getClass(this.vm.top())); // Object.class
             case 112: return this.popNandPushIfOK(1, 1000000); //primitiveBytesLeft
