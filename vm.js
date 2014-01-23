@@ -2111,7 +2111,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var array = this.stackNonInteger(0);
         var index = this.stackPos16BitInt(1); //note non-int returns zero
         if (!this.success) return array;
-        var info = this.atCache[(array.oop >> 1) & this.atCacheMask];
+        var info = this.atCache[(array.oop >> 2) & this.atCacheMask];
         if (info.array !== array)
             info = this.makeAtCacheInfo(this.atCache, this.vm.specialSelectors[16], array, convertChars, includeInstVars);
         if (index < 1 || index > info.size) {this.success = false; return array;}
@@ -2131,7 +2131,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var array = this.stackNonInteger(0);
         var index = this.stackPos16BitInt(2); //note non-int returns zero
         if (!this.success) return array;
-        var info = this.atPutCache[(array.oop >> 1) & this.atCacheMask];
+        var info = this.atPutCache[(array.oop >> 2) & this.atCacheMask];
         if (info.array !== array)
             info = this.makeAtCacheInfo(this.atPutCache, this.vm.specialSelectors[17], array, convertChars, includeInstVars);
         if (index<1 || index>info.size) {this.success = false; return array;}
@@ -2189,7 +2189,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var cacheable = !this.vm.doSuper,           //not a super send
             instSize = array.stClass.classInstSize(),
             indexableSize = this.indexableSize(array),
-            info = cacheable ? atOrPutCache[(array.oop >> 1) & this.atCacheMask] : this.nonCachedInfo;
+            info = cacheable ? atOrPutCache[(array.oop >> 2) & this.atCacheMask] : this.nonCachedInfo;
         info.array = array;
         info.convertChars = convertChars;
         if (includeInstVars) {
