@@ -952,6 +952,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.patchByteCode(19104, 14, 0x7F); // UserView>>keyset
         this.patchByteCode(18552, 16, 0x7F); // UserView>>cursorloc←
         this.patchByteCode(428, 57, 0x7F); // UserView>>currentCursor:
+        this.patchByteCode(16680, 22, 0x7F); // UserView>>notify:
 
         // Permanent patch to make all LargeIntegers in range +-32K small again:
         // Note: this does not yet work :-(
@@ -1719,11 +1720,11 @@ Object.subclass('users.bert.St78.vm.Primitives',
             //case 0x2: return false; // next
             //case 0x3: return false; // nextPut:
             case 0x4: return this.popNandPushIfOK(1, this.objectSize()); // length
-            case 0x5: return this.pop2andPushBoolIfOK(this.vm.stackValue(1) === this.vm.stackValue(0)); // ==
+            case 0x5: return this.pop2andPushBoolIfOK(this.vm.stackValue(0) === this.vm.stackValue(1)); // ==
             //case 0x6: return false; // is:
             //case 0x7: return false; // append:
             case 0x8: return this.popNandPushIfOK(1,this.vm.getClass(this.vm.top())); // class
-            case 0x9: return this.popNandPushIfOK(2,this.doBlockCopy()); // remoteCopy:
+            case 0x9: return this.primitiveRemoteCopy(0); // remoteCopy
             case 0xA: return this.primitiveValue(0); // eval
             //case 0xB: return false; // new
             //case 0xC: return false; // new:
@@ -2308,9 +2309,10 @@ Object.subclass('users.bert.St78.vm.Primitives',
 		var jumpInstr = this.vm.method.bytes[pc];
 		pc += jumpInstr < 0xA0 ? 1 : 2;
 		var rCode = this.vm.instantiateClass(this.remoteCodeClass, 0);
-		var relBP = this.indexableSize(rcvr) - bp;
-		rCode.pointers[NoteTaker.PI_RCODE_FRAMEOFFSET] = relBP;
-		rCode.pointers[NoteTaker.PI_RCODE_STARTINGPC] = pc;
+		var relBP = rcvr.pointers.length - bp;
+		// these are uses in primitiveValue
+		rCode.pointers[NoteTaker.PI_RCODE_FRAMEOFFSET] = relBP; // offset from end, used in ProcessFrame>>from:
+		rCode.pointers[NoteTaker.PI_RCODE_STARTINGPC] = pc; // maybe + 1?
 		this.vm.popNandPush(1, rCode);
 		return true;
     },
@@ -2318,7 +2320,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var rCode = this.vm.stackValue(0);
         if (rCode.stClass !== this.remoteCodeClass)
             return false;
-        var frame = this.indexableSize(this.vm.activeContext) - rCode.pointers[NoteTaker.PI_RCODE_FRAMEOFFSET];
+        var frame = this.vm.activeContextPointers.length - rCode.pointers[NoteTaker.PI_RCODE_FRAMEOFFSET];
         this.vm.pop(); // drop self
         this.vm.push(this.vm.pc);           // save PC and BP for remoteReturn
         this.vm.push(this.vm.currentFrame);
