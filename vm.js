@@ -332,15 +332,19 @@ Object.subclass('users.bert.St78.vm.Image',
             cm = this.nextInstanceAfter(cm);
         }
     },
-    globalNamed: function(name) {
+    globalRefNamed: function(name) {
         var globalNames = this.globals.pointers[NoteTaker.PI_SYMBOLTABLE_OBJECTS].pointers,
             globalValues = this.globals.pointers[NoteTaker.PI_SYMBOLTABLE_VALUES].pointers;
         for (var i = 0; i < globalNames.length; i++) {
             if (globalNames[i].isNil) continue;
             if (name == globalNames[i].bytesAsString())
-                return globalValues[i].pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE];
+                return globalValues[i];
         }
     },
+    globalNamed: function(name) {
+        return this.globalRefNamed(name).pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE];
+    },
+
     objectFromOop: function(oop, optionalOopMap) {
         if (oop & 1) {
             var val = oop >> 1;
@@ -974,7 +978,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             case 0x28: case 0x29: case 0x2A: case 0x2B: case 0x2C: case 0x2D: case 0x2E: case 0x2F:
             case 0x30: case 0x31: case 0x32: case 0x33: case 0x34: case 0x35: case 0x36: case 0x37:
             case 0x38: case 0x39: case 0x3A: case 0x3B: case 0x3C: case 0x3D: case 0x3E: case 0x3F:
-                this.push(this.method.methodGetLiteral(b - 0x20)); break;
+                this.push(this.methodLiteral(b - 0x20)); break;
 
             // loadLiteralIndirect
             case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x46: case 0x47:
@@ -983,7 +987,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             case 0x58: case 0x59: case 0x5A: case 0x5B: case 0x5C: case 0x5D: case 0x5E: case 0x5F:
             case 0x60: case 0x61: case 0x62: case 0x63: case 0x64: case 0x65: case 0x66: case 0x67:
             case 0x68: case 0x69: case 0x6A: case 0x6B: case 0x6C: case 0x6D: case 0x6E: case 0x6F:
-                this.push(this.method.methodGetLiteral(b - 0x40).pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE]); break;
+                this.push(this.methodLiteral(b - 0x40).pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE]); break;
 
             // Quick loads
             case 0x70: this.nono(); break;
@@ -1080,7 +1084,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             case 0xE8: case 0xE9: case 0xEA: case 0xEB: case 0xEC: case 0xED: case 0xEE: case 0xEF:
             case 0xF0: case 0xF1: case 0xF2: case 0xF3: case 0xF4: case 0xF5: case 0xF6: case 0xF7:
             case 0xF8: case 0xF9: case 0xFA: case 0xFB: case 0xFC: case 0xFD: case 0xFE: case 0xFF:
-                this.send(this.method.methodGetLiteral(b - 0xD0)); break;
+                this.send(this.methodLiteral(b - 0xD0)); break;
         }
         if (this.doSuper && b != 0x86) debugger  // this can prob be remeoved
     },
@@ -1097,7 +1101,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 			case 0x4:	// store lit indirect
 			case 0x5:
 			case 0x6:
-		        this.method.methodGetLiteral(addrByte&0x3F).pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE] = value; break;
+		        this.methodLiteral(addrByte&0x3F).pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE] = value; break;
             case 0x8:
 				// handle EXTENDED stores 0x88-0x8c
 				var extendedAddr = this.nextByte();
@@ -1108,7 +1112,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 						var addr = this.currentFrameTempOrArg(extendedAddr);
 				        this.activeContextPointers[addr] = value; break;
 					case 0x8b:	// STO* X LDLITI
-                        var oref = this.method.methodGetLiteral(extendedAddr);
+                        var oref = this.methodLiteral(extendedAddr);
                         oref.pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE] = value; break
 					default:		// 0x8a (X LDLIT) and 0x8c (X SEND)
 						nono();
@@ -1136,6 +1140,13 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     nextByte: function() {
         return this.methodBytes[this.pc++] & 0xFF;
     },
+    methodLiteral: function(index) {
+        var literal = this.method.pointers[index];
+        if (this.breakOnLiteral === literal)
+            this.breakNow();
+        return literal;
+    },
+
     nono: function() {
         throw "Oh No!";
     },
@@ -1191,8 +1202,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         switch (nextByte>>6) {
             case 0: this.push(this.receiver.pointers[lobits]);break;
             case 1: this.push(this.homeContext.pointers[Squeak.Context_tempFrameStart+lobits]); break;
-            case 2: this.push(this.method.methodGetLiteral(lobits)); break;
-            case 3: this.push(this.method.methodGetLiteral(lobits).pointers[Squeak.Assn_value]); break;
+            case 2: this.push(this.methodLiteral(lobits)); break;
+            case 3: this.push(this.methodLiteral(lobits).pointers[Squeak.Assn_value]); break;
         }
     },
     extendedStore: function( nextByte) {
@@ -1201,7 +1212,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             case 0: this.receiver.pointers[lobits] = this.top(); break;
             case 1: this.homeContext.pointers[Squeak.Context_tempFrameStart+lobits] = this.top(); break;
             case 2: this.nono(); break;
-            case 3: this.method.methodGetLiteral(lobits).pointers[Squeak.Assn_value] = this.top(); break;
+            case 3: this.methodLiteral(lobits).pointers[Squeak.Assn_value] = this.top(); break;
         }
     },
     extendedStorePop: function(nextByte) {
@@ -1210,24 +1221,9 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             case 0: this.receiver.pointers[lobits] = this.pop(); break;
             case 1: this.homeContext.pointers[Squeak.Context_tempFrameStart+lobits] = this.pop(); break;
             case 2: this.nono(); break;
-            case 3: this.method.methodGetLiteral(lobits).pointers[Squeak.Assn_value] = this.pop(); break;
+            case 3: this.methodLiteral(lobits).pointers[Squeak.Assn_value] = this.pop(); break;
         }
     },
-    doubleExtendedDoAnything: function(nextByte) {
-        var byte3 = this.nextByte();
-        switch (nextByte>>5) {
-            case 0: this.send(this.method.methodGetSelector(byte3), nextByte&31, false); break;
-            case 1: this.send(this.method.methodGetSelector(byte3), nextByte&31, true); break;
-            case 2: this.push(this.receiver.pointers[byte3]); break;
-            case 3: this.push(this.method.methodGetLiteral(byte3)); break;
-            case 4: this.push(this.method.methodGetLiteral(byte3).pointers[Squeak.Assn_key]); break;
-            case 5: this.receiver.pointers[byte3] = this.top(); break;
-            case 6: this.receiver.pointers[byte3] = this.pop(); break;
-            case 7: this.method.methodGetLiteral(byte3).pointers[Squeak.Assn_key] = this.top(); break;
-        }
-    },
-
-
     sendSpecial: function(lobits) {
         this.send(this.specialSelectors[lobits], this.specialNargs[lobits]); 
     },
@@ -1609,6 +1605,10 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.breakOnMethod = found;
         return found;
     },
+    breakOnGlobal: function(name) {
+        this.breakOnLiteral = this.image.globalRefNamed(name);
+    },
+
     breakNow: function() {
         this.breakOutOfInterpreter = 'break';
     },
