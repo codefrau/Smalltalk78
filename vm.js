@@ -930,6 +930,9 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         
         // Permanent patch to act as NoteTaker=true
         this.patchByteCode(1052, 14, 0x7F); // Rectangle>>color:mode:
+        this.patchByteCode(1028, 12, 0x7F); // Rectangle>>blt:mode:
+        this.patchByteCode(2008, 26, 0x7F); // Rectangle>>bitsIntoString:mode:
+        this.patchByteCode(1456, 26, 0x7F); // Rectangle>>bitsFromString:mode:
         this.patchByteCode(23988, 12, 0x7F); // Integer>>lshift:
         this.patchByteCode(24620, 8, 0x7F); // Integer>>minVal
         this.patchByteCode(24608, 8, 0x7F); // Integer>>maxVal
@@ -939,6 +942,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.patchByteCode(3992, 20, 0x7F); // TextScanner>>toDisplay
         this.patchByteCode(4004, 59, 0x7F); // TextScanner>>frame:window:para:style:printing:
         this.patchByteCode(1820, 12, 0x7F); // BitBlt>>window:
+        this.patchByteCode(1892, 22, 0x7F); // BitBlt>>toDisplay
         this.patchByteCode(18912, 20, 0x7F); // UserView>>mp
         this.patchByteCode(18800, 14, 0x7F); // UserView>>buttons
         this.patchByteCode(18864, 20, 0x7F); // UserView>>rawkbck
@@ -1148,8 +1152,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     methodLiteral: function(index) {
         var literal = this.method.pointers[index];
         if (this.breakOnLiteral === literal) {
-            var seen = this.printMethod() + ' oop: ' + this.method.oop + ' pc: ' + this.pc;
-            if (!this.breakOnLiteralSeen) this.breakOnLiteralSeen;
+            var seen = this.printMethod() + ' @' + this.method.oop + '[' + (this.pc-1) + ']';
+            if (!this.breakOnLiteralSeen) this.breakOnLiteralSeen = {};
             if (this.breakOnLiteralSeen[seen]) {
                 this.breakOnLiteralSeen[seen] += 1;
             } else {
