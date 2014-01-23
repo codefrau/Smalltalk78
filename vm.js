@@ -788,7 +788,6 @@ Object.subclass('users.bert.St78.vm.Object',
         return this.pointers[this.methodNumLits() - 1];
     },
     methodGetLiteral: function(zeroBasedIndex) {
-        if (!this.pointers) debugger;  // All methods should be converted before access
         return this.pointers[zeroBasedIndex];
     },
     methodStartPC: function() {
@@ -1105,9 +1104,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         if (this.doSuper && b != 0x86) debugger  // this can prob be remeoved
     },
     doStore: function (value, addrByte) {
-		// ** under construction
-		// console.log("doStore " + addrByte);
-		// debugger;
 		switch (addrByte >> 4) {
 			case 0x0:	// store inst
 				this.receiver.pointers[addrByte] = value; break;
@@ -1123,8 +1119,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 		        this.method.methodGetLiteral(addrByte&0x3F).pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE] = value; break;
             case 0x8:
 				// handle EXTENDED stores 0x88-0x8c
-				//  ** under construction
-				extendedAddr= this.nextByte();
+				var extendedAddr = this.nextByte();
 				switch (addrByte) {
 					case 0x88:	// STO* X LDINST
 						this.receiver.pointers[extendedAddr] = value; break;	
@@ -1293,7 +1288,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         var errorSel = this.image.objectFromOop(NoteTaker.OTI_ERROR_SEL);
         if (selector === errorSel) // Cannot find #error -- unrecoverable error.
             throw "Recursive not understood error encountered";
-        debugger;
         return this.findSelectorInClass(errorSel, 0, startingClass);
     },
     lookupSelectorInDict: function(mDict, messageSelector) {
@@ -1387,7 +1381,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         if (index === 255)
             return this.activeContextPointers[this.sp] = obj;
         if (index >= obj.pointers.size) {
-            debugger;
             throw "quick push out of range?"
         }
         this.activeContextPointers[this.sp] = obj.pointers[index];
@@ -1631,6 +1624,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         });
         if (!found) throw 'method not found: ' + classAndMethodString;
         this.breakOnMethod = found;
+        return found;
     },
     breakNow: function() {
         this.breakOutOfInterpreter = 'break';
@@ -2323,7 +2317,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
 'blocks', {
     primitiveRemoteCopy: function(argCount) {
         // Make a block-like outrigger to rcvr, a process
-        debugger;
         var rcvr = this.vm.stackValue(0);
 	    if (rcvr !== this.vm.activeContext) return false;
 		var pc = this.vm.pc;
@@ -2338,7 +2331,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
 		return true;
     },
     primitiveValue: function(argCount) {
-        debugger;
         var rCode = this.vm.stackValue(0);
         if (rCode.stClass !== this.remoteCodeClass)
             return false;
@@ -2351,7 +2343,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return true;
     },
     primitiveValueGets: function(argCount) {
-        debugger;
 		var value = this.vm.stackValue(1);
         if (!this.primitiveValue(0))
             return false;
