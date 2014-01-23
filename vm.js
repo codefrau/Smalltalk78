@@ -943,12 +943,16 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         method.bytes[20] = 0x7F; // push true
         
         // Permanent patch to make the screen 400 high
-        // method = this.image.objectFromOop(21052);
-        // method.pointers[17] = 400; // was 192
+        // Causes largeInteger problems still
+        //method = this.image.objectFromOop(21052);
+        //method.pointers[17] = 400; // was 192
 
         // Permanent patch to make all LargeIntegers in range +-32K small again:
         // Note: this does not yet work :-(
-        // this.image.smallifyLargeInts();
+        //this.image.smallifyLargeInts();
+        //NoteTaker.MAX_INT;  0x7FFF;
+        //NoteTaker.MIN_INT; -0x8000;
+        //NoteTaker.NON_INT; -0x9000; // non-small and neg (so non pos16 too)
 
     },
 },
@@ -1956,33 +1960,53 @@ Object.subclass('users.bert.St78.vm.Primitives',
 },
 'numbers', {
     doBitAnd: function() {
+        if (NoteTaker.MAX_INT == 0x7FFF) {
+            var rcvr = this.stackInteger(0);
+            var arg = this.stackInteger(1);
+            if (!this.success) return 0;
+            return rcvr & arg;
+        }
         var rcvr = this.stackPos16BitInt(0);
         var arg = this.stackPos16BitInt(1);
         if (!this.success) return 0;
         return this.pos16BitIntFor(rcvr & arg);
     },
     doBitOr: function() {
+        if (NoteTaker.MAX_INT == 0x7FFF) {
+            var rcvr = this.stackInteger(0);
+            var arg = this.stackInteger(1);
+            if (!this.success) return 0;
+            return rcvr | arg;
+        }
         var rcvr = this.stackPos16BitInt(0);
         var arg = this.stackPos16BitInt(1);
         if (!this.success) return 0;
         return this.pos16BitIntFor(rcvr | arg);
     },
     doBitXor: function() {
+        if (NoteTaker.MAX_INT == 0x7FFF) {
+            var rcvr = this.stackInteger(0);
+            var arg = this.stackInteger(1);
+            if (!this.success) return 0;
+            return rcvr ^ arg;
+        }
         var rcvr = this.stackPos16BitInt(0);
         var arg = this.stackPos16BitInt(1);
         if (!this.success) return 0;
         return this.pos16BitIntFor(rcvr ^ arg);
     },
     doBitShift: function() {
-        var rcvr = this.stackPos16BitInt(0);
+        if (NoteTaker.MAX_INT == 0x7FFF) var rcvr = this.stackInteger(0);
+            else var rcvr = this.stackPos16BitInt(0);
         var arg = this.stackInteger(1);
         if (!this.success) return 0;
         var result = this.vm.safeShift(rcvr, arg); // returns negative result if failed
-        if (result >= 0)
-            return this.pos16BitIntFor(this.vm.safeShift(rcvr, arg));
+        if (result >= 0 /* && this.vm.canBeSmallInt(result) */)
+            return this.pos16BitIntFor(result);
         this.success = false;
         return 0;
     },
+
     safeFDiv: function(dividend, divisor) {
         if (divisor === 0.0) {
             this.success = false;
