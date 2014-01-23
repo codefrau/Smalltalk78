@@ -1970,49 +1970,30 @@ Object.subclass('users.bert.St78.vm.Primitives',
 },
 'numbers', {
     doBitAnd: function() {
-        if (NoteTaker.MAX_INT == 0x7FFF) {
-            var rcvr = this.stackInteger(0);
-            var arg = this.stackInteger(1);
-            if (!this.success) return 0;
-            return rcvr & arg;
-        }
-        var rcvr = this.stackPos16BitInt(0);
-        var arg = this.stackPos16BitInt(1);
+        var rcvr = this.stackInteger(0);
+        var arg = this.stackInteger(1);
         if (!this.success) return 0;
-        return this.pos16BitIntFor(rcvr & arg);
+        return rcvr & arg;
     },
     doBitOr: function() {
-        if (NoteTaker.MAX_INT == 0x7FFF) {
-            var rcvr = this.stackInteger(0);
-            var arg = this.stackInteger(1);
-            if (!this.success) return 0;
-            return rcvr | arg;
-        }
-        var rcvr = this.stackPos16BitInt(0);
-        var arg = this.stackPos16BitInt(1);
+        var rcvr = this.stackInteger(0);
+        var arg = this.stackInteger(1);
         if (!this.success) return 0;
-        return this.pos16BitIntFor(rcvr | arg);
+        return rcvr | arg;
     },
     doBitXor: function() {
-        if (NoteTaker.MAX_INT == 0x7FFF) {
-            var rcvr = this.stackInteger(0);
-            var arg = this.stackInteger(1);
-            if (!this.success) return 0;
-            return rcvr ^ arg;
-        }
-        var rcvr = this.stackPos16BitInt(0);
-        var arg = this.stackPos16BitInt(1);
+        var rcvr = this.stackInteger(0);
+        var arg = this.stackInteger(1);
         if (!this.success) return 0;
-        return this.pos16BitIntFor(rcvr ^ arg);
+        return rcvr ^ arg;
     },
     doBitShift: function() {
-        if (NoteTaker.MAX_INT == 0x7FFF) var rcvr = this.stackInteger(0);
-            else var rcvr = this.stackPos16BitInt(0);
+        var rcvr = this.stackInteger(0);
         var arg = this.stackInteger(1);
         if (!this.success) return 0;
         var result = this.vm.safeShift(rcvr, arg); // returns negative result if failed
-        if (result >= 0 /* && this.vm.canBeSmallInt(result) */)
-            return this.pos16BitIntFor(result);
+        if (result >= 0 && this.vm.canBeSmallInt(result))
+            return result;
         this.success = false;
         return 0;
     },
