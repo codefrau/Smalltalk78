@@ -902,6 +902,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 
         // Sadly the call on notetakerize will still cause trouble, so we'll have to patch that out
         this.methodBytes[77] = 145;  // Patches over "DefaultTextStyle NoteTakerize."
+        this.method.pointers[9] = 400; // patch display width to 400
+        this.method.pointers[17] = 327; // patch display height to 327
 
         // Also, remarkably, it seems that Vector, String and Uniquestring all have their classes
         // mistakenly set to Class rather than VariableLengthClass as they were in the image
