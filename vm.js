@@ -1313,7 +1313,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         var newFrame = this.sp - NoteTaker.FI_RECEIVER;
         if (newFrame <= NoteTaker.PI_PROCESS_STACK)
             throw "stack overflow"
-        this.activeContextPointers[newFrame + NoteTaker.FI_SAVED_BP] = this.currentFrame;
+        this.activeContextPointers[newFrame + NoteTaker.FI_SAVED_BP] = this.currentFrame - newFrame;
         this.activeContextPointers[newFrame + NoteTaker.FI_CALLER_PC] = this.pc;
         this.activeContextPointers[newFrame + NoteTaker.FI_NUMARGS] = argumentCount;
         this.activeContextPointers[newFrame + NoteTaker.FI_METHOD] = newMethod;
@@ -1354,7 +1354,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         }
         var reply = this.top();
         var oldFrame = this.currentFrame;
-        var newFrame = this.activeContextPointers[oldFrame + NoteTaker.FI_SAVED_BP];
+        var newFrame = oldFrame + this.activeContextPointers[oldFrame + NoteTaker.FI_SAVED_BP];
         var newPC = this.activeContextPointers[oldFrame + NoteTaker.FI_CALLER_PC];
         var newSP = oldFrame + NoteTaker.FI_LAST_ARG + this.methodNumArgs; // pop past old frame and args
         /////// Whoosh //////
@@ -1606,10 +1606,12 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         if (!limit) limit = 100;
         var stack = '';
         var bp = this.currentFrame;
-        while (bp && limit-- > 0) {
-            var method = ctx.pointers[bp + NoteTaker.FI_METHOD];
+        while (limit-- > 0) {
+            var method = ctx.pointers[bp + NoteTaker.FI_METHOD],
+                deltaBP = ctx.pointers[bp + NoteTaker.FI_SAVED_BP];
             stack = this.printMethod(method) + '\n' + stack;
-            bp = ctx.pointers[bp + NoteTaker.FI_SAVED_BP];
+            if (!deltaBP) return stack;
+            bp += deltaBP;
         }
         return stack;
     },
@@ -1668,7 +1670,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                 '          ', value);
             if (i >= bp + NoteTaker.FI_RECEIVER + numArgs && i+1 < ctx.length) {
                 if (!printAll) return stack;
-                bp = ctx[bp + NoteTaker.FI_SAVED_BP];
+                bp += ctx[bp + NoteTaker.FI_SAVED_BP];
                 numArgs = ctx[bp + NoteTaker.FI_NUMARGS];
                 numTemps = ctx[bp + NoteTaker.FI_METHOD].methodNumTemps();
                 stack += '\n\n' + this.printMethod(ctx[bp + NoteTaker.FI_METHOD]);
