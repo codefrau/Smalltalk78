@@ -943,6 +943,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.patchByteCode(4004, 59, 0x7F); // TextScanner>>frame:window:para:style:printing:
         this.patchByteCode(1820, 12, 0x7F); // BitBlt>>window:
         this.patchByteCode(1892, 22, 0x7F); // BitBlt>>toDisplay
+        this.patchByteCode(18992, 16, 0x7F); // UserView>>restore
         this.patchByteCode(18912, 20, 0x7F); // UserView>>mp
         this.patchByteCode(18800, 14, 0x7F); // UserView>>buttons
         this.patchByteCode(18864, 20, 0x7F); // UserView>>rawkbck
