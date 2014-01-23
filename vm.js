@@ -942,6 +942,22 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         method = this.image.objectFromOop(18912);
         method.bytes[20] = 0x7F; // push true
         
+        // Permanent patch to act as NoteTaker=true in UserView>>buttons
+        method = this.image.objectFromOop(18800);
+        method.bytes[14] = 0x7F; // push true
+
+        // Permanent patch to act as NoteTaker=true in UserView>>rawkbck
+        method = this.image.objectFromOop(18864);
+        method.bytes[20] = 0x7F; // push true
+
+        // Permanent patch to act as NoteTaker=true in UserView>>kbck
+        method = this.image.objectFromOop(18488);
+        method.bytes[19] = 0x7F; // push true
+        
+        // Permanent patch to act as NoteTaker=true in UserView>>keyset
+        method = this.image.objectFromOop(19104);
+        method.bytes[14] = 0x7F; // push true
+
         // Permanent patch to make the screen 400 high
         // Causes largeInteger problems still
         //method = this.image.objectFromOop(21052);
@@ -1757,6 +1773,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 50: return false; // TextScanner.scanword:
             case 53: return true; // String.lock/unlock: address of bits (return self on Notetaker)
             case 58: return this.primitiveMousePoint(argCount);
+            case 61: return this.primitiveKeyboardPeek(argCount);
+            case 68: return this.primitiveMouseButtons(argCount);
 /*
             case 29: return false; // primitiveMultiplyLargeIntegers
             case 30: return false; // primitiveDivideLargeIntegers
@@ -1834,9 +1852,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 104: return false; // primitiveDrawLoop
             case 105: return this.popNandPushIfOK(5, this.doStringReplace()); // string and array replace
             case 106: return this.primitiveScreenSize(argCount); // actualScreenSize
-            case 107: return this.primitiveMouseButtons(argCount); // Sensor mouseButtons
             case 108: return this.primitiveKeyboardNext(argCount); // Sensor kbdNext
-            case 109: return this.primitiveKeyboardPeek(argCount); // Sensor kbdPeek
             case 110: return this.pop2andPushBoolIfOK(this.vm.stackValue(0) === this.vm.stackValue(1)); // ==
             case 111: return this.popNandPushIfOK(1, this.vm.getClass(this.vm.top())); // Object.class
             case 112: return this.popNandPushIfOK(1, 1000000); //primitiveBytesLeft
@@ -2575,15 +2591,12 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
     primitiveKeyboardPeek: function(argCount) {
         var length = this.display.keys.length;
-        return this.popNandPushIfOK(argCount+1, length ? this.checkSmallInt(this.display.keys[length - 1] || 0) : this.vm.nilObj);
+        return this.popNandPushIfOK(argCount+1, length ? this.checkSmallInt(this.display.keys[length - 1] || 0) : this.vm.falseObj);
     },
     primitiveMouseButtons: function(argCount) {
         return this.popNandPushIfOK(argCount+1, this.checkSmallInt(this.display.buttons));
     },
     primitiveMousePoint: function(argCount) {
-        // FIXME:  this is wired to return a point inside the userview so it will display when booted
-        return this.popNandPushIfOK(argCount+1, this.makePointWithXandY(350, 150));
-
         return this.popNandPushIfOK(argCount+1, this.makePointWithXandY(this.checkSmallInt(this.display.mouseX), this.checkSmallInt(this.display.mouseY)));
     },
     primitiveRelinquishProcessorForMicroseconds: function(argCount) {
