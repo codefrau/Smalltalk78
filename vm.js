@@ -1939,8 +1939,10 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
     popNandPushNumIfOK: function(nToPop, returnValue) {
         if (!this.success) return false;
-        if (this.gotFloat)
-           returnValue = this.makeFloat(returnValue);
+        if (this.gotFloat) {
+            if (!this.vm.canBeSmallInt(returnValue) || returnValue !== (returnValue|0))
+                returnValue = this.makeFloat(returnValue);
+        }
         else if (!this.vm.canBeSmallInt(returnValue)) return false;
         this.vm.popNandPush(nToPop, returnValue);
         return true;
