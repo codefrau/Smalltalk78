@@ -938,6 +938,10 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         method = this.image.objectFromOop(1820);
         method.bytes[12] = 0x7F; // push true
         
+        // Permanent patch to act as NoteTaker=true in UserView>>mp
+        method = this.image.objectFromOop(18912);
+        method.bytes[20] = 0x7F; // push true
+        
         // Permanent patch to make the screen 400 high
         // method = this.image.objectFromOop(21052);
         // method.pointers[17] = 400; // was 192
@@ -1748,6 +1752,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 41: return this.primitiveBeDisplay(argCount); // BitBlt install for display
             case 50: return false; // TextScanner.scanword:
             case 53: return true; // String.lock/unlock: address of bits (return self on Notetaker)
+            case 58: return this.primitiveMousePoint(argCount);
 /*
             case 29: return false; // primitiveMultiplyLargeIntegers
             case 30: return false; // primitiveDivideLargeIntegers
@@ -2552,6 +2557,9 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return this.popNandPushIfOK(argCount+1, this.checkSmallInt(this.display.buttons));
     },
     primitiveMousePoint: function(argCount) {
+        // FIXME:  this is wired to return a point inside the userview so it will display when booted
+        return this.popNandPushIfOK(argCount+1, this.makePointWithXandY(350, 150));
+
         return this.popNandPushIfOK(argCount+1, this.makePointWithXandY(this.checkSmallInt(this.display.mouseX), this.checkSmallInt(this.display.mouseY)));
     },
     primitiveRelinquishProcessorForMicroseconds: function(argCount) {
