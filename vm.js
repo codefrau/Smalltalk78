@@ -1614,7 +1614,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             if (classAndMethodString == thisMethod)
                 return found = methodObj;
         });
-        if (!found) throw 'method not found: ' + classAndMethodString;
         this.breakOnMethod = found;
         return found;
     },
@@ -1719,7 +1718,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             //case 0x7: return false; // append:
             case 0x8: return this.popNandPushIfOK(1,this.vm.getClass(this.vm.top())); // class
             case 0x9: return this.popNandPushIfOK(2,this.doBlockCopy()); // remoteCopy:
-            case 0xA: return this.primitiveBlockValue(0); // eval
+            case 0xA: return this.primitiveValue(0); // eval
             //case 0xB: return false; // new
             //case 0xC: return false; // new:
             //case 0xD: return false; // x
