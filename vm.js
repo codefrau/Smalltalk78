@@ -1631,9 +1631,9 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.breakOnLiteral = this.image.globalRefNamed(name);
         return this.breakOnLiteral;
     },
-
     breakNow: function() {
         this.breakOutOfInterpreter = 'break';
+        debugger;
     },
     breakOnReturn: function() {
         this.breakOnFrameChanged = false;
