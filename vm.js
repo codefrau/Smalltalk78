@@ -1823,7 +1823,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 33: return this.popNandPushIntIfOK(1,this.stackFloat(0)); // primitiveAsInteger
             case 34: return this.popNandPushFloatIfOK(1,this.stackFloat(0)|0); // primitiveIntegerPart
             case 35: {var f = this.stackFloat(0); return this.popNandPushFloatIfOK(1, f - (f|0));} // primitiveFractionPart
-            case 36: return this.popNandPushIntIfOK(1, this.vm.image.fixedOopFor(this.stackNonInteger(0)) >> 1); // Object.hash
+            case 36: return this.popNandPushIntIfOK(1, this.vm.image.fixedOopFor(this.stackNonInteger(0)) >> 2); // Object.hash
             case 39: return this.primitiveValueGets(argCount); // RemoteCode.value_
             case 40: return this.primitiveCopyBits(argCount);  // BitBlt.callBLT
             case 41: return this.primitiveBeDisplay(argCount); // BitBlt install for display
