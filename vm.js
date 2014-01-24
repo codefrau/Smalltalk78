@@ -2739,6 +2739,7 @@ Object.subclass('users.bert.St78.vm.BitBlt',
         this.vm = vm;
     }, 
     loadBitBlt: function(bitbltObj) {
+        this.success = true;
         var bitblt = bitbltObj.pointers;
         var func = bitblt[NoteTaker.PI_BITBLT_FUNCTION];
         this.destRule = func & 3;           // set, or, xor, and
@@ -2749,23 +2750,23 @@ Object.subclass('users.bert.St78.vm.BitBlt',
         this.halftone = this.sourceRule >= 2 ? this.loadHalftone(bitblt[NoteTaker.PI_BITBLT_GRAY]) : null;
         this.destBits = this.loadBits(bitblt[NoteTaker.PI_BITBLT_DESTBITS]);
         this.destPitch = bitblt[NoteTaker.PI_BITBLT_DESTRASTER];
-        this.destX = bitblt[NoteTaker.PI_BITBLT_DESTX];
-        this.destY = bitblt[NoteTaker.PI_BITBLT_DESTY];
-        this.width = bitblt[NoteTaker.PI_BITBLT_WIDTH];
-        this.height = bitblt[NoteTaker.PI_BITBLT_HEIGHT];
+        this.destX = this.intFrom(bitblt[NoteTaker.PI_BITBLT_DESTX]);
+        this.destY = this.intFrom(bitblt[NoteTaker.PI_BITBLT_DESTY]);
+        this.width = this.intFrom(bitblt[NoteTaker.PI_BITBLT_WIDTH]);
+        this.height = this.intFrom(bitblt[NoteTaker.PI_BITBLT_HEIGHT]);
         if (!this.noSource) {
             this.sourceBits = this.loadBits(bitblt[NoteTaker.PI_BITBLT_SOURCEBITS]);
-            this.sourcePitch = bitblt[NoteTaker.PI_BITBLT_SOURCERASTER];
-            this.sourceX = bitblt[NoteTaker.PI_BITBLT_SOURCEX];
-            this.sourceY = bitblt[NoteTaker.PI_BITBLT_SOURCEY];
+            this.sourcePitch = this.intFrom(bitblt[NoteTaker.PI_BITBLT_SOURCERASTER]);
+            this.sourceX = this.intFrom(bitblt[NoteTaker.PI_BITBLT_SOURCEX]);
+            this.sourceY = this.intFrom(bitblt[NoteTaker.PI_BITBLT_SOURCEY]);
             this.sourceForm = bitblt[NoteTaker.PI_BITBLT_SOURCE];
         }
-        this.clipX = bitblt[NoteTaker.PI_BITBLT_CLIPX];
-        this.clipY = bitblt[NoteTaker.PI_BITBLT_CLIPY];
-        this.clipW = bitblt[NoteTaker.PI_BITBLT_CLIPWIDTH];
-        this.clipH = bitblt[NoteTaker.PI_BITBLT_CLIPHEIGHT];
+        this.clipX = this.intFrom(bitblt[NoteTaker.PI_BITBLT_CLIPX]);
+        this.clipY = this.intFrom(bitblt[NoteTaker.PI_BITBLT_CLIPY]);
+        this.clipW = this.intFrom(bitblt[NoteTaker.PI_BITBLT_CLIPWIDTH]);
+        this.clipH = this.intFrom(bitblt[NoteTaker.PI_BITBLT_CLIPHEIGHT]);
         this.destForm = bitblt[NoteTaker.PI_BITBLT_DEST];
-        return true;
+        return this.success;
     },
     makeSourceFn: function(rule) {
         switch(rule) {
@@ -2794,6 +2795,14 @@ Object.subclass('users.bert.St78.vm.BitBlt',
         }
         return bitsOop.bytesAsWords;
     },
+    intFrom: function(intOrFloat) {
+        if (this.vm.isSmallInt(intOrFloat))
+            return intOrFloat;
+        if (intOrFloat.isFloat)
+            return intOrFloat.float | 0;
+        this.success = false;
+    },
+
     loadHalftone: function(int) {
         // halftone is 4x4 bits. Expand to 16x4 bits for quick access
         if (int.pointers)  // large int
