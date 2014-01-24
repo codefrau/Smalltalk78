@@ -1810,6 +1810,9 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 27: return this.primitiveNew(argCount); // argCount = 0 fixed size
             case 28: return this.primitiveNew(argCount); // argCount = 1 variable
             case 32: return this.popNandPushFloatIfOK(1,this.stackInteger(0)); // primitiveAsFloat
+            case 33: return this.popNandPushIntIfOK(1,this.stackFloat(0)); // primitiveAsInteger
+            case 34: return this.popNandPushFloatIfOK(1,this.stackFloat(0)|0); // primitiveIntegerPart
+            case 35: {var f = this.stackFloat(0); return this.popNandPushFloatIfOK(1, f - (f|0));} // primitiveFractionPart
             case 39: return this.primitiveValueGets(argCount); // RemoteCode.value_
             case 40: return this.primitiveCopyBits(argCount);  // BitBlt.callBLT
             case 41: return this.primitiveBeDisplay(argCount); // BitBlt install for display
@@ -2009,6 +2012,11 @@ Object.subclass('users.bert.St78.vm.Primitives',
         }
         return 0;  //FIXME - I think in st78 all calls to stackPos16BitInt can simply call stackInteger
     },
+    popNandPushIntIfOK: function(nToPop, returnValue) {
+        if (!this.success || !this.vm.canBeSmallInt(returnValue)) return false; 
+        return this.popNandPushIfOK(nToPop, returnValue);
+    },
+
     pos16BitIntFor: function(pos16Val) {
         // Return the 16-bit quantity as a positive 16-bit integer
         if (pos16Val >= 0)
@@ -2031,6 +2039,10 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.success = false;
         return 0;
     },
+    stackFloat: function(nDeep) {
+        return this.checkFloat(this.vm.stackValue(nDeep));
+    }
+
 },
 'numbers', {
     doBitAnd: function() {
