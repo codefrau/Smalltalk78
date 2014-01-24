@@ -960,21 +960,23 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.patchByteCode(428, 57, 0x7F); // UserView>>currentCursor:
         this.patchByteCode(16680, 22, 0x7F); // UserView>>notify:
 
-        if (false) {  // false to test 32K integers
-        // Patches to make +-16K integers work while NoteTaker is false **remove for +-32K ints**
-        this.patchByteCode(23988, 12, 0x7F); // Integer>>lshift:
-        this.patchByteCode(24620, 8, 0x7F); // Integer>>minVal
-        this.patchByteCode(24608, 8, 0x7F); // Integer>>maxVal
-        this.patchByteCode(26836, 24, 0x7F); // LargeInteger>>lshift:
-        this.patchByteCode(27024, 20, 0x7F); // LargeInteger>>land:
-        this.patchByteCode(26996, 30, 0x7F); // LargeInteger>>asSmall
+        if (false) {
+            // Patches to make +-16K integers work while NoteTaker is false
+            this.patchByteCode(23988, 12, 0x7F); // Integer>>lshift:
+            this.patchByteCode(24620, 8, 0x7F); // Integer>>minVal
+            this.patchByteCode(24608, 8, 0x7F); // Integer>>maxVal
+            this.patchByteCode(26836, 24, 0x7F); // LargeInteger>>lshift:
+            this.patchByteCode(27024, 20, 0x7F); // LargeInteger>>land:
+            this.patchByteCode(26996, 30, 0x7F); // LargeInteger>>asSmall
+            NoteTaker.MAX_INT =  0x3FFF;
+            NoteTaker.MIN_INT = -0x4000;
+            NoteTaker.NON_INT = -0x5000;
         } else {
-        // Patch to make all LargeIntegers in range +-32K small again:
-        // Note: this does not yet work :-(
-        this.image.smallifyLargeInts();
-        NoteTaker.MAX_INT = 0x7FFF;  0x7FFF;
-        NoteTaker.MIN_INT =-0x8000;
-        NoteTaker.NON_INT = 0x9000; // non-small and neg (so non pos16 too)
+            // Patch to make all LargeIntegers in range +-32K small again:
+            this.image.smallifyLargeInts();
+            NoteTaker.MAX_INT =  0x7FFF;
+            NoteTaker.MIN_INT = -0x8000;
+            NoteTaker.NON_INT = -0x9000;
         }
     },
     patchByteCode: function(oop, index, value) {
