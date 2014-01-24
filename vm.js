@@ -630,6 +630,10 @@ Object.subclass('users.bert.St78.vm.Object',
                 var word = image.fieldOfObject(i, this.oop);
                 this.words.push(word);
             }
+            if (classOop === NoteTaker.OTI_CLFLOAT) {
+                this.isFloat = true;
+                this.float = this.wordsAsFloat();
+            }
         } else { // bytes
             this.bytes = [];
             for (var i = 2; i < objBytes; i++) {
@@ -641,7 +645,6 @@ Object.subclass('users.bert.St78.vm.Object',
     initInstanceOf: function(aClass, indexableSize, nilObj) {
         this.stClass = aClass;
         var instSpec = aClass.pointers[NoteTaker.PI_CLASS_INSTSIZE];
-
         if (instSpec & NoteTaker.FMT_HASPOINTERS) {
             var instSize = ((instSpec & NoteTaker.FMT_BYTELENGTH) >> 1) - 1; // words, sans header
             if (instSize + indexableSize > 0)
@@ -649,7 +652,7 @@ Object.subclass('users.bert.St78.vm.Object',
         } else
             if (indexableSize > 0)
                 if (instSpec & NoteTaker.FMT_HASWORDS)
-                    this.words = this.fillArray(indexableSize, 0);
+                    this.words = this.fillArray(indexableSize, 0); //Floats require further init of float value
                 else
                     this.bytes = this.fillArray(indexableSize, 0); //Methods require further init of pointers
     },
@@ -695,8 +698,25 @@ Object.subclass('users.bert.St78.vm.Object',
             chars.push(String.fromCharCode(bytes[i]));
         return chars.join('');
     },
+    wordsAsFloat: function() {
+        // layout of NoteTaker Floats (from MSB):
+        // 15 bits exponent in two's complement without bias, 1 bit sign
+        // 32 bits mantissa including its highest bit (which is implicit in IEEE 754)
+        if (!this.words[1]) return 0.0; // if high-bit of mantissa is 0, then it's all zero
+        var s0 = this.words[0], s1 = this.words[1], s2=this.words[2],
+            sExponent15 = s0 >> 1, sSign1 = s0 & 1, sMantissa31 = (s1 & 0x7FFF) << 16 | s2; // drop high bit of mantissa
+        var dExponent11 = sExponent15 + 1022; // IEEE: 11 bit exponent, biased
+        var d0 = sSign1 << (32-1) | (dExponent11 & 0x7FF) << (31-11) | (sMantissa31 & 0x7FFFF8000) >> 11, // 20 bits of sMantissa
+            d1 = (sMantissa31 & 0x7FF) << (32-11), // remaining 11 bits of sMantissa, rest filled up with 0
+            conv = new DataView(new ArrayBuffer(8));
+        conv.setInt32(0, d0);
+        conv.setInt32(4, d1);
+        return conv.getFloat64(0);
+    },
+
     totalBytes: function() { // size in bytes this object would take up in image snapshot
         var nWords =
+            this.isFloat ? 3 :
             this.words ? this.words.length :
             this.pointers ? this.pointers.length : 0;
         if (this.bytes) nWords += (this.bytes.length + 1) / 2 | 0; 
@@ -744,6 +764,7 @@ Object.subclass('users.bert.St78.vm.Object',
         if (this.oop === NoteTaker.OTI_NIL) return "nil";
         if (this.oop === NoteTaker.OTI_FALSE) return "false";
         if (this.oop === NoteTaker.OTI_TRUE) return "true";
+        if (this.isFloat) {var str = this.float.toString(); if (!/\./.test(str)) str += '.0'; return str; }
         if (this.isClass()) return "the " + this.className() + " class";
         if (this.stClass.oop === NoteTaker.OTI_CLSTRING) return "'" + this.bytesAsString(maxLength||16) + "'";
         if (this.stClass.oop === NoteTaker.OTI_CLUNIQUESTRING) return "#" + this.bytesAsString(maxLength||16);
@@ -2092,7 +2113,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return charTable.pointers[ascii];
     },
     makeFloat: function(value) {
-        var newFloat = this.vm.instantiateClass(this.floatClass, 2);
+        var newFloat = this.vm.instantiateClass(this.floatClass, 0);
         newFloat.isFloat = true;
         newFloat.float = value;
         return newFloat;
