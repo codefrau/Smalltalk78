@@ -555,6 +555,15 @@ Object.subclass('users.bert.St78.vm.Image',
             obj = obj.nextObject;
         }
     },
+    fixedOopFor: function(anObject) {
+        // newly created objects have a temporary oop
+        // the permanent oop is assigned by GC
+        if (anObject.nextObject) // it's an old object
+            return anObject.oop;
+        this.fullGC();
+        return anObject.oop;
+    },
+
     objectAfter: function(obj) {
         // if this was the last old object, tenure new objects and try again
         if (!obj.nextObject && this.newSpaceCount > 0)
@@ -1813,6 +1822,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 33: return this.popNandPushIntIfOK(1,this.stackFloat(0)); // primitiveAsInteger
             case 34: return this.popNandPushFloatIfOK(1,this.stackFloat(0)|0); // primitiveIntegerPart
             case 35: {var f = this.stackFloat(0); return this.popNandPushFloatIfOK(1, f - (f|0));} // primitiveFractionPart
+            case 36: return this.popNandPushIntIfOK(1, this.vm.image.fixedOopFor(this.stackNonInteger(0)) >> 1); // Object.hash
             case 39: return this.primitiveValueGets(argCount); // RemoteCode.value_
             case 40: return this.primitiveCopyBits(argCount);  // BitBlt.callBLT
             case 41: return this.primitiveBeDisplay(argCount); // BitBlt install for display
