@@ -341,6 +341,16 @@ Object.subclass('users.bert.St78.vm.Image',
                 return globalValues[i];
         }
     },
+    selectorNamed: function(name) {
+        var symbolClass = this.objectFromOop(NoteTaker.OTI_CLUNIQUESTRING),
+            symbol = this.someInstanceOf(symbolClass);
+        while (symbol) {
+            if (name.length == symbol.bytes.length && name == symbol.bytesAsString())
+                return symbol;
+            symbol = this.nextInstanceAfter(symbol);
+        }
+    },
+
     globalNamed: function(name) {
         return this.globalRefNamed(name).pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE];
     },
@@ -675,6 +685,16 @@ Object.subclass('users.bert.St78.vm.Object',
             string += '…';
         return string;
     },
+
+    bytesAsRawString: function() {
+        if (!this.bytes) return '';
+        var bytes = this.bytes; // can be Uint8Array
+        var n = bytes.length;
+        var chars = [];
+        for (var i = 0; i < n; i++)
+            chars.push(String.fromCharCode(bytes[i]));
+        return chars.join('');
+    },
     totalBytes: function() { // size in bytes this object would take up in image snapshot
         var nWords =
             this.words ? this.words.length :
@@ -845,6 +865,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.trueObj = this.image.objectFromOop(NoteTaker.OTI_TRUE);
         this.integerClass = this.image.objectFromOop(NoteTaker.OTI_CLINTEGER);
         this.classClass = this.image.objectFromOop(NoteTaker.OTI_CLCLASS);
+        this.errorSel = this.image.selectorNamed('error:');
     },
     initVMState: function() {
         this.byteCodeCount = 0;
@@ -1276,11 +1297,13 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             }  
             currentClass = currentClass.pointers[NoteTaker.PI_CLASS_SUPERCLASS];
         }
-        //Could not find a normal message -- send #error
-        var errorSel = this.image.objectFromOop(NoteTaker.OTI_ERROR_SEL);
-        if (selector === errorSel) // Cannot find #error -- unrecoverable error.
+        //Could not find the method -- send #error: with selector
+        if (selector === this.errorSel) // Cannot find #error: -- unrecoverable error.
             throw "Recursive not understood error encountered";
-        return this.findSelectorInClass(errorSel, 0, startingClass);
+        var rcvr = this.pop();
+        this.push(this.primHandler.makeStString('MNU: ' + selector.bytesAsRawString()));
+        this.push(rcvr);
+        return this.findSelectorInClass(this.errorSel, 1, startingClass);
     },
     lookupSelectorInDict: function(mDict, messageSelector) {
         //Returns a method or nilObject
@@ -1646,7 +1669,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         for (var i = this.sp; i < ctx.length; i++) {
             if (!debugFrame && bp + NoteTaker.FI_SAVED_BP <= i && bp + NoteTaker.FI_RECEIVER >= i) continue;
             var obj = ctx[i];
-            var value = typeof obj === 'number' ? obj : obj.stInstName();
+            var value = obj && obj.stInstName ? obj.stInstName() : obj;
             stack += Strings.format('\n[%s] %s%s', i, 
                 bp + NoteTaker.FI_FIRST_TEMP - numTemps < i && i <= bp + NoteTaker.FI_FIRST_TEMP
                     ? ('  temp ' + (bp + NoteTaker.FI_FIRST_TEMP + numArgs - i) + ': ') :
