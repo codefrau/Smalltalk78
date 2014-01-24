@@ -1133,15 +1133,16 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         // run until idle, but at most for a couple milliseconds
         // answer milliseconds to sleep (until next timer wakeup)
         // or 'break' if reached breakpoint
-        this.isIdle = false;
+        //this.isIdle = false;
         this.breakOutOfInterpreter = false;
         this.breakOutTick = this.lastTick + (forMilliseconds || 500);
         while (!this.breakOutOfInterpreter)
             this.interpretOne();
         if (this.breakOutOfInterpreter == 'break') return 'break';
-        if (!this.isIdle) return 0;
-        if (!this.nextWakeupTick) return 'sleep'; // all processes waiting
-        return Math.max(0, this.nextWakeupTick - this.primHandler.millisecondClockValue());
+        return Math.min(this.primHandler.idleMS(), 200);
+        //if (!this.isIdle) return 0;
+        //if (!this.nextWakeupTick) return 'sleep'; // all processes waiting
+        //return Math.max(0, this.nextWakeupTick - this.primHandler.millisecondClockValue());
     },
     nextByte: function() {
         return this.methodBytes[this.pc++] & 0xFF;
@@ -1693,6 +1694,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.pointClass = this.vm.image.objectFromOop(NoteTaker.OTI_CLPOINT);
         this.floatClass = this.vm.image.objectFromOop(NoteTaker.OTI_CLFLOAT);
         this.stringClass = this.vm.image.objectFromOop(NoteTaker.OTI_CLSTRING);
+        this.idleCounter = 0;
     },
     initModules: function() {
         this.loadedModules = {};
@@ -2088,6 +2090,12 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (!rcvr.pointers) return false;
         return rcvr.pointers.indexOf(arg) >= 0;
     },
+    idleMS: function() {
+        if (this.idleCounter < 100) return 0;
+        var inactivityMS = Date.now() - this.display.timeStamp;
+        return inactivityMS;
+    }
+
 },
 'indexing', {
     indexableSize: function(obj) {
@@ -2581,13 +2589,17 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return true;
 	},
     primitiveKeyboardNext: function(argCount) {
+        this.idleCounter = 0; // reset idle if there is input
         return this.popNandPushIfOK(argCount+1, this.checkSmallInt(this.display.keys.pop()));
     },
     primitiveKeyboardPeek: function(argCount) {
         var length = this.display.keys.length;
+        if (!length) this.idleCounter++;
         return this.popNandPushIfOK(argCount+1, length ? this.checkSmallInt(this.display.keys[length - 1] || 0) : this.vm.falseObj);
     },
     primitiveMouseButtons: function(argCount) {
+        if (this.display.buttons & 7) this.idleCounter = 0;
+        else this.idleCounter++;
         return this.popNandPushIfOK(argCount+1, this.checkSmallInt(this.display.buttons));
     },
     primitiveMousePoint: function(argCount) {
