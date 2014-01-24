@@ -580,17 +580,7 @@ Object.subclass('users.bert.St78.vm.Image',
         };
         return result
     },
-    largeInts: function() {  // this.largeInts()
-        // enumerate largeIntegers
-        var cl = this.objectFromOop(NoteTaker.OTI_CLLARGEINTEGER),
-            large = this.someInstanceOf(cl),
-            result = [];
-        while (large) {
-            result.push(large.largeIntegerValue());
-            large = this.nextInstanceAfter(large);
-            }
-        return result
-    },
+
 
     labelObjRefs: function() {
         // label object refs with their keys in all symbol tables
@@ -906,8 +896,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 
         // Sadly the call on notetakerize will still cause trouble, so we'll have to patch that out
         this.methodBytes[77] = 145;  // Patches over "DefaultTextStyle NoteTakerize."
-        this.method.pointers[9] = 400; // patch display width to 400
-        this.method.pointers[17] = 327; // patch display height to 327
+        this.method.pointers[9] = 640; // patch display width to 640
+        this.method.pointers[17] = 480; // patch display height to 480
 
         // Also, remarkably, it seems that Vector, String and Uniquestring all have their classes
         // mistakenly set to Class rather than VariableLengthClass as they were in the image
@@ -933,12 +923,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.patchByteCode(1028, 12, 0x7F); // Rectangle>>blt:mode:
         this.patchByteCode(2008, 26, 0x7F); // Rectangle>>bitsIntoString:mode:
         this.patchByteCode(1456, 26, 0x7F); // Rectangle>>bitsFromString:mode:
-        this.patchByteCode(23988, 12, 0x7F); // Integer>>lshift:
-        this.patchByteCode(24620, 8, 0x7F); // Integer>>minVal
-        this.patchByteCode(24608, 8, 0x7F); // Integer>>maxVal
-        this.patchByteCode(26836, 24, 0x7F); // LargeInteger>>lshift:
-        this.patchByteCode(27024, 20, 0x7F); // LargeInteger>>land:
-        this.patchByteCode(26996, 30, 0x7F); // LargeInteger>>asSmall
         this.patchByteCode(3992, 20, 0x7F); // TextScanner>>toDisplay
         this.patchByteCode(4004, 59, 0x7F); // TextScanner>>frame:window:para:style:printing:
         this.patchByteCode(1820, 12, 0x7F); // BitBlt>>window:
@@ -955,13 +939,22 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.patchByteCode(428, 57, 0x7F); // UserView>>currentCursor:
         this.patchByteCode(16680, 22, 0x7F); // UserView>>notify:
 
-        // Permanent patch to make all LargeIntegers in range +-32K small again:
+        if (false) {  // false to test 32K integers
+        // Patches to make +-16K integers work while NoteTaker is false **remove for +-32K ints**
+        this.patchByteCode(23988, 12, 0x7F); // Integer>>lshift:
+        this.patchByteCode(24620, 8, 0x7F); // Integer>>minVal
+        this.patchByteCode(24608, 8, 0x7F); // Integer>>maxVal
+        this.patchByteCode(26836, 24, 0x7F); // LargeInteger>>lshift:
+        this.patchByteCode(27024, 20, 0x7F); // LargeInteger>>land:
+        this.patchByteCode(26996, 30, 0x7F); // LargeInteger>>asSmall
+        } else {
+        // Patch to make all LargeIntegers in range +-32K small again:
         // Note: this does not yet work :-(
-        //this.image.smallifyLargeInts();
-        //NoteTaker.MAX_INT;  0x7FFF;
-        //NoteTaker.MIN_INT; -0x8000;
-        //NoteTaker.NON_INT; -0x9000; // non-small and neg (so non pos16 too)
-
+        this.image.smallifyLargeInts();
+        NoteTaker.MAX_INT = 0x7FFF;  0x7FFF;
+        NoteTaker.MIN_INT =-0x8000;
+        NoteTaker.NON_INT = 0x9000; // non-small and neg (so non pos16 too)
+        }
     },
     patchByteCode: function(oop, index, value) {
         var method = this.image.objectFromOop(oop);
@@ -2238,9 +2231,18 @@ Object.subclass('users.bert.St78.vm.Primitives',
             return this.popNandPushIfOK(1, this.vm.instantiateClass(rcvr, 0));
         // variable size 
         var size = this.stackInteger(1);
-        if (!this.success || size < 0) return false;
-        if (!((rcvr.pointers[NoteTaker.PI_CLASS_INSTSIZE] & NoteTaker.FMT_ISVARIABLE) > 0)) console.log("Failure of new: due to instSize bit not set for class " + rcvr);
-        if (!((rcvr.pointers[NoteTaker.PI_CLASS_INSTSIZE] & NoteTaker.FMT_ISVARIABLE) > 0)) return false
+        if (this.success && size < 0) return false;  // negative size
+        if (!this.success) {
+            var largeSize = this.stackNonInteger(1);
+            if (largeSize.stClass.oop !== NoteTaker.OTI_CLLARGEINTEGER) return false
+            size = largeSize.largeIntegerValue();
+            if (size < 0 || size > 200000) return false; // we have our limits
+            this.success = true;
+        }
+        if (!((rcvr.pointers[NoteTaker.PI_CLASS_INSTSIZE] & NoteTaker.FMT_ISVARIABLE) > 0)) {
+            console.log("Failure of new: due to instSize bit not set for class " + rcvr);
+            return false
+        }
         return this.popNandPushIfOK(2, this.vm.instantiateClass(rcvr, size));
     },
     primitiveNewMethod: function(argCount) {
