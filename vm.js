@@ -943,7 +943,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         // So far all the references to the Notetaker global seem to be about byte ordering, 
         // and I believe that we do not want the intel swapping,  So by skipping 3 bytes forward, 
         // Notetaker will remain false and byte access will benormal
-        this.pc += 3; // Loc beyond Notetaker <- true.
+        // this.pc += 3; // Loc beyond Notetaker <- true.
 
         // Sadly the call on notetakerize will still cause trouble, so we'll have to patch that out
         this.methodBytes[77] = 145;  // Patches over "DefaultTextStyle NoteTakerize."
@@ -968,48 +968,22 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
         this.image.objectFromOop(NoteTaker.OTI_CLCOMPILEDMETHOD).stClass =
             this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
-        
-        // Permanent patch to act as NoteTaker=true
-        this.patchByteCode(1052, 14, 0x7F); // Rectangle>>color:mode:
-        this.patchByteCode(1028, 12, 0x7F); // Rectangle>>blt:mode:
-        this.patchByteCode(2008, 26, 0x7F); // Rectangle>>bitsIntoString:mode:
-        this.patchByteCode(1456, 26, 0x7F); // Rectangle>>bitsFromString:mode:
-        this.patchByteCode(3992, 20, 0x7F); // TextScanner>>toDisplay
-        this.patchByteCode(4004, 59, 0x7F); // TextScanner>>frame:window:para:style:printing:
-        this.patchByteCode(1820, 12, 0x7F); // BitBlt>>window:
-        this.patchByteCode(1892, 22, 0x7F); // BitBlt>>toDisplay
-        this.patchByteCode(18992, 16, 0x7F); // UserView>>restore
-        this.patchByteCode(18912, 20, 0x7F); // UserView>>mp
-        this.patchByteCode(18800, 14, 0x7F); // UserView>>buttons
-        this.patchByteCode(18864, 20, 0x7F); // UserView>>rawkbck
-        this.patchByteCode(18488, 19, 0x7F); // UserView>>kbck
-        this.patchByteCode(6312, 12, 0x7F); // UserView>>rawkbck
-        this.patchByteCode(18844, 20, 0x7F); // UserView>>kbdnext
-        this.patchByteCode(19104, 14, 0x7F); // UserView>>keyset
-        this.patchByteCode(18552, 16, 0x7F); // UserView>>cursorloc←
-        this.patchByteCode(428, 57, 0x7F); // UserView>>currentCursor:
-        this.patchByteCode(16680, 22, 0x7F); // UserView>>notify:
-        this.patchByteCode(16724, 10, 0x7F); // UserView>>displayoffwhile▹
-        this.patchByteCode(23332, 46, 0x7F); // Class>>code:
 
-        if (false) {
-            // Patches to make +-16K integers work while NoteTaker is false
-            this.patchByteCode(23988, 12, 0x7F); // Integer>>lshift:
-            this.patchByteCode(24620, 8, 0x7F); // Integer>>minVal
-            this.patchByteCode(24608, 8, 0x7F); // Integer>>maxVal
-            this.patchByteCode(26836, 24, 0x7F); // LargeInteger>>lshift:
-            this.patchByteCode(27024, 20, 0x7F); // LargeInteger>>land:
-            this.patchByteCode(26996, 30, 0x7F); // LargeInteger>>asSmall
-            NoteTaker.MAX_INT =  0x3FFF;
-            NoteTaker.MIN_INT = -0x4000;
-            NoteTaker.NON_INT = -0x5000;
-        } else {
-            // Patch to make all LargeIntegers in range +-32K small again:
-            this.image.smallifyLargeInts();
-            NoteTaker.MAX_INT =  0x7FFF;
-            NoteTaker.MIN_INT = -0x8000;
-            NoteTaker.NON_INT = -0x9000;
-        }
+        // Patch to make all LargeIntegers in range +-32K small again:
+        this.image.smallifyLargeInts();
+        NoteTaker.MAX_INT =  0x7FFF;
+        NoteTaker.MIN_INT = -0x8000;
+        NoteTaker.NON_INT = -0x9000;
+        
+        // Patches to make +-32K integers work while NoteTaker is true
+        this.patchByteCode(23988, 12, 0x7E); // Integer>>lshift:
+        this.patchByteCode(24620, 8, 0x7E); // Integer>>minVal
+        this.patchByteCode(24608, 8, 0x7E); // Integer>>maxVal
+        this.patchByteCode(26836, 24, 0x7E); // LargeInteger>>lshift:
+        this.patchByteCode(27024, 20, 0x7E); // LargeInteger>>land:
+        this.patchByteCode(26996, 30, 0x7E); // LargeInteger>>asSmall
+        // LargeInt >> lor:, lxor: ??
+    
     },
     patchByteCode: function(oop, index, value) {
         var method = this.image.objectFromOop(oop);
