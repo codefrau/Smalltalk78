@@ -1729,6 +1729,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.pointClass = this.vm.image.objectFromOop(NoteTaker.OTI_CLPOINT);
         this.floatClass = this.vm.image.objectFromOop(NoteTaker.OTI_CLFLOAT);
         this.stringClass = this.vm.image.objectFromOop(NoteTaker.OTI_CLSTRING);
+        this.compiledMethodClass = this.vm.image.objectFromOop(NoteTaker.OTI_CLCOMPILEDMETHOD);
         this.idleCounter = 0;
     },
     initModules: function() {
@@ -2627,15 +2628,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
 	},
 	primitiveCopyBits: function(argCount) { // no rcvr class check, to allow unknown subclasses (e.g. under Turtle)
         var bitbltObj = this.vm.stackValue(argCount);
-        if (!bitbltObj.pointers[NoteTaker.PI_BITBLT_DESTBITS].bytes) {
-            var src = bitbltObj.pointers[NoteTaker.PI_BITBLT_SOURCEBITS],
-                srcIndex = bitbltObj.pointers[NoteTaker.PI_BITBLT_SOURCEY],
-                dest = bitbltObj.pointers[NoteTaker.PI_BITBLT_DESTBITS],
-                destIndex = bitbltObj.pointers[NoteTaker.PI_BITBLT_DESTY],
-                count = bitbltObj.pointers[NoteTaker.PI_BITBLT_CLIPHEIGHT];
-            throw Strings.format("BitBlt %s fields from %s[%s] to %s[%s]",
-                count, src.stInstName(), srcIndex, dest.stInstName(), destIndex);
-        }
+        if (!bitbltObj.pointers[NoteTaker.PI_BITBLT_DESTBITS].bytes)
+            return this.bitBltCopyPointers(bitbltObj);
         var bitblt = new users.bert.St78.vm.BitBlt(this.vm);
         if (!bitblt.loadBitBlt(bitbltObj)) return false;
         bitblt.copyBits();
@@ -2732,6 +2726,40 @@ Object.subclass('users.bert.St78.vm.Primitives',
         //delays of up to that length without overflowing a SmallInteger."
         return (Date.now() - this.vm.startupTime) & this.vm.millisecondClockMask;
 	},
+    bitBltCopyPointers: function(bitbltObj) {
+        // BitBlt is used by the image to copy literals into and out of
+        // CompiledMethods' bytes. In our implementation, the literals are 
+        // duplicated into pointers. This is taken care of here.
+        var src = bitbltObj.pointers[NoteTaker.PI_BITBLT_SOURCEBITS],
+            srcIndex = bitbltObj.pointers[NoteTaker.PI_BITBLT_SOURCEY],
+            dest = bitbltObj.pointers[NoteTaker.PI_BITBLT_DESTBITS],
+            destIndex = bitbltObj.pointers[NoteTaker.PI_BITBLT_DESTY],
+            count = bitbltObj.pointers[NoteTaker.PI_BITBLT_CLIPHEIGHT];
+        debugger;
+        // adjust for missing header word in CompiledMethod's pointers
+        if (src.stClass === this.compiledMethodClass) srcIndex--;
+        if (dest.stClass === this.compiledMethodClass) destIndex--;
+        // make sure the CompiledMethod pointers are initialized
+        [{obj:src,i:srcIndex},{obj:dest,i:destIndex}].forEach(function(each){
+            if (!each.obj.pointers) {
+                if (each.obj.stClass !== this.compiledMethodClass)
+                    throw Strings.format("bitBltCopyPointers: %s fields from %s@%s to %s@%s",
+                        count, src.stInstName(), srcIndex, dest.stInstName(), destIndex);
+                // this is a new CompiledMethod, duplicate its bytes to pointers
+                each.obj.methodInitLits(this.vm.image);
+            }
+            if (each.i < 0 || each.i + count > each.obj.pointers.length)
+                throw Strings.format("bitBltCopyPointers: access out of bounds for %s@%s-%s", 
+                    each.obj.stInstName(), each.i, each.i + count - 1);
+            });
+        // now do the copy
+        this.vm.arrayCopy(src.pointers, srcIndex, dest.pointers, destIndex, count)
+        // if a CompiledMethod was modified, adjust its bytes, too
+        if (dest.stClass === this.compiledMethodClass)
+            dest.methodStoreIntoLits(this.vm.image, destIndex, count);
+        return true;
+    },
+
 	secondClock: function() {
 	    var date = new Date();
         var seconds = date.getTime() / 1000 | 0;    // milliseconds -> seconds
