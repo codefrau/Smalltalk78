@@ -990,6 +990,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.patchByteCode(428, 57, 0x7F); // UserView>>currentCursor:
         this.patchByteCode(16680, 22, 0x7F); // UserView>>notify:
         this.patchByteCode(16724, 10, 0x7F); // UserView>>displayoffwhile▹
+        this.patchByteCode(23332, 46, 0x7F); // Class>>code:
 
         if (false) {
             // Patches to make +-16K integers work while NoteTaker is false
