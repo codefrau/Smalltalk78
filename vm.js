@@ -2651,6 +2651,15 @@ Object.subclass('users.bert.St78.vm.Primitives',
 	},
 	primitiveCopyBits: function(argCount) { // no rcvr class check, to allow unknown subclasses (e.g. under Turtle)
         var bitbltObj = this.vm.stackValue(argCount);
+        if (!bitbltObj.pointers[NoteTaker.PI_BITBLT_DESTBITS].bytes) {
+            var src = bitbltObj.pointers[NoteTaker.PI_BITBLT_SOURCEBITS],
+                srcIndex = bitbltObj.pointers[NoteTaker.PI_BITBLT_SOURCEY],
+                dest = bitbltObj.pointers[NoteTaker.PI_BITBLT_DESTBITS],
+                destIndex = bitbltObj.pointers[NoteTaker.PI_BITBLT_DESTY],
+                count = bitbltObj.pointers[NoteTaker.PI_BITBLT_CLIPHEIGHT];
+            throw Strings.format("BitBlt %s fields from %s[%s] to %s[%s]",
+                count, src.stInstName(), srcIndex, dest.stInstName(), destIndex);
+        }
         var bitblt = new users.bert.St78.vm.BitBlt(this.vm);
         if (!bitblt.loadBitBlt(bitbltObj)) return false;
         bitblt.copyBits();
