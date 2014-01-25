@@ -2814,17 +2814,19 @@ Object.subclass('users.bert.St78.vm.BitBlt',
             var bytesAsWords = new DataView(bitsOop.bytes.buffer);
             bitsOop.bitBltAcccessor = {
                 getWord: function(index) {
-                    var value = 0;
-                    try {value = bytesAsWords.getUint16(index * 2)} catch (e) {};
-                    return value;
+                    if (index > 0 && index * 2 < bytesAsWords.byteLength)
+                        return bytesAsWords.getUint16(index * 2);
+                    else return 0;
                 },
                 setWord: function(index, value) {
-                    try {bytesAsWords.setUint16(index * 2, value)} catch (e) {};
+                    if (index > 0 && index * 2 < bytesAsWords.byteLength)
+                        bytesAsWords.setUint16(index * 2, value);
                 }
             }
         }
         return bitsOop.bitBltAcccessor;
     },
+
     intFrom: function(intOrFloat) {
         if (this.vm.isSmallInt(intOrFloat))
             return intOrFloat;
