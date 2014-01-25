@@ -1333,8 +1333,10 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         //Could not find the method -- send #error: with selector
         if (selector === this.errorSel) // Cannot find #error: -- unrecoverable error.
             throw "Recursive not understood error encountered";
-        var rcvr = this.pop();
-        this.push(this.primHandler.makeStString('MNU: ' + selector.bytesAsRawString()));
+        var rcvr = this.pop(),
+            className = startingClass.pointers[NoteTaker.PI_CLASS_TITLE].bytesAsRawString(),
+            selName = selector.bytesAsRawString();
+        this.push(this.primHandler.makeStString('MNU: ' + className + '>>' + selName));
         this.push(rcvr);
         return this.findSelectorInClass(this.errorSel, 1, startingClass);
     },
