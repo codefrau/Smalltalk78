@@ -897,6 +897,51 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.classClass = this.image.objectFromOop(NoteTaker.OTI_CLCLASS);
         this.errorSel = this.image.selectorNamed('error:');
     },
+    notetakerPatches: function() {
+        // this.method is Process>>goBaby
+        
+        // set display extent to 640x480 by modifying literals
+        this.method.pointers[9] = 640;
+        this.method.pointers[17] = 480;
+
+        // Do not make font glyphs little-endian and interleaved 
+        this.methodBytes[77] = 145;  // Patches over "DefaultTextStyle NoteTakerize."
+
+        // Remarkably, it seems that Vector, String and Uniquestring all have their classes
+        // mistakenly set to Class rather than VariableLengthClass as they were in the image
+        // from which the NT image was cloned.  I was accused of "bit rot" for claiming this
+        // to be in error due to the contradictory evidence in the image.  Amazingly
+        // the one thing that would have revealed this error, the lookup of new:, was sidestepped
+        // in both my original 8086 code and Helge's Java VM.  Truly amazing  ;-)
+        this.image.objectFromOop(NoteTaker.OTI_CLSTRING).stClass =
+            this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
+        this.image.objectFromOop(NoteTaker.OTI_CLUNIQUESTRING).stClass =
+            this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
+        this.image.objectFromOop(NoteTaker.OTI_CLVECTOR).stClass =
+            this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
+        this.image.objectFromOop(NoteTaker.OTI_CLPROCESS).stClass =
+            this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
+        this.image.objectFromOop(NoteTaker.OTI_CLNATURAL).stClass =
+            this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
+        this.image.objectFromOop(NoteTaker.OTI_CLCOMPILEDMETHOD).stClass =
+            this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
+
+        // Patch to make all LargeIntegers in range +-32K small again:
+        this.image.smallifyLargeInts();
+        NoteTaker.MAX_INT =  0x7FFF;
+        NoteTaker.MIN_INT = -0x8000;
+        NoteTaker.NON_INT = -0x9000;
+        
+        // Patches to make +-32K integers work while NoteTaker is true
+        this.patchByteCode(23988, 12, 0x7E); // Integer>>lshift:
+        this.patchByteCode(24620, 8, 0x7E); // Integer>>minVal
+        this.patchByteCode(24608, 8, 0x7E); // Integer>>maxVal
+        this.patchByteCode(26836, 24, 0x7E); // LargeInteger>>lshift:
+        this.patchByteCode(27024, 20, 0x7E); // LargeInteger>>land:
+        this.patchByteCode(26996, 30, 0x7E); // LargeInteger>>asSmall
+        // LargeInt >> lor:, lxor: ??
+    },
+
     initVMState: function() {
         this.byteCodeCount = 0;
         this.sendCount = 0;
@@ -939,51 +984,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.pc = this.method.methodStartPC(); // Loc of Notetaker <- true.
         this.sp = this.currentFrame;
 
-        // FIXME:  The following should all be moved to a method called, eg, NTpatches...
-        // So far all the references to the Notetaker global seem to be about byte ordering, 
-        // and I believe that we do not want the intel swapping,  So by skipping 3 bytes forward, 
-        // Notetaker will remain false and byte access will benormal
-        // this.pc += 3; // Loc beyond Notetaker <- true.
-
-        // Sadly the call on notetakerize will still cause trouble, so we'll have to patch that out
-        this.methodBytes[77] = 145;  // Patches over "DefaultTextStyle NoteTakerize."
-        this.method.pointers[9] = 640; // patch display width to 640
-        this.method.pointers[17] = 480; // patch display height to 480
-
-        // Also, remarkably, it seems that Vector, String and Uniquestring all have their classes
-        // mistakenly set to Class rather than VariableLengthClass as they were in the image
-        // from which the NT image was cloned.  I was accused of "bit rot" for claiming this
-        // to be in error due to the contradictory evidence in the image.  Amazingly
-        // the one thing that would have revealed this error, the lookup of new:, was sidestepped
-        // in both my original 8086 code and Helge's Java VM.  Truly amazing  ;-)
-        this.image.objectFromOop(NoteTaker.OTI_CLSTRING).stClass =
-            this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
-        this.image.objectFromOop(NoteTaker.OTI_CLUNIQUESTRING).stClass =
-            this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
-        this.image.objectFromOop(NoteTaker.OTI_CLVECTOR).stClass =
-            this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
-        this.image.objectFromOop(NoteTaker.OTI_CLPROCESS).stClass =
-            this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
-        this.image.objectFromOop(NoteTaker.OTI_CLNATURAL).stClass =
-            this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
-        this.image.objectFromOop(NoteTaker.OTI_CLCOMPILEDMETHOD).stClass =
-            this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
-
-        // Patch to make all LargeIntegers in range +-32K small again:
-        this.image.smallifyLargeInts();
-        NoteTaker.MAX_INT =  0x7FFF;
-        NoteTaker.MIN_INT = -0x8000;
-        NoteTaker.NON_INT = -0x9000;
-        
-        // Patches to make +-32K integers work while NoteTaker is true
-        this.patchByteCode(23988, 12, 0x7E); // Integer>>lshift:
-        this.patchByteCode(24620, 8, 0x7E); // Integer>>minVal
-        this.patchByteCode(24608, 8, 0x7E); // Integer>>maxVal
-        this.patchByteCode(26836, 24, 0x7E); // LargeInteger>>lshift:
-        this.patchByteCode(27024, 20, 0x7E); // LargeInteger>>land:
-        this.patchByteCode(26996, 30, 0x7E); // LargeInteger>>asSmall
-        // LargeInt >> lor:, lxor: ??
-    
+        // fix up the image
+        this.notetakerPatches();
     },
     patchByteCode: function(oop, index, value) {
         var method = this.image.objectFromOop(oop);
