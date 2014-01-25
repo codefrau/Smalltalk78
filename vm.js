@@ -1088,13 +1088,13 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 				this.push(this.activeContextPointers[addr]); break
 				break;
 			case 0x8A:	// X LDLIT
-				this.push(fetchMethodLiteral(this.nextByte()));
+				this.push(this.methodLiteral(this.nextByte()));
 				break;
 			case 0x8B:	// X LDLITI
-				push(body(fetchMethodLiteral(this.nextByte())).pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE]);
+				this.push(this.methodLiteral(this.nextByte()).pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE]);
 				break;
 			case 0x8C:	// X SEND
-				send(fetchMethodLiteral(nextByte()));
+				this.send(this.methodLiteral(this.nextByte()));
 				break;
 			case 0x8D:
 			case 0x8E: this.nono(); break; 			// illegal 0x87..0x8F
