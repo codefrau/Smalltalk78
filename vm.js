@@ -2772,12 +2772,12 @@ Object.subclass('users.bert.St78.vm.Primitives',
             dest = bitbltObj.pointers[NoteTaker.PI_BITBLT_DESTBITS],
             destIndex = bitbltObj.pointers[NoteTaker.PI_BITBLT_DESTY],
             count = bitbltObj.pointers[NoteTaker.PI_BITBLT_CLIPHEIGHT];
-        debugger;
         // adjust for missing header word in CompiledMethod's pointers
         if (src.stClass === this.compiledMethodClass) srcIndex--;
         if (dest.stClass === this.compiledMethodClass) destIndex--;
         // make sure the CompiledMethod pointers are initialized
         [{obj:src,i:srcIndex},{obj:dest,i:destIndex}].forEach(function(each){
+            if (each.obj.isNil && each.obj !== dest) return; // okay for src to be nil
             if (!each.obj.pointers) {
                 if (each.obj.stClass !== this.compiledMethodClass)
                     throw Strings.format("bitBltCopyPointers: %s fields from %s@%s to %s@%s",
@@ -2789,8 +2789,11 @@ Object.subclass('users.bert.St78.vm.Primitives',
                 throw Strings.format("bitBltCopyPointers: access out of bounds for %s@%s-%s", 
                     each.obj.stInstName(), each.i, each.i + count - 1);
             });
-        // now do the copy
-        this.vm.arrayCopy(src.pointers, srcIndex, dest.pointers, destIndex, count)
+        // now do the copy or store nil
+        if (src.isNil)
+            this.vm.arrayFill(dest.pointers, destIndex, destIndex+count, src);
+        else
+            this.vm.arrayCopy(src.pointers, srcIndex, dest.pointers, destIndex, count);
         // if a CompiledMethod was modified, adjust its bytes, too
         if (dest.stClass === this.compiledMethodClass)
             dest.methodStoreIntoLits(this.vm.image, destIndex, count);
