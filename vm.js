@@ -1841,7 +1841,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 40: return this.primitiveCopyBits(argCount);  // BitBlt.callBLT
             case 41: return this.primitiveBeDisplay(argCount); // BitBlt install for display
             case 50: return false; // TextScanner.scanword:
-            case 53: return true; // String.lock/unlock: address of bits (return self on Notetaker)
+            //case 53: return true; // String.lock/unlock: address of bits (not needed on Notetaker)
+            case 55: return this.primitiveRunMethod(argCount);
             case 58: return this.primitiveMousePoint(argCount);
             case 59: return true; //UserView.primCursorLoc←
             case 61: return this.primitiveKeyboardPeek(argCount);
@@ -2483,6 +2484,20 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.vm.loadFromFrame(this.vm.currentFrame);    // load all the rest from the frame
         return true;
 },
+    primitiveRunMethod: function(argCount) {
+        if (argCount !== 2) return false;
+        var method = this.vm.stackValue(0),
+            mClass = this.vm.stackValue(1),
+            newRcvr = this.vm.stackValue(2);
+        if (method.stClass !== this.compiledMethodClass || !mClass.isClass())
+            return false;
+        var primIndex = method.methodPrimitiveIndex();
+            argCount = method.methodNumArgs();
+        this.vm.popN(3);
+        this.vm.executeNewMethod(newRcvr, method, mClass, argCount, primIndex);
+        return true;
+    },
+
     putToSleep: function(aProcess) {
         //Save the given process on the scheduler process list for its priority.
         var priority = aProcess.pointers[Squeak.Proc_priority];
