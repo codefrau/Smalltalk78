@@ -814,7 +814,7 @@ Object.subclass('users.bert.St78.vm.Object',
     },
     methodPointersModified: function(image, index, n) {
         // n literal pointers starting at index were modified: copy oops to bytes
-        var bytesPtr = (index * 2) + 1; // skip method header
+        var bytesPtr = index * 2 + 2; // skip method header
         for (var i = index; i < index + n; i++) {
             var oop = image.fixedOopFor(this.pointers[i]);
             this.bytes[bytesPtr++] = (oop >> 8) & 0xFF;
@@ -978,7 +978,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.breakOutOfInterpreter = false;
         this.breakOutTick = 0;
         this.breakOnMethod = null; // method to break on
-        this.breakOnNewMethod = false;
         this.breakOnFrameChanged = false;
         this.breakOnFrameReturned = null; // context to break on
         this.startupTime = Date.now(); // base for millisecond clock
@@ -2426,7 +2425,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
     primitiveValue: function(argCount) {
         // One entry for RemoteCode eval, value, and for Process eval which does a full process switch
-        debugger
         var rCode = this.vm.stackValue(0);
         if (rCode.stClass === this.processClass) return this.resume(rCode);
         if (rCode.stClass !== this.remoteCodeClass) return false;
@@ -2472,7 +2470,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         // Called by <Process> eval - sleep the current process and wake processToRun
         // FIXME: this needs to be refactored with RCeval, RCreturn, and VM.loadActiveContext
         // All should use common pushPCBP, popPCBP, and sleep/wake (for storing SP in top)
-        debugger
+
         // Push this frame and sleep this process
         this.vm.pop(); // drop receiver **maybe store nil since it holds a process
         this.vm.pushPCBP();           // save PC and BP for remoteReturn, then preserve in top
