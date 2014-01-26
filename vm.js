@@ -1745,6 +1745,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.initAtCache();
         this.initModules();
 		this.remoteCodeClass = vm.image.objectFromOop(NoteTaker.OTI_CLREMOTECODE);
+		this.processClass = vm.image.objectFromOop(NoteTaker.OTI_CLPROCESS);
         this.pointClass = this.vm.image.objectFromOop(NoteTaker.OTI_CLPOINT);
         this.floatClass = this.vm.image.objectFromOop(NoteTaker.OTI_CLFLOAT);
         this.stringClass = this.vm.image.objectFromOop(NoteTaker.OTI_CLSTRING);
@@ -2227,6 +2228,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (size === -1) {this.success = false; return -1}; //not indexable
         return size;
     },
+
+
     initAtCache: function() {
         // The purpose of the at-cache is to allow fast (bytecode) access to at/atput code
         // without having to check whether this object has overridden at, etc.
@@ -2408,13 +2411,19 @@ Object.subclass('users.bert.St78.vm.Primitives',
 		return true;
     },
     primitiveValue: function(argCount) {
+        // One entry for RemoteCode eval, value, and for Process eval which does a full process switch
+        debugger
         var rCode = this.vm.stackValue(0);
-        if (rCode.stClass !== this.remoteCodeClass)
-            return false;
-        var frame = this.vm.activeContextPointers.length - rCode.pointers[NoteTaker.PI_RCODE_FRAMEOFFSET];
+        if (rCode.stClass === this.processClass) return this.resume(rCode);
+        if (rCode.stClass !== this.remoteCodeClass) return false;
+        
+        // Common code to sleep this frame
         this.vm.pop(); // drop self
         this.vm.push(this.vm.pc);           // save PC and BP for remoteReturn
         this.vm.push(this.vm.currentFrame);
+        
+        // Wake the remote context frame
+        var frame = this.vm.activeContextPointers.length - rCode.pointers[NoteTaker.PI_RCODE_FRAMEOFFSET];
 		this.vm.currentFrame = this.vm.loadFromFrame(frame);
 		this.vm.pc = rCode.pointers[NoteTaker.PI_RCODE_STARTINGPC];
         return true;
@@ -2445,17 +2454,22 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var assn = this.vm.specialObjects[Squeak.splOb_SchedulerAssociation];
         return assn.pointers[Squeak.Assn_value];
     },
-    resume: function(newProc) {
-        var activeProc = this.getScheduler().pointers[Squeak.ProcSched_activeProcess];
-        var activePriority = activeProc.pointers[Squeak.Proc_priority];
-        var newPriority = newProc.pointers[Squeak.Proc_priority];
-        if (newPriority > activePriority) {
-            this.putToSleep(activeProc);
-            this.transferTo(newProc);
-        } else {
-            this.putToSleep(newProc);
-        }
-    },
+    resume: function(processToRun) {
+        // Called by <Process> eval - sleep the current process and wake processToRun
+        // FIXME: this needs to be refactored with RCeval, RCreturn, and VM.loadActiveContext
+        // All should use common pushPCBP, popPCBP, and sleep/wake (for storing SP in top)
+        debugger
+        // Push this frame and sleep this process
+        this.vm.pop(); // drop receiver **maybe store nil since it holds a process
+        this.vm.pushPCBP();           // save PC and BP for remoteReturn, then preserve in top
+        this.vm.sleepProcess();
+
+        // Wake processToRun and load vm state   //NOTE: same as loadInitialContext
+        this.vm.wakeProcess(processToRun);  // set up activeProcess and sp
+        this.vm.popPCBP();            // restore pc and current frame
+        this.vm.loadFromFrame(this.vm.currentFrame);    // load all the rest from the frame
+        return true;
+},
     putToSleep: function(aProcess) {
         //Save the given process on the scheduler process list for its priority.
         var priority = aProcess.pointers[Squeak.Proc_priority];
@@ -2478,6 +2492,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
             this.vm.breakOutOfInterpreter = 'break';
         }
     },
+
+
     pickTopProcess: function() { // aka wakeHighestPriority
         //Return the highest priority process that is ready to run.
         //Note: It is a fatal VM error if there is no runnable process.
