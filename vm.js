@@ -909,9 +909,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 
         // Remarkably, it seems that Vector, String and Uniquestring all have their classes
         // mistakenly set to Class rather than VariableLengthClass as they were in the image
-        // from which the NT image was cloned.  I was accused of "bit rot" for claiming this
-        // to be in error due to the contradictory evidence in the image.  Amazingly
-        // the one thing that would have revealed this error, the lookup of new:, was sidestepped
+        // from which the NT image was cloned. 
+        // The one thing that would have revealed this error, the lookup of new:, was sidestepped
         // in both my original 8086 code and Helge's Java VM.  Truly amazing  ;-)
         this.image.objectFromOop(NoteTaker.OTI_CLSTRING).stClass =
             this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
@@ -939,7 +938,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.patchByteCode(26836, 24, 0x7E); // LargeInteger>>lshift:
         this.patchByteCode(27024, 20, 0x7E); // LargeInteger>>land:
         this.patchByteCode(26996, 30, 0x7E); // LargeInteger>>asSmall
-        // LargeInt >> lor:, lxor: ??
+        this.patchByteCode(26912, 18, 0x7E); // LargeInteger>>lor:
+        this.patchByteCode(27032, 18, 0x7E); // LargeInteger>>lxor:
     },
 
     initVMState: function() {
