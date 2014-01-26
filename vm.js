@@ -559,6 +559,7 @@ Object.subclass('users.bert.St78.vm.Image',
     fixedOopFor: function(anObject) {
         // newly created objects have a temporary oop
         // the permanent oop is assigned by GC
+        if (this.vm.isSmallInt(anObject)) return anObject;
         if (anObject.nextObject) // it's an old object
             return anObject.oop;
         this.fullGC();
@@ -811,6 +812,16 @@ Object.subclass('users.bert.St78.vm.Object',
             this.pointers = lits;
         }
     },
+    methodPointersModified: function(image, index, n) {
+        // n literal pointers starting at index were modified: copy oops to bytes
+        var bytesPtr = (index * 2) + 1; // skip method header
+        for (var i = index; i < index + n; i++) {
+            var oop = image.fixedOopFor(this.pointers[i]);
+            this.bytes[bytesPtr++] = (oop >> 8) & 0xFF;
+            this.bytes[bytesPtr++] = oop & 0xFF;
+        }
+    },
+
     methodIsQuick: function() {
         return this.bytes[1] === 128;
     },
@@ -2796,7 +2807,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             this.vm.arrayCopy(src.pointers, srcIndex, dest.pointers, destIndex, count);
         // if a CompiledMethod was modified, adjust its bytes, too
         if (dest.stClass === this.compiledMethodClass)
-            dest.methodStoreIntoLits(this.vm.image, destIndex, count);
+            dest.methodPointersModified(this.vm.image, destIndex, count);
         return true;
     },
 
