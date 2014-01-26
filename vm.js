@@ -1322,6 +1322,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             selName = selector.bytesAsRawString();
         this.push(this.primHandler.makeStString('MNU: ' + className + '>>' + selName));
         this.push(rcvr);
+        if (this.breakOnMessageNotUnderstood)
+            this.breakNow('MNU: ' + startingClass.className() + '>>' + selector.bytesAsString());
         return this.findSelectorInClass(this.errorSel, 1, startingClass);
     },
     lookupSelectorInDict: function(mDict, messageSelector) {
