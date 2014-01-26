@@ -2676,7 +2676,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
 	},
 	primitiveCopyBits: function(argCount) { // no rcvr class check, to allow unknown subclasses (e.g. under Turtle)
         var bitbltObj = this.vm.stackValue(argCount);
-        if (!bitbltObj.pointers[NoteTaker.PI_BITBLT_DESTBITS].bytes)
+        if (bitbltObj.pointers[NoteTaker.PI_BITBLT_SOURCEBITS].pointers || bitbltObj.pointers[NoteTaker.PI_BITBLT_DESTBITS].pointers)
             return this.bitBltCopyPointers(bitbltObj);
         var bitblt = new users.bert.St78.vm.BitBlt(this.vm);
         if (!bitblt.loadBitBlt(bitbltObj)) return false;
@@ -2799,7 +2799,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             if (each.i < 0 || each.i + count > each.obj.pointers.length)
                 throw Strings.format("bitBltCopyPointers: access out of bounds for %s@%s-%s", 
                     each.obj.stInstName(), each.i, each.i + count - 1);
-            });
+            }, this);
         // now do the copy or store nil
         if (src.isNil)
             this.vm.arrayFill(dest.pointers, destIndex, destIndex+count, src);
