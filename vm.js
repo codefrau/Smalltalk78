@@ -97,6 +97,7 @@ NoteTaker = {
 	
 	// CLCOMPILEDMETHOD layout:
 	BI_COMPILEDMETHOD_FIRSTLITERAL: 2,	// past method header
+	PC_BIAS: 2,	// due to NT's shorter header format
 	
 	// CLPOINT layout:
 	PI_POINT_X: 0,
@@ -972,21 +973,27 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.startupTime = Date.now(); // base for millisecond clock
     },
     loadInitialContext: function() {
-        this.activeContext = this.image.userProcess;
-        this.activeContextPointers = this.activeContext.pointers;
-        this.currentFrame = (this.activeContextPointers.length - this.activeContextPointers[NoteTaker.PI_PROCESS_TOP]) + 1;
-        this.method = this.activeContextPointers[this.currentFrame + NoteTaker.FI_METHOD];
-        this.methodBytes = this.method.bytes;
-        this.methodNumArgs = this.activeContextPointers[this.currentFrame + NoteTaker.FI_NUMARGS];
-        this.receiver = this.activeContextPointers[this.currentFrame + NoteTaker.FI_RECEIVER];
-        // FIXME:  [DI] I don't understand the saved pc in the image, but I do know that it
-        // starts by setting the global Notetaker to true.  
-        this.pc = this.method.methodStartPC(); // Loc of Notetaker <- true.
-        this.sp = this.currentFrame;
+        this.wakeProcess(this.image.userProcess);  // set up activeProcess and sp
+        this.popPCBP();                          // restore pc and current frame
+        this.loadFromFrame(this.currentFrame);   // load all the rest from the frame
 
         // fix up the image
         this.notetakerPatches();
+        this.breakOn('Object>>error:');  // Maybe get something useful before infinite recursion
+
     },
+    wakeProcess: function(proc) {
+        // Install a new active process and load sp, ready to restore other state
+        this.activeContext = proc;
+        this.activeContextPointers = this.activeContext.pointers;
+        this.sp = (this.activeContextPointers.length - this.activeContextPointers[NoteTaker.PI_PROCESS_TOP]) - 1;
+    },
+    sleepProcess: function() {
+        // Preserve state of sp in variable 'top' (after saving PC and BP)
+        this.activeContextPointers[NoteTaker.PI_PROCESS_TOP] = (this.activeContextPointers.length - this.sp) - 1;
+    },
+
+
     patchByteCode: function(oop, index, value) {
         var method = this.image.objectFromOop(oop);
         method.bytes[index] = value;
@@ -1398,7 +1405,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         }
 },
     loadFromFrame: function(aFrame) {
-        // cache values from aFrame in slots
+        // cache values from current frame in slots
         this.method = this.activeContextPointers[aFrame + NoteTaker.FI_METHOD];
         this.methodBytes = this.method.bytes;
         this.methodNumArgs = this.activeContextPointers[aFrame + NoteTaker.FI_NUMARGS];
@@ -1530,6 +1537,18 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     top: function() {
         return this.activeContextPointers[this.sp];
     },
+    pushPCBP: function() {
+        // Save the state of PC and BP on the stack
+        this.push(this.pc + NoteTaker.PC_BIAS);
+        this.push(this.currentFrame - this.sp);  // delta relative to sp before the push
+    },
+
+    popPCBP: function() {
+        // Load context frame from the stack
+        this.currentFrame = this.pop() + this.sp;  // + 1 because delta was computed before push
+        this.pc = this.pop() - NoteTaker.PC_BIAS;  // Bias due to NT shorter header
+    },
+
     stackValue: function(depthIntoStack) {
         return this.activeContext.pointers[this.sp + depthIntoStack];
     },
