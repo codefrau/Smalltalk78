@@ -1839,7 +1839,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 39: return this.primitiveValueGets(argCount); // RemoteCode.value_
             case 40: return this.primitiveCopyBits(argCount);  // BitBlt.callBLT
             case 41: return this.primitiveBeDisplay(argCount); // BitBlt install for display
-            case 50: return false; // TextScanner.scanword:
+            case 49: return this.popNandPushIntIfOK(1,999); // Object>>refct
+            case 50: return false; // TextScanner>>scanword:
             //case 53: return true; // String.lock/unlock: address of bits (not needed on Notetaker)
             case 55: return this.primitiveRunMethod(argCount);
             case 58: return this.primitiveMousePoint(argCount);
