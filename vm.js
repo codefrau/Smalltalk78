@@ -2730,12 +2730,12 @@ Object.subclass('users.bert.St78.vm.Primitives',
 	},
     primitiveKeyboardNext: function(argCount) {
         this.idleCounter = 0; // reset idle if there is input
-        return this.popNandPushIfOK(argCount+1, this.checkSmallInt(this.display.keys.pop()));
+        return this.popNandPushIfOK(argCount+1, this.checkSmallInt(this.display.keys.shift()));
     },
     primitiveKeyboardPeek: function(argCount) {
         var length = this.display.keys.length;
         if (!length) this.idleCounter++;
-        return this.popNandPushIfOK(argCount+1, length ? this.checkSmallInt(this.display.keys[length - 1] || 0) : this.vm.falseObj);
+        return this.popNandPushIfOK(argCount+1, length ? this.checkSmallInt(this.display.keys[0] || 0) : this.vm.falseObj);
     },
     primitiveMouseButtons: function(argCount) {
         if (this.display.buttons & 7) this.idleCounter = 0;
