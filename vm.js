@@ -814,6 +814,8 @@ Object.subclass('users.bert.St78.vm.Object',
     },
     methodPointersModified: function(image, index, n) {
         // n literal pointers starting at index were modified: copy oops to bytes
+        // FIXME: If we want to adhere to pointers in bytes hack, this needs to work
+        return;
         var bytesPtr = index * 2 + 2; // skip method header
         for (var i = index; i < index + n; i++) {
             var oop = image.fixedOopFor(this.pointers[i]);
