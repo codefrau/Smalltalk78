@@ -1342,6 +1342,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         //Returns a method or nilObject
         var selectors = mDict.pointers[NoteTaker.PI_MESSAGEDICT_OBJECTS].pointers;
         var methods = mDict.pointers[NoteTaker.PI_MESSAGEDICT_METHODS].pointers;
+        //TODO: use selector hash as start
         for (var i = 0; i < selectors.length; i++)
             if (selectors[i] === messageSelector)
                 return methods[i];
@@ -1438,42 +1439,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     tryPrimitive: function(primIndex, argCount, newMethod) {
         var success = this.primHandler.doPrimitive(primIndex, argCount, newMethod);
         return success;
-    },
-    primitivePerform: function(argCount) {
-        var selector = this.stackValue(argCount-1);
-        var rcvr = this.stackValue(argCount);
-        // NOTE: findNewMethodInClass may fail and be converted to #doesNotUnderstand:,
-        //       (Whoah) so we must slide args down on the stack now, so that would work
-        var trueArgCount = argCount - 1;
-        var selectorIndex = this.sp - trueArgCount;
-        var stack = this.activeContext.pointers; // slide eveything down...
-        this.arrayCopy(stack, selectorIndex+1, stack, selectorIndex, trueArgCount);
-        this.sp--; // adjust sp accordingly
-        var entry = this.findSelectorInClass(selector, trueArgCount, this.getClass(rcvr));
-        this.executeNewMethod(rcvr, entry.method, entry.methodClass, entry.argCount, entry.primIndex);
-        return true;
-    },
-    primitivePerformWithArgs: function(argCount, supered) {
-        var rcvr = this.stackValue(argCount);
-        var selector = this.stackValue(argCount - 1);
-        var args = this.stackValue(argCount - 2);
-        if (args.sqClass !== this.specialObjects[Squeak.splOb_ClassArray])
-            return false;
-        var lookupClass = supered ? this.stackValue(argCount - 3) : this.getClass(rcvr);
-        if (supered) { // verify that lookupClass is in fact in superclass chain of receiver;
-            var cls = this.getClass(rcvr);
-            while (cls !== lookupClass) {
-                cls = cls.pointers[Squeak.Class_superclass];
-		        if (cls.isNil) return false;
-            }
-        }
-        var trueArgCount = args.pointersSize();
-        var stack = this.activeContext.pointers;
-        this.arrayCopy(args.pointers, 0, stack, this.sp - 1, trueArgCount);
-        this.sp += trueArgCount - argCount; //pop selector and array then push args
-        var entry = this.findSelectorInClass(selector, trueArgCount, lookupClass);
-        this.executeNewMethod(rcvr, entry.method, entry.methodClass, entry.argCount, entry.primIndex);
-        return true;
     },
     findMethodCacheEntry: function(selector, lkupClass) {
         //Probe the cache, and return the matching entry if found
@@ -1764,6 +1729,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.floatClass = this.vm.image.objectFromOop(NoteTaker.OTI_CLFLOAT);
         this.stringClass = this.vm.image.objectFromOop(NoteTaker.OTI_CLSTRING);
         this.compiledMethodClass = this.vm.image.objectFromOop(NoteTaker.OTI_CLCOMPILEDMETHOD);
+        this.uniqueStringClass = this.vm.image.objectFromOop(NoteTaker.OTI_CLUNIQUESTRING);
         this.idleCounter = 0;
     },
     initModules: function() {
@@ -2296,10 +2262,14 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
     primitivePerform: function(argCount) {
         // handle perform: <selector> (with: arg)*
-        var rcvr = this.vm.pop();
-        var selector = this.vm.pop()
-        this.vm.push(rcvr);
-        this.vm.send(selector, argCount-1)
+        if (this.vm.stackValue(argCount).stClass !== this.uniqueStringClass)
+            return false;
+        var args = [];
+        for (var i = 0; i < argCount; i++) args.push(this.vm.pop());
+        var selector = this.vm.pop();
+        while (args.length) this.vm.push(args.pop());
+        this.vm.send(selector, argCount - 1);
+        return true;
     },
 
     nextObject: function(obj) {
