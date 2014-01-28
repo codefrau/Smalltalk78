@@ -1839,6 +1839,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 39: return this.primitiveValueGets(argCount); // RemoteCode.value_
             case 40: return this.primitiveCopyBits(argCount);  // BitBlt.callBLT
             case 41: return this.primitiveBeDisplay(argCount); // BitBlt install for display
+            case 48: return this.primitivePerform(argCount); // Object>>perform:
             case 49: return this.popNandPushIntIfOK(1,999); // Object>>refct
             case 50: return false; // TextScanner>>scanword:
             //case 53: return true; // String.lock/unlock: address of bits (not needed on Notetaker)
@@ -2290,6 +2291,14 @@ Object.subclass('users.bert.St78.vm.Primitives',
     someObject: function() {
         return this.vm.image.firstOldObject;
     },
+    primitivePerform: function(argCount) {
+        // handle perform: <selector> (with: arg)*
+        var rcvr = this.vm.pop();
+        var selector = this.vm.pop()
+        this.vm.push(rcvr);
+        this.vm.send(selector, argCount-1)
+    },
+
     nextObject: function(obj) {
         var nextObj = this.vm.image.objectAfter(obj);
         return nextObj ? nextObj : 0;
