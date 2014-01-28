@@ -2037,8 +2037,10 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return 0;  //FIXME - I think in st78 all calls to stackPos16BitInt can simply call stackInteger
     },
     popNandPushIntIfOK: function(nToPop, returnValue) {
-        if (!this.success || !this.vm.canBeSmallInt(returnValue)) return false; 
-        return this.popNandPushIfOK(nToPop, returnValue);
+        if (!this.success) return false; 
+        var intVal = Math.floor(returnValue)
+        if (this.vm.canBeSmallInt(intVal)) return this.popNandPushIfOK(nToPop, intVal);
+        return false; 
     },
 
     pos16BitIntFor: function(pos16Val) {
