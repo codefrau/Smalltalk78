@@ -1671,13 +1671,14 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         // temps and stack in current context
         var ctx = this.activeContextPointers,
             bp = this.currentFrame,
+            sp = this.sp,
             numArgs = ctx[bp + NoteTaker.FI_NUMARGS],
             numTemps = ctx[bp + NoteTaker.FI_METHOD].methodNumTemps();
         var stack = '';
         if (debugFrame) stack += Strings.format("\npc: %s sp: %s bp: %s numArgs: %s\n",
             this.pc, this.sp, this.currentFrame, numArgs);
         for (var i = this.sp; i < ctx.length; i++) {
-            if (!debugFrame && bp + NoteTaker.FI_SAVED_BP <= i && bp + NoteTaker.FI_RECEIVER >= i) continue;
+            if (!debugFrame && bp + NoteTaker.FI_SAVED_BP <= i && bp + NoteTaker.FI_RECEIVER > i) continue;
             var obj = ctx[i];
             var value = obj && obj.stInstName ? obj.stInstName() : obj;
             stack += Strings.format('\n[%s] %s%s', i, 
@@ -1691,10 +1692,11 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                 bp + NoteTaker.FI_RECEIVER == i ? 'receiver: ' :
                 bp + NoteTaker.FI_RECEIVER < i && i <= bp + NoteTaker.FI_RECEIVER + numArgs 
                     ? ('   arg ' + (bp + NoteTaker.FI_RECEIVER + numArgs - i) + ': ') :
-                this.sp == i ? '   sp ==> ' : 
+                sp == i ? '   sp ==> ' : 
                 '          ', value);
             if (i >= bp + NoteTaker.FI_RECEIVER + numArgs && i+1 < ctx.length) {
                 if (!printAll) return stack;
+                sp = bp + NoteTaker.FI_LAST_ARG + numArgs;
                 bp += ctx[bp + NoteTaker.FI_SAVED_BP];
                 numArgs = ctx[bp + NoteTaker.FI_NUMARGS];
                 numTemps = ctx[bp + NoteTaker.FI_METHOD].methodNumTemps();
