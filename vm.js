@@ -1630,11 +1630,25 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         if (typeof ctx == "number") {limit = ctx; ctx = null;}
         if (!ctx) ctx = this.activeContext;
         if (!limit) limit = 100;
-        var stack = '';
-        var bp = this.currentFrame;
+        var stack = '',
+            process = ctx.pointers,
+            bp = this.currentFrame,
+            sp = this.sp,
+            remoteCodeClass = this.primHandler.remoteCodeClass;
         while (limit-- > 0) {
-            var method = ctx.pointers[bp + NoteTaker.FI_METHOD],
-                deltaBP = ctx.pointers[bp + NoteTaker.FI_SAVED_BP];
+            while (sp++ < bp) { // look for remoteCode activations in stack of current frame
+                var rCode = process[sp];
+                if (rCode.stClass !== remoteCodeClass) continue;
+                if (rCode.pointers[NoteTaker.PI_RCODE_STACKOFFSET] === process.length - sp) {
+                    var homeBP = process.length - rCode.pointers[NoteTaker.PI_RCODE_FRAMEOFFSET],
+                        homeMethod = process[homeBP + NoteTaker.FI_METHOD];
+                    stack = '[] in ' + this.printMethod(homeMethod) + '\n' + stack;
+                    // continue with the frame that eval'ed this remoteCode
+                    bp = process.length - process[sp - 2]; // stored BP
+                }
+            }
+            var method = process[bp + NoteTaker.FI_METHOD],
+                deltaBP = process[bp + NoteTaker.FI_SAVED_BP];
             stack = this.printMethod(method) + '\n' + stack;
             if (!deltaBP) return stack;
             bp += deltaBP;
@@ -1682,7 +1696,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             if (!debugFrame && bp + NoteTaker.FI_SAVED_BP <= i && bp + NoteTaker.FI_RECEIVER > i) continue;
             var obj = ctx[i];
             var value = obj && obj.stInstName ? obj.stInstName() : obj;
-            stack += Strings.format('\n[%s] %s%s', i, 
+            stack += Strings.format('\n[%s] %s%s', i,
                 bp + NoteTaker.FI_FIRST_TEMP - numTemps < i && i <= bp + NoteTaker.FI_FIRST_TEMP
                     ? ('  temp ' + (bp + NoteTaker.FI_FIRST_TEMP + numArgs - i) + ': ') :
                 bp + NoteTaker.FI_SAVED_BP == i ? ' savedBP: ' :
@@ -1699,6 +1713,29 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                 if (!printAll) return stack;
                 sp = bp + NoteTaker.FI_LAST_ARG + numArgs;
                 bp += ctx[bp + NoteTaker.FI_SAVED_BP];
+                // look for remoteCode activation on stack
+                for (var j = sp; j < bp; j++){
+                    var rCode = ctx[j];
+                    if (rCode.stClass !== this.primHandler.remoteCodeClass) continue;
+                    if (rCode.pointers[NoteTaker.PI_RCODE_STACKOFFSET] === ctx.length - j) {
+                        var homeBP = ctx.length - rCode.pointers[NoteTaker.PI_RCODE_FRAMEOFFSET],
+                            homeMethod = ctx[homeBP + NoteTaker.FI_METHOD];
+                        stack += '\n\n[] in ' + this.printMethod(homeMethod);
+                        if (debugFrame) {
+                            while (++i <= j) {
+                                obj = ctx[i];
+                                value = obj && obj.stInstName ? obj.stInstName() : obj;
+                                stack += Strings.format('\n[%s] %s%s', i,
+                                i == j-2 ? '  homeBP: ' :
+                                i == j-1 ? '  homePC: ' :
+                                i == j ?   '   rCode: ' :
+                                '          ', value);
+                            }
+                            i--;
+                        }
+                        bp = ctx.length - ctx[j - 2]; // continue at stored BP
+                    }
+                }
                 numArgs = ctx[bp + NoteTaker.FI_NUMARGS];
                 numTemps = ctx[bp + NoteTaker.FI_METHOD].methodNumTemps();
                 stack += '\n\n' + this.printMethod(ctx[bp + NoteTaker.FI_METHOD]);
