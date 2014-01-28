@@ -1387,8 +1387,9 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     doRemoteReturn: function() {
         // reverse of primitiveValue()
         var reply = this.pop();
-        var returnFrame = this.pop();
+        var returnFrame = this.activeContextPointers.length - this.pop();
         var returnPC = this.pop();
+        var rCode = this.pop(); // might want to check that we're in the same process
         /////// Whoosh //////
         this.currentFrame = this.loadFromFrame(returnFrame);
         this.pc = returnPC;
@@ -2396,15 +2397,18 @@ Object.subclass('users.bert.St78.vm.Primitives',
         // Make a block-like outrigger to rcvr, a process
         var rcvr = this.vm.stackValue(0);
 	    if (rcvr !== this.vm.activeContext) return false;
-		var pc = this.vm.pc;
-		var bp = this.vm.currentFrame;
-		var jumpInstr = this.vm.method.bytes[pc];
+		var pc = this.vm.pc,
+    		bp = this.vm.currentFrame,
+		    sp = this.vm.sp,
+		    relBP = rcvr.pointers.length - bp,
+    		relSP = rcvr.pointers.length - sp,
+		    jumpInstr = this.vm.method.bytes[pc],
+    		rCode = this.vm.instantiateClass(this.remoteCodeClass, 0);
 		pc += jumpInstr < 0xA0 ? 1 : 2;
-		var rCode = this.vm.instantiateClass(this.remoteCodeClass, 0);
-		var relBP = rcvr.pointers.length - bp;
 		// these are uses in primitiveValue
 		rCode.pointers[NoteTaker.PI_RCODE_FRAMEOFFSET] = relBP; // offset from end, used in ProcessFrame>>from:
 		rCode.pointers[NoteTaker.PI_RCODE_STARTINGPC] = pc; // maybe + 1?
+		rCode.pointers[NoteTaker.PI_RCODE_PROCESS] = rcvr;
 		this.vm.popNandPush(1, rCode);
 		return true;
     },
@@ -2413,14 +2417,18 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var rCode = this.vm.stackValue(0);
         if (rCode.stClass === this.processClass) return this.resume(rCode);
         if (rCode.stClass !== this.remoteCodeClass) return false;
-        
+
+        var contextLength = this.vm.activeContextPointers.length;
+
+        // store the current sp here to mark the rCode as activated
+		rCode.pointers[NoteTaker.PI_RCODE_STACKOFFSET] = contextLength - this.vm.sp;
+
         // Common code to sleep this frame
-        this.vm.pop(); // drop self
-        this.vm.push(this.vm.pc);           // save PC and BP for remoteReturn
-        this.vm.push(this.vm.currentFrame);
+        this.vm.push(this.vm.pc);           // save PC and relBP for remoteReturn
+        this.vm.push(contextLength - this.vm.currentFrame);
         
         // Wake the remote context frame
-        var frame = this.vm.activeContextPointers.length - rCode.pointers[NoteTaker.PI_RCODE_FRAMEOFFSET];
+        var frame = contextLength - rCode.pointers[NoteTaker.PI_RCODE_FRAMEOFFSET];
 		this.vm.currentFrame = this.vm.loadFromFrame(frame);
 		this.vm.pc = rCode.pointers[NoteTaker.PI_RCODE_STARTINGPC];
         return true;
