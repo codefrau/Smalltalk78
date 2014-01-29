@@ -2742,11 +2742,13 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return this.popNandPushIfOK(argCount+1, length ? this.checkSmallInt(this.display.keys[0] || 0) : this.vm.falseObj);
     },
     primitiveMouseButtons: function(argCount) {
+        if (this.display.fetchMouseButtons) this.display.fetchMouseButtons();
         if (this.display.buttons & 7) this.idleCounter = 0;
         else this.idleCounter++;
         return this.popNandPushIfOK(argCount+1, this.checkSmallInt(this.display.buttons));
     },
     primitiveMousePoint: function(argCount) {
+        if (this.display.fetchMousePos) this.display.fetchMousePos();
         return this.popNandPushIfOK(argCount+1, this.makePointWithXandY(this.checkSmallInt(this.display.mouseX), this.checkSmallInt(this.display.mouseY)));
     },
     primitiveRelinquishProcessorForMicroseconds: function(argCount) {
