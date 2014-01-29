@@ -3124,6 +3124,7 @@ Object.subclass('users.bert.St78.vm.BitBlt',
             // last word with masking and all
             if (this.nWords > 1) {
                 destMask = this.mask2;
+                thisWord = this.sourceBits.getWord(this.sourceIndex); //pick up last word
                 this.sourceIndex += hInc;
                 /* 16-bit rotate */
                 skewWord = (((unskew < 0) ? ((prevWord & notSkewMask) >> -unskew) : ((prevWord & notSkewMask) << unskew)))
