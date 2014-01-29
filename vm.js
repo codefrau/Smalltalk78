@@ -1856,7 +1856,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 36: return this.popNandPushIntIfOK(1, this.vm.image.fixedOopFor(this.stackNonInteger(0)) >> 2); // Object.hash
             case 39: return this.primitiveValueGets(argCount); // RemoteCode.value_
             case 40: return this.primitiveCopyBits(argCount);  // BitBlt.callBLT
-            case 41: return this.primitiveBeDisplay(argCount); // BitBlt install for display
+            case 41: return this.primitiveSetDisplayAndCursor(argCount); // BitBlt install for display
             case 48: return this.primitivePerform(argCount); // Object>>perform:
             case 49: return this.popNandPushIntIfOK(1,999); // Object>>refct
             case 50: return false; // TextScanner>>scanword:
@@ -1938,8 +1938,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 98: return false; // primitiveStoreImageSegment
             case 99: return false; // primitiveLoadImageSegment
             case 100: return this.vm.primitivePerformWithArgs(argCount, true); // Object.perform:withArguments:inSuperclass: (Blue Book: primitiveSignalAtTick)
-            case 101: return this.primitiveBeCursor(argCount); // Cursor.beCursor
-            case 102: return this.primitiveBeDisplay(argCount); // DisplayScreen.beDisplay
             case 103: return false; // primitiveScanCharacters
             case 104: return false; // primitiveDrawLoop
             case 105: return this.popNandPushIfOK(5, this.doStringReplace()); // string and array replace
@@ -2705,12 +2703,11 @@ Object.subclass('users.bert.St78.vm.Primitives',
         debugger;
         return true;
     },
-    primitiveBeCursor: function(argCount) {
-        this.vm.popN(argCount); // return self
-        return true;
-    },
-    primitiveBeDisplay: function(argCount) {
+
+    primitiveSetDisplayAndCursor: function(argCount) {
+        // dest is display form, source is cursor form
         this.displayBlt = this.vm.stackValue(0);
+        this.showCursor(this.displayBlt.pointers[NoteTaker.PI_BITBLT_SOURCEBITS]);
         this.vm.popN(argCount); // return self
         return true;
 	},
@@ -2807,6 +2804,10 @@ Object.subclass('users.bert.St78.vm.Primitives',
         };
         ctx.putImageData(pixels, rect.x, rect.y);
     },
+    showCursor: function(cursorObj) {
+        // todo
+    },
+
     primitiveForceDisplayUpdate: function(argCount) {
         // not needed, we show everything immediately
         return true;
