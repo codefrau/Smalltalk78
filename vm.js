@@ -2930,12 +2930,12 @@ Object.subclass('users.bert.St78.vm.BitBlt',
             var bytesAsWords = new DataView(bitsOop.bytes.buffer);
             bitsOop.bitBltAcccessor = {
                 getWord: function(index) {
-                    if (index > 0 && index * 2 < bytesAsWords.byteLength)
+                    if (index >= 0 && index * 2 < bytesAsWords.byteLength)
                         return bytesAsWords.getUint16(index * 2);
                     else return 0;
                 },
                 setWord: function(index, value) {
-                    if (index > 0 && index * 2 < bytesAsWords.byteLength)
+                    if (index >= 0 && index * 2 < bytesAsWords.byteLength)
                         bytesAsWords.setUint16(index * 2, value);
                 }
             }
@@ -3051,7 +3051,7 @@ Object.subclass('users.bert.St78.vm.BitBlt',
         var y = this.dy;
         for (var i = 1; i <= this.bbH; i++) {
             if (halftoneHeight > 1) {
-                halftoneWord = this.halftone.words[y % halftoneHeight];
+                halftoneWord = this.halftone[y % halftoneHeight];
                 y += this.vDir;
             }
             var prevWord;
