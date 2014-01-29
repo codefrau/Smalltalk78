@@ -954,6 +954,10 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.patchByteCode(26996, 30, 0x7E); // LargeInteger>>asSmall
         this.patchByteCode(26912, 18, 0x7E); // LargeInteger>>lor:
         this.patchByteCode(27032, 18, 0x7E); // LargeInteger>>lxor:
+
+        // jump over Dorado code in UserView>>screenextent:tab: 
+        this.patchByteCode(16620, 34, 0xA4);     // long jmp
+        this.patchByteCode(16620, 35, 111 - 36); // to 111
     },
 
     initVMState: function() {
