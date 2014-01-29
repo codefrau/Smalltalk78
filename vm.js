@@ -1699,7 +1699,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         for (var i = this.sp; i < ctx.length; i++) {
             if (!debugFrame && bp + NoteTaker.FI_SAVED_BP <= i && bp + NoteTaker.FI_RECEIVER > i) continue;
             var obj = ctx[i];
-            var value = obj && obj.stInstName ? obj.stInstName() : obj;
+            var value = obj && obj.stInstName ? obj.stInstName(32) : obj;
             stack += Strings.format('\n[%s] %s%s', i,
                 bp + NoteTaker.FI_FIRST_TEMP - numTemps < i && i <= bp + NoteTaker.FI_FIRST_TEMP
                     ? ('  temp ' + (bp + NoteTaker.FI_FIRST_TEMP + numArgs - i) + ': ') :
@@ -1728,7 +1728,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                         if (debugFrame) {
                             while (++i <= j) {
                                 obj = ctx[i];
-                                value = obj && obj.stInstName ? obj.stInstName() : obj;
+                                value = obj && obj.stInstName ? obj.stInstName(32) : obj;
                                 stack += Strings.format('\n[%s] %s%s', i,
                                 i == j-2 ? '  homeBP: ' :
                                 i == j-1 ? '  homePC: ' :
