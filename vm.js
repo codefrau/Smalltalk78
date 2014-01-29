@@ -890,7 +890,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.primHandler = new users.bert.St78.vm.Primitives(this, display);
         this.loadImageState();
         this.initVMState();
-        this.loadInitialContext();
+        this.loadInitialContext(display);
         console.log('st78: interpreter ready');
     },
     initConstants: function() {
@@ -911,12 +911,12 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.classClass = this.image.objectFromOop(NoteTaker.OTI_CLCLASS);
         this.errorSel = this.image.selectorNamed('error:');
     },
-    notetakerPatches: function() {
+    notetakerPatches: function(display) {
         // this.method is Process>>goBaby
         
         // set display extent to 640x480 by modifying literals
-        this.method.pointers[9] = 640;
-        this.method.pointers[17] = 480;
+        this.method.pointers[9] = display.width || 640;
+        this.method.pointers[17] = display.height || 480;
 
         // Do not make font glyphs little-endian and interleaved 
         this.methodBytes[77] = 145;  // Patches over "DefaultTextStyle NoteTakerize."
@@ -984,13 +984,13 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.breakOnFrameReturned = null; // context to break on
         this.startupTime = Date.now(); // base for millisecond clock
     },
-    loadInitialContext: function() {
+    loadInitialContext: function(display) {
         this.wakeProcess(this.image.userProcess);  // set up activeProcess and sp
         this.popPCBP();                          // restore pc and current frame
         this.loadFromFrame(this.currentFrame);   // load all the rest from the frame
 
         // fix up the image
-        this.notetakerPatches();
+        this.notetakerPatches(display);
         this.breakOn('Object>>error:');  // Maybe get something useful before infinite recursion
 
     },
