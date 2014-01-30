@@ -741,9 +741,9 @@ Object.subclass('users.bert.St78.vm.Object',
         var nWords =
             this.isFloat ? 3 :
             this.words ? this.words.length :
+            this.bytes ? (this.bytes.length + 1) >> 1 :
             this.pointers ? this.pointers.length : 0;
-        if (this.bytes) nWords += (this.bytes.length + 1) / 2 | 0; 
-        var headerWords = 3; // class + size if variable?
+        var headerWords = nWords > 32 ? 2 : 11; // class word includes size if < 64 bytes
         return (headerWords + nWords) * 2;
     },
 },
