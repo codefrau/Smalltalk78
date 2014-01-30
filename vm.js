@@ -411,6 +411,10 @@ Object.subclass('users.bert.St78.vm.Image',
         var removedObjects = this.removeUnmarkedOldObjects();
         this.appendToOldObjects(newObjects);
         this.relinkRemovedObjects(removedObjects);
+        alertOK(Strings.format("GC: %s of %s tenured\n%s of %s released\nnow %s total (%s bytes)", 
+            newObjects.length, this.newSpaceCount,
+            removedObjects.length, this.oldSpaceCount,
+            this.oldSpaceCount + newObjects.length - removedObjects.length, this.oldSpaceBytes));
         this.oldSpaceCount += newObjects.length - removedObjects.length;
         this.newSpaceCount = 0;
         this.gcCount++;
@@ -421,11 +425,18 @@ Object.subclass('users.bert.St78.vm.Image',
         var isClass = anObj.isClass();
         for (var oopStr in this.freeOops) {
             var oop = parseInt(oopStr);
-            if (isClass && (oop & 0x3F)) continue; // class oop must have lower bits 0
+            var isClassOop = !(oop & 0x3F);    // class oop has lower bits 0
+            if (isClass !== isClassOop) continue;
             delete this.freeOops[oopStr];
-            return oop;
+            return anObj.oop = oop;
         }
         throw isClass ? "too many classes" : "too many objects";
+    },
+    freeOopFor: function(anObj) {
+        if (anObj.oop > 0) {
+            this.freeOops[anObj.oop] = true;
+            anObj.oop = null;
+        } else throw "attempt to free invalid oop";
     },
     markReachableObjects: function() {
         // Visit all reachable objects and mark them.
@@ -434,7 +445,7 @@ Object.subclass('users.bert.St78.vm.Image',
         var newObjects = [];
         while (todo.length > 0) {
             var object = todo.pop();
-            if (!object.nextObject && object !== this.lastOldObject)       // it's a new object
+            if (object.oop < 0)           // it's a new object
                 newObjects.push(object);
             object.mark = true;           // mark it
             if (!object.stClass.mark)     // trace class if not marked
@@ -468,8 +479,7 @@ Object.subclass('users.bert.St78.vm.Image',
                 var corpse = next; 
                 obj.nextObject = corpse.nextObject; // drop from list
                 this.oldSpaceBytes -= corpse.totalBytes();
-                this.freeOops[corpse.oop] = true;
-                corpse.oop = null;
+                this.freeOopFor(corpse);
                 removed.push(corpse);               // remember for relinking
                 corpse.nextObject = obj;            // kludge: the corpse's nextObject
                 // must point into the old space list, so that enumerating will still work,
@@ -486,8 +496,9 @@ Object.subclass('users.bert.St78.vm.Image',
         var oldObj = this.lastOldObject;
         for (var i = 0; i < newObjects.length; i++) {
             var newObj = newObjects[i];
+            if (newObj.oop >= 0) {debugger; throw "attempt to tenure old object"}
             newObj.mark = false;
-            newObj.oop = this.allocateOopFor(newObj);
+            this.allocateOopFor(newObj);
             oldObj.nextObject = newObj;
             oldObj = newObj;
             this.oldSpaceBytes += newObj.totalBytes();
