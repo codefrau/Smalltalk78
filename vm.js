@@ -956,8 +956,13 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.patchByteCode(27032, 18, 0x7E); // LargeInteger>>lxor:
 
         // jump over Dorado code in UserView>>screenextent:tab: 
-        this.patchByteCode(16620, 34, 0xA4);     // long jmp
-        this.patchByteCode(16620, 35, 111 - 36); // to 111
+        this.patchByteCode(16620, 34, 0xA4, (111-34)-2); // long jmp to 111 [jumps have a bias of 2]
+
+        // Highjack user restart in ProjectWindow>>install to do thisProcess restart instead!
+        this.patchByteCode(17520, 23, 0x85);     // thisProcess
+
+        // Skip the +1 in ProcessFrame callerBP by returning
+        this.patchByteCode(21712, 18, 0x83);     // return
     },
 
     initVMState: function() {
@@ -1010,9 +1015,12 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
 
 
-    patchByteCode: function(oop, index, value) {
+    patchByteCode: function(oop, index, replacementByte, maybeByte2, maybeByte3, maybeByte4) {
         var method = this.image.objectFromOop(oop);
-        method.bytes[index] = value;
+        method.bytes[index] = replacementByte;
+        if (maybeByte2) method.bytes[index+1] = maybeByte2
+        if (maybeByte3) method.bytes[index+2] = maybeByte3
+        if (maybeByte4) method.bytes[index+3] = maybeByte4
     },
 
 },
