@@ -1000,8 +1000,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 
         // fix up the image
         this.notetakerPatches(display);
-        this.breakOn('Object>>error:');  // Maybe get something useful before infinite recursion
-
     },
     wakeProcess: function(proc) {
         // Install a new active process and load sp, ready to restore other state
