@@ -397,16 +397,13 @@ Object.subclass('users.bert.St78.vm.Image',
 
 },
 'garbage collection', {
-    partialGC: function() {
-        // no partial GC needed since new space uses the Javascript GC
-        return this.totalMemory - this.oldSpaceBytes;
-    },
+
     fullGC: function() {
         // Old space is a linked list of objects - each object has an "nextObject" reference.
         // New space objects do not have that pointer, they are garbage-collected by JavaScript.
         // But they have an allocation id so the survivors can be ordered on tenure.
         // The "nextObject" references are created by collecting all new objects, 
-        // sorting them by id, and then linking them into old space.
+        // and then linking them into old space.
         // Note: after an old object is released, its "nextObject" ref must still allow traversal
         // of all remaining objects. This is so enumeration works despite GC.
 
@@ -433,29 +430,28 @@ Object.subclass('users.bert.St78.vm.Image',
     markReachableObjects: function() {
         // Visit all reachable objects and mark them.
         // Return surviving new objects
-        var todo = [this.specialObjectsArray, this.vm.activeContext];
+        var todo = [this.globals, this.vm.activeContext];
         var newObjects = [];
         while (todo.length > 0) {
             var object = todo.pop();
             if (!object.nextObject && object !== this.lastOldObject)       // it's a new object
                 newObjects.push(object);
             object.mark = true;           // mark it
-            if (!object.sqClass.mark)     // trace class if not marked
-                todo.push(object.sqClass);
+            if (!object.stClass.mark)     // trace class if not marked
+                todo.push(object.stClass);
             var body = object.pointers;
             if (body)                     // trace all unmarked pointers
                 for (var i = 0; i < body.length; i++)
                     if (typeof body[i] === "object" && !body[i].mark)      // except SmallInts
                         todo.push(body[i]);
         }
-        // sort by id to preserve creation order
-        return newObjects.sort(function(a,b){return a.id - b.id});
+        return newObjects;
     },
     removeUnmarkedOldObjects: function() {
         // Unlink unmarked old objects from the nextObject linked list
         // Reset marks of remaining objects
         // Set this.lastOldObject to last old object
-        // Return removed old objects (to support finalization later)
+        // Return removed old objects
         var removed = [];
         var obj = this.firstOldObject;
         while (true) {
@@ -471,7 +467,9 @@ Object.subclass('users.bert.St78.vm.Image',
             } else { // otherwise, remove it
                 var corpse = next; 
                 obj.nextObject = corpse.nextObject; // drop from list
-                this.oldSpaceBytes -= corpse.totalBytes(this.compactClasses);
+                this.oldSpaceBytes -= corpse.totalBytes();
+                this.freeOops[corpse.oop] = true;
+                corpse.oop = null;
                 removed.push(corpse);               // remember for relinking
                 corpse.nextObject = obj;            // kludge: the corpse's nextObject
                 // must point into the old space list, so that enumerating will still work,
