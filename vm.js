@@ -445,6 +445,7 @@ Object.subclass('users.bert.St78.vm.Image',
         var newObjects = [];
         while (todo.length > 0) {
             var object = todo.pop();
+            if (object.mark) continue;    // objects are added to todo more than once 
             if (object.oop < 0)           // it's a new object
                 newObjects.push(object);
             object.mark = true;           // mark it
