@@ -299,20 +299,23 @@ Object.subclass('users.bert.St78.vm.Image',
         this.oldSpaceCount = 0;
         this.newSpaceCount = 0;
         this.oldSpaceBytes = 0;
+        this.freeOops = {};
         var reader = new users.bert.St78.vm.ImageReader(objTable, objSpace, dataBias);
         var oopMap = reader.readObjects();
         // link all objects into oldspace
         var prevObj;
-        for (var oop = 0; oop < objTable.length; oop += 4)
+        for (var oop = 0; oop < 0xFFFF; oop += 4)
             if (oopMap[oop]) {
                 this.oldSpaceCount++;
                 this.oldSpaceBytes += oopMap[oop].totalBytes();
                 if (prevObj) prevObj.nextObject = oopMap[oop];
                 prevObj = oopMap[oop];
+            } else {
+                this.freeOops[oop] = true;
             }
         this.firstOldObject = oopMap[0];
         this.lastOldObject = prevObj;
-        this.lastOop = prevObj.oop; // might want an oop recycling scheme later
+        this.nextOop = -4; // new objects get negative preliminary oops
         this.initKnownObjects(oopMap);
         this.initCompiledMethods(oopMap);
     },
@@ -416,6 +419,17 @@ Object.subclass('users.bert.St78.vm.Image',
         this.gcCount++;
         return this.totalMemory - this.oldSpaceBytes;
     },
+    allocateOopFor: function(anObj) {
+        // get an oop from the pool of unused oops
+        var isClass = anObj.isClass();
+        for (var oopStr in this.freeOops) {
+            var oop = parseInt(oopStr);
+            if (isClass && (oop & 0x3F)) continue; // class oop must have lower bits 0
+            delete this.freeOops[oopStr];
+            return oop;
+        }
+        throw isClass ? "too many classes" : "too many objects";
+    },
     markReachableObjects: function() {
         // Visit all reachable objects and mark them.
         // Return surviving new objects
@@ -470,14 +484,15 @@ Object.subclass('users.bert.St78.vm.Image',
     },
     appendToOldObjects: function(newObjects) {
         // append new objects to linked list of old objects
-        // and unmark them
+        // and unmark them. Also, assign a real oop.
         var oldObj = this.lastOldObject;
         for (var i = 0; i < newObjects.length; i++) {
             var newObj = newObjects[i];
             newObj.mark = false;
+            newObj.oop = this.allocateOopFor(newObj);
             oldObj.nextObject = newObj;
             oldObj = newObj;
-            this.oldSpaceBytes += newObj.totalBytes(this.compactClasses);
+            this.oldSpaceBytes += newObj.totalBytes();
         }
         this.lastOldObject = oldObj;
     },
@@ -489,17 +504,18 @@ Object.subclass('users.bert.St78.vm.Image',
     },
 },
 'creating', {
-    newOop: function() {
+    tempOop: function() {
+        // new objects get a temporary oop
         this.newSpaceCount++;
-        return this.lastOop += 4;
+        return this.nextOop -= 4;
     },
     instantiateClass: function(aClass, indexableSize, nilObj) {
-        var newObject = new users.bert.St78.vm.Object(this.newOop());
+        var newObject = new users.bert.St78.vm.Object(this.tempOop());
         newObject.initInstanceOf(aClass, indexableSize, nilObj);
         return newObject;
     },
     clone: function(object) {
-        var newObject = new users.bert.St78.vm.Object(this.newOop());
+        var newObject = new users.bert.St78.vm.Object(this.tempOop());
         newObject.initAsClone(object);
         return newObject;
     },
@@ -557,12 +573,10 @@ Object.subclass('users.bert.St78.vm.Image',
         }
     },
     fixedOopFor: function(anObject) {
-        // newly created objects have a temporary oop
-        // the permanent oop is assigned by GC
+        // newly created objects have a temporary oop, so assign a real one
         if (this.vm.isSmallInt(anObject)) return anObject;
-        if (anObject.nextObject) // it's an old object
-            return anObject.oop;
-        this.fullGC();
+        if (anObject.oop < 0) // it's a temp oop
+            this.appendToOldObjects([anObject]); // tenure the object
         return anObject.oop;
     },
 
