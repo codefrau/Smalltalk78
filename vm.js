@@ -1895,6 +1895,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 59: return true; //UserView.primCursorLoc←
             case 61: return this.primitiveKeyboardPeek(argCount);
             case 62: return this.primitiveKeyboardNext(argCount);
+            case 66: return this.readStringFromLively(argCount);  //  co-opted from user primPort: 
             case 68: return this.primitiveMouseButtons(argCount);
 /*
             case 29: return false; // primitiveMultiplyLargeIntegers
@@ -2835,6 +2836,27 @@ Object.subclass('users.bert.St78.vm.Primitives',
         };
         ctx.putImageData(pixels, rect.x, rect.y);
     },
+    readStringFromLively: function(nargs) {
+        // The Notetaker panel object includes an object named 'fileStrings'
+        // Files dropped onto this world get bound to that object
+        // They can be read using this primitive, co-opted from user primPort:
+        
+        // check that arg is a string
+        debugger
+        var fName = this.stackNonInteger(0);
+        if (!this.success || (fName.stClass.oop !== this.stringClass)) return false;
+        // check that it matches a property of $morph('Notetaker').fileStrings
+        var livelyPanel = $morph('Notetaker');
+        var livelyDirectory = livelyPanel && livelyPanel.fileStrings;
+        var livelyData = livelyDirectory && livelyDirectory[fName.bytesAsString()];
+        if (!livelyData) return false;
+
+        // if so, return a string object with the byte array copied into it
+        var newString = this.vm.image.instantiateClass(this.stringClass, livelyData.length, 0)
+        for (var i=0; i<livelyData.length; i++) newString.bytes[i] = livelyData[i];
+        return popNandPushIfOK(nargs, newString)
+    },
+
     showCursor: function(cursorObj) {
         // todo
     },
