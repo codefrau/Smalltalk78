@@ -2842,9 +2842,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
         // They can be read using this primitive, co-opted from user primPort:
         
         // check that arg is a string
-        debugger
-        var fName = this.stackNonInteger(0);
-        if (!this.success || (fName.stClass.oop !== this.stringClass)) return false;
+        var fName = this.stackNonInteger(1);
+        if (!this.success || (fName.stClass !== this.stringClass)) return false;
         // check that it matches a property of $morph('Notetaker').fileStrings
         var livelyPanel = $morph('Notetaker');
         var livelyDirectory = livelyPanel && livelyPanel.fileStrings;
@@ -2854,7 +2853,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
         // if so, return a string object with the byte array copied into it
         var newString = this.vm.image.instantiateClass(this.stringClass, livelyData.length, 0)
         for (var i=0; i<livelyData.length; i++) newString.bytes[i] = livelyData[i];
-        return popNandPushIfOK(nargs, newString)
+        this.popNandPushIfOK(nargs+1, newString);
+        return true
     },
 
     showCursor: function(cursorObj) {
