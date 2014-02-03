@@ -728,7 +728,6 @@ Object.subclass('users.bert.St78.vm.Object',
             string += '…';
         return string;
     },
-
     bytesAsRawString: function() {
         if (!this.bytes) return '';
         var bytes = this.bytes; // can be Uint8Array
@@ -753,15 +752,20 @@ Object.subclass('users.bert.St78.vm.Object',
         // why not use setInt64()? Because JavaScript does not have 64 bit ints
         return ieee.getFloat64(0);
     },
-
-    totalBytes: function() { // size in bytes this object would take up in image snapshot
-        var nWords =
-            this.isFloat ? 3 :
-            this.words ? this.words.length :
-            this.bytes ? (this.bytes.length + 1) >> 1 :
-            this.pointers ? this.pointers.length : 0;
-        var headerWords = nWords > 32 ? 2 : 11; // class word includes size if < 64 bytes
-        return (headerWords + nWords) * 2;
+    dataBytes: function() {
+        // number of bytes in this object excluding header and class information
+        return this.isFloat ? 8 :               // we use IEEE floats instead of the original 3-word format
+            this.bytes ? this.bytes.length :    // includes CompiledMethods
+            this.words ? this.words.length * 2 :
+            this.pointers ? this.pointers.length * 2 :
+            0;
+    },
+    totalBytes: function() { // size in bytes this object will take up in image snapshot
+        var dataBytes = this.dataBytes(),
+            dataWords = dataBytes+1 >> 1,
+            headerWords = dataBytes < 0x3F ? 2 : 3; // oop, class oop, and possibly extra size
+        return (headerWords + dataWords) * 2;
+    },
     },
 },
 'as class', {
@@ -854,7 +858,6 @@ Object.subclass('users.bert.St78.vm.Object',
             this.bytes[bytesPtr++] = oop & 0xFF;
         }
     },
-
     methodIsQuick: function() {
         return this.bytes[1] === 128;
     },
