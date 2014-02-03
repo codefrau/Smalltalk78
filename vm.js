@@ -989,8 +989,9 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         // Highjack user restart in ProjectWindow>>install to do thisProcess restart instead!
         this.patchByteCode(17520, 23, 0x85);     // thisProcess
 
-        // Skip the +1 in ProcessFrame callerBP by returning
-        this.patchByteCode(21712, 18, 0x83);     // return
+        // Skip the +1 in ProcessFrame callerBP by returning  -- this is no longer needed
+        this.BPFix = 1;  // set this to one to test the fix
+        if (this.BPFix == 0) this.patchByteCode(21712, 18, 0x83);     // return
     },
 
     initVMState: function() {
@@ -1403,7 +1404,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         var newFrame = this.sp - NoteTaker.FI_RECEIVER;
         if (newFrame <= NoteTaker.PI_PROCESS_STACK)
             throw "stack overflow"
-        this.activeContextPointers[newFrame + NoteTaker.FI_SAVED_BP] = this.currentFrame - newFrame;
+        // FIXME:  This should be reworked to use pushPCBP and so not need BPFix
+        this.activeContextPointers[newFrame + NoteTaker.FI_SAVED_BP] = (this.currentFrame - newFrame) - this.BPFix;
         this.activeContextPointers[newFrame + NoteTaker.FI_CALLER_PC] = this.pc;
         this.activeContextPointers[newFrame + NoteTaker.FI_NUMARGS] = argumentCount;
         this.activeContextPointers[newFrame + NoteTaker.FI_METHOD] = newMethod;
@@ -1425,7 +1427,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     doRemoteReturn: function() {
         // reverse of primitiveValue()
         var reply = this.pop();
-        var returnFrame = this.activeContextPointers.length - this.pop();
+        // FIXME:  This should be reworked to use PCBP and so not need BPFix
+        var returnFrame = (this.activeContextPointers.length - this.pop());
         var returnPC = this.pop();
         var rCode = this.pop(); // might want to check that we're in the same process
         /////// Whoosh //////
@@ -1445,7 +1448,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         }
         var reply = this.top();
         var oldFrame = this.currentFrame;
-        var newFrame = oldFrame + this.activeContextPointers[oldFrame + NoteTaker.FI_SAVED_BP];
+        // FIXME:  This should be reworked to use popPCBP and so not need BPFix
+        var newFrame = oldFrame + this.activeContextPointers[oldFrame + NoteTaker.FI_SAVED_BP] + this.BPFix;
         var newPC = this.activeContextPointers[oldFrame + NoteTaker.FI_CALLER_PC];
         var newSP = oldFrame + NoteTaker.FI_LAST_ARG + this.methodNumArgs; // pop past old frame and args
         /////// Whoosh //////
@@ -1686,7 +1690,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                 }
             }
             var method = process[bp + NoteTaker.FI_METHOD],
-                deltaBP = process[bp + NoteTaker.FI_SAVED_BP];
+                deltaBP = process[bp + NoteTaker.FI_SAVED_BP + this.BPFix];
             stack = this.printMethod(method) + '\n' + stack;
             if (!deltaBP) return stack;
             bp += deltaBP;
@@ -1731,13 +1735,13 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         if (debugFrame) stack += Strings.format("\npc: %s sp: %s bp: %s numArgs: %s\n",
             this.pc, this.sp, this.currentFrame, numArgs);
         for (var i = this.sp; i < ctx.length; i++) {
-            if (!debugFrame && bp + NoteTaker.FI_SAVED_BP <= i && bp + NoteTaker.FI_RECEIVER > i) continue;
+            if (!debugFrame && bp + NoteTaker.FI_SAVED_BP + this.BPFix <= i && bp + NoteTaker.FI_RECEIVER > i) continue;
             var obj = ctx[i];
             var value = obj && obj.stInstName ? obj.stInstName(32) : obj;
             stack += Strings.format('\n[%s] %s%s', i,
                 bp + NoteTaker.FI_FIRST_TEMP - numTemps < i && i <= bp + NoteTaker.FI_FIRST_TEMP
                     ? ('  temp ' + (bp + NoteTaker.FI_FIRST_TEMP + numArgs - i) + ': ') :
-                bp + NoteTaker.FI_SAVED_BP == i ? ' savedBP: ' :
+                bp + NoteTaker.FI_SAVED_BP + this.BPFix == i ? ' savedBP: ' :
                 bp + NoteTaker.FI_CALLER_PC == i ? 'callerPC: ' :
                 bp + NoteTaker.FI_NUMARGS == i ? ' numArgs: ' :
                 bp + NoteTaker.FI_METHOD == i ? '  method: ' :
@@ -1750,7 +1754,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             if (i >= bp + NoteTaker.FI_RECEIVER + numArgs && i+1 < ctx.length) {
                 if (!printAll) return stack;
                 sp = bp + NoteTaker.FI_LAST_ARG + numArgs;
-                bp += ctx[bp + NoteTaker.FI_SAVED_BP];
+                bp += ctx[bp + NoteTaker.FI_SAVED_BP + this.BPFix];
                 // look for remoteCode activation on stack
                 for (var j = sp; j < bp; j++){
                     var rCode = ctx[j];
