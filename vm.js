@@ -827,6 +827,9 @@ Object.subclass('users.bert.St78.vm.Object',
     } 
 },
 'as method', {
+    isCompiledMethod: function() {
+        return this.stClass.oop === NoteTaker.OTI_CLCOMPILEDMETHOD;
+    },
     methodInitLits: function(image, optionalOopMap) {
         // make literals encoded as oops available as proper pointer objects
         var numLits = this.methodNumLits();
@@ -2406,7 +2409,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (!this.success) return 0;
         var litCount = (header>>9) & 0xFF;
         var method = this.vm.instantiateClass(this.vm.stackValue(2), byteCount);
-        method.isCompiledMethod = true;
         method.pointers = [header];
         while (method.pointers.length < litCount+1)
             method.pointers.push(this.vm.nilObj);
@@ -3362,7 +3364,7 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
         this.indent = indent;           // prepend to every line except if highlighted
         this.highlight = highlight;     // prepend to highlighted line
         this.highlightPC = highlightPC; // PC of highlighted line
-        if (this.method.stClass.oop !== NoteTaker.OTI_CLCOMPILEDMETHOD)
+        if (!this.method.isCompiledMethod())
             return "<not a CompiledMethod>";
         this.result = '';
         this.scanner = new users.bert.St78.vm.InstructionStream(this.method, this.vm);
