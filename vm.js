@@ -582,9 +582,29 @@ Object.subclass('users.bert.St78.vm.Image',
             obj = obj.nextObject;
         }
     },
-    save: function() {
-        debugger;
-        this.fullGC();
+    writeToBuffer: function() {
+        this.fullGC(); // collect all objects
+        var magic = 'St78',
+            headerSize = 10,
+            data = new DataView(new ArrayBuffer(headerSize + this.oldSpaceBytes)),
+            pos = 0;
+        // magic bytes
+        for (var i = 0; i < 4; i++)
+            data.setUint8(pos++, magic.charCodeAt(i));
+        // header size
+        data.setUint16(pos, headerSize); pos += 2;
+        // image size
+        data.setUint32(pos, this.oldSpaceBytes); pos += 4;
+        if (pos !== headerSize) throw "header mismatch";
+        // objects
+        var obj = this.firstOldObject;
+        while (obj) {
+            if (obj.isCompiledMethod()) obj.methodPointersModified(this);
+            pos = obj.writeTo(data, pos);
+            obj = obj.nextObject;
+        }
+        if (pos !== headerSize + this.oldSpaceBytes) throw "image size mismatch";
+        return data.buffer;
     },
 
     fixedOopFor: function(anObject) {
@@ -766,6 +786,37 @@ Object.subclass('users.bert.St78.vm.Object',
             headerWords = dataBytes < 0x3F ? 2 : 3; // oop, class oop, and possibly extra size
         return (headerWords + dataWords) * 2;
     },
+},
+'writing', {
+    writeTo: function(data, pos) {
+        // Write oop, class.oop + small size, optional large size, optional data
+        // oop goes first
+        data.setUint16(pos, this.oop); pos += 2;
+        var byteSize = this.dataBytes();
+        // write class oop and size in its lower 6 bits
+        if (byteSize < 0x3F) { // one word for class and size
+           data.setUint16(pos, this.stClass.oop + byteSize);  pos += 2;
+        } else { // two words, marked by 0x3F size
+           data.setUint16(pos, this.stClass.oop + 0x3F);  pos += 2;
+           data.setUint16(pos, byteSize); pos += 2;
+        }
+        // now write data
+        var beforePos = pos;
+        if (this.isFloat)
+            { data.setFloat64(pos, this.float); pos += 8 }
+        else if (this.bytes)
+            for (var i = 0; i < this.bytes.length; i++)
+                { data.setUint8(pos, this.bytes[i]); pos++ }
+        else if (this.words)
+            for (var i = 0; i < this.words.length; i++)
+                { data.setUint16(pos, this.words[i]); pos += 2 }
+        else if (this.pointers)
+            for (var i = 0; i < this.pointers.length; i++)
+                { var p = this.pointers[i]; data.setUint16(pos, p.stClass ? p.oop : p); pos += 2 }
+        if (pos !== beforePos + byteSize) throw "written size does not match";
+        // adjust for odd number of bytes
+        if (pos & 1) pos++;
+        return pos;
     },
 },
 'as class', {
@@ -849,8 +900,9 @@ Object.subclass('users.bert.St78.vm.Object',
     },
     methodPointersModified: function(image, index, n) {
         // n literal pointers starting at index were modified: copy oops to bytes
-        // FIXME: If we want to adhere to pointers in bytes hack, this needs to work
-        return;
+        if (n) return; // we ignore this if sent from bitblt
+        // if sent from image saving, copy all
+        index = 0; n = this.pointers.length;
         var bytesPtr = index * 2 + 2; // skip method header
         for (var i = index; i < index + n; i++) {
             var oop = image.fixedOopFor(this.pointers[i]);
@@ -2735,7 +2787,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return true;
     },
     primitiveSaveImage: function(argCount) {
-        this.vm.image.save();
+        var buffer = this.vm.image.writeToBuffer();
         return true;
     },
     primitiveExitToDebugger: function(argCount) {
