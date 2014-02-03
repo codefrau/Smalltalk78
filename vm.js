@@ -175,7 +175,7 @@ NoteTaker = {
 
 Object.subclass('users.bert.St78.vm.ImageReader',
 'about', {
-    aboout: function() {
+    about: function() {
 /*
 ot is the object table, a sequence of 4-byte entries, retrievable by this.otAt(oop), where oop is an object pointer with the bottom two bits = 0.  The entry encodes the data address, along with some other bits including a reference count that we can now ignore.  The method dataAddress(oop) will retrieve the address, also taking into account the "dataBias" which I won't explain.
 
@@ -1184,7 +1184,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             case 0xF8: case 0xF9: case 0xFA: case 0xFB: case 0xFC: case 0xFD: case 0xFE: case 0xFF:
                 this.send(this.methodLiteral(b - 0xD0)); break;
         }
-        if (this.doSuper && b != 0x86) debugger  // this can prob be remeoved
     },
     doStore: function (value, addrByte) {
 		switch (addrByte >> 4) {
@@ -1717,7 +1716,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
     breakNow: function() {
         this.breakOutOfInterpreter = 'break';
-        debugger;
     },
     breakOnReturn: function() {
         this.breakOnFrameChanged = false;
