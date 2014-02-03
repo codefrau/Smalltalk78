@@ -2787,7 +2787,19 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return true;
     },
     primitiveSaveImage: function(argCount) {
+        if (!window.webkitStorageInfo) return alert("Need webkitStorage");
         var buffer = this.vm.image.writeToBuffer();
+        window.webkitStorageInfo.requestQuota(PERSISTENT, 5*1024*1024, function(grantedBytes) {
+            window.webkitRequestFileSystem(PERSISTENT, grantedBytes, function(fs) {
+                fs.root.getFile('latest.st78', {create: true}, function(fileEntry) {
+                    fileEntry.createWriter(function(fileWriter) {
+                        fileWriter.onwriteend = function(e) {alertOK("Saved " + fileEntry.toURL())};
+                        fileWriter.onerror = function(e) {alert('Write failed: ' + e.toString());};
+                        fileWriter.write(new Blob([buffer]));
+                    }, function(e){alert("Cannot create file writer " + e)});
+                }, function(e){alert("Cannot create file entry " + e)});
+            }, function(e){alert("Cannot create file system " + e)});
+        }, function(e){alert("Quota request denied " + e)});
         return true;
     },
     primitiveExitToDebugger: function(argCount) {
