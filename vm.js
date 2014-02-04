@@ -352,27 +352,8 @@ Object.subclass('users.bert.St78.vm.Image',
             symbol = this.nextInstanceAfter(symbol);
         }
     },
-
     globalNamed: function(name) {
         return this.globalRefNamed(name).pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE];
-    },
-
-    objectFromOop: function(oop, optionalOopMap) {
-        if (oop & 1) {
-            var val = oop >> 1;
-            return (val & 0x3FFF) - (val & 0x4000);
-        }
-        if (optionalOopMap) return optionalOopMap[oop]; // only available at startup
-    
-        // find the object with the given oop - looks only in oldSpace for now!
-        var obj = this.firstOldObject;
-        do {
-            if (oop === obj.oop) return obj;
-            obj = obj.nextObject;
-        } while (obj);
-        
-        debugger;
-        throw "oop not found";
     },
     smallifyLargeInts: function() {
         // visit every pointer field of every object, converting smallable LargeInts to Integers
@@ -604,10 +585,27 @@ Object.subclass('users.bert.St78.vm.Image',
         if (pos !== headerSize + this.oldSpaceBytes) throw "image size mismatch";
         return data.buffer;
     },
-
-    fixedOopFor: function(anObject) {
+    objectFromOop: function(oop, optionalOopMap) {
+        if (oop & 1) {
+            var val = oop >> 1;
+            return (val & 0x3FFF) - (val & 0x4000);
+        }
+        if (optionalOopMap) return optionalOopMap[oop]; // only available at startup
+    
+        // find the object with the given oop - looks only in oldSpace for now!
+        var obj = this.firstOldObject;
+        do {
+            if (oop === obj.oop) return obj;
+            obj = obj.nextObject;
+        } while (obj);
+        
+        debugger;
+        throw "oop not found";
+    },
+    objectToOop: function(anObject) {
         // newly created objects have a temporary oop, so assign a real one
-        if (this.vm.isSmallInt(anObject)) return anObject;
+        if (this.vm.isSmallInt(anObject))
+            return (anObject * 2 + 0x10001) & 0xFFFF; // add tag bit, make unsigned
         if (anObject.oop < 0) // it's a temp oop
             this.appendToOldObjects([anObject]); // tenure the object
         return anObject.oop;
@@ -810,7 +808,7 @@ Object.subclass('users.bert.St78.vm.Object',
                 { data.setUint16(pos, this.words[i]); pos += 2 }
         else if (this.pointers)
             for (var i = 0; i < this.pointers.length; i++)
-                { var p = this.pointers[i]; data.setUint16(pos, p.stClass ? p.oop : p); pos += 2 }
+                { data.setUint16(pos, image.objectToOop(this.pointers[i])); pos += 2 }
         if (pos !== beforePos + byteSize) throw "written size does not match";
         // adjust for odd number of bytes
         if (pos & 1) pos++;
@@ -903,7 +901,7 @@ Object.subclass('users.bert.St78.vm.Object',
         index = 0; n = this.methodNumLits();
         var bytesPtr = index * 2 + 2; // skip method header
         for (var i = index; i < index + n; i++) {
-            var oop = image.fixedOopFor(this.pointers[i]);
+            var oop = image.objectToOop(this.pointers[i]);
             this.bytes[bytesPtr++] = (oop >> 8) & 0xFF;
             this.bytes[bytesPtr++] = oop & 0xFF;
         }
@@ -1945,7 +1943,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 33: return this.popNandPushIntIfOK(1,this.stackFloat(0)|0); // primitiveAsInteger
             case 34: return this.popNandPushFloatIfOK(1,this.stackFloat(0)|0); // primitiveIntegerPart
             case 35: {var f = this.stackFloat(0); return this.popNandPushFloatIfOK(1, f - (f|0));} // primitiveFractionPart
-            case 36: return this.popNandPushIntIfOK(1, this.vm.image.fixedOopFor(this.stackNonInteger(0)) >> 2); // Object.hash
+            case 36: return this.popNandPushIntIfOK(1, this.vm.image.objectToOop(this.stackNonInteger(0)) >> 2); // Object.hash
             case 39: return this.primitiveValueGets(argCount); // RemoteCode.value_
             case 40: return this.primitiveCopyBits(argCount);  // BitBlt.callBLT
             case 41: return this.primitiveSetDisplayAndCursor(argCount); // BitBlt install for display
