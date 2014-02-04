@@ -375,7 +375,7 @@ Object.subclass('users.bert.St78.vm.Image',
         throw "oop not found";
     },
     smallifyLargeInts: function() {
-        // visit every filed of every object, converting smallable LargeInts to Integers
+        // visit every pointer field of every object, converting smallable LargeInts to Integers
         // We do this because the normal ST-76 range is +-32K
         var lgIntClass = this.objectFromOop(NoteTaker.OTI_CLLARGEINTEGER),
             obj = this.firstOldObject;
@@ -1023,21 +1023,24 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.image.objectFromOop(NoteTaker.OTI_CLCOMPILEDMETHOD).stClass =
             this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
 
-        // Patch to make all LargeIntegers in range +-32K small again:
-        this.image.smallifyLargeInts();
-        NoteTaker.MAX_INT =  0x7FFF;
-        NoteTaker.MIN_INT = -0x8000;
-        NoteTaker.NON_INT = -0x9000;
-        
-        // Patches to make +-32K integers work while NoteTaker is true
-        this.patchByteCode(23988, 12, 0x7E); // Integer>>lshift:
-        this.patchByteCode(24620, 8, 0x7E); // Integer>>minVal
-        this.patchByteCode(24608, 8, 0x7E); // Integer>>maxVal
-        this.patchByteCode(26836, 24, 0x7E); // LargeInteger>>lshift:
-        this.patchByteCode(27024, 20, 0x7E); // LargeInteger>>land:
-        this.patchByteCode(26996, 30, 0x7E); // LargeInteger>>asSmall
-        this.patchByteCode(26912, 18, 0x7E); // LargeInteger>>lor:
-        this.patchByteCode(27032, 18, 0x7E); // LargeInteger>>lxor:
+        if (false) { // disabled because we need that 1 bit to 
+                     // tell oops from ints in saved image 
+            // Patch to make all LargeIntegers in range +-32K small again:
+            this.image.smallifyLargeInts();
+            NoteTaker.MAX_INT =  0x7FFF;
+            NoteTaker.MIN_INT = -0x8000;
+            NoteTaker.NON_INT = -0x9000;
+            
+            // Patches to make +-32K integers work while NoteTaker is true
+            this.patchByteCode(23988, 12, 0x7E); // Integer>>lshift:
+            this.patchByteCode(24620, 8, 0x7E); // Integer>>minVal
+            this.patchByteCode(24608, 8, 0x7E); // Integer>>maxVal
+            this.patchByteCode(26836, 24, 0x7E); // LargeInteger>>lshift:
+            this.patchByteCode(27024, 20, 0x7E); // LargeInteger>>land:
+            this.patchByteCode(26996, 30, 0x7E); // LargeInteger>>asSmall
+            this.patchByteCode(26912, 18, 0x7E); // LargeInteger>>lor:
+            this.patchByteCode(27032, 18, 0x7E); // LargeInteger>>lxor:
+        }
 
         // jump over Dorado code in UserView>>screenextent:tab: 
         this.patchByteCode(16620, 34, 0xA4, (111-34)-2); // long jmp to 111 [jumps have a bias of 2]
@@ -2446,7 +2449,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (this.success && size < 0) return false;  // negative size
         if (!this.success) {
             var largeSize = this.stackNonInteger(1);
-            if (largeSize.stClass.oop !== NoteTaker.OTI_CLLARGEINTEGER) return false
+            if (largeSize.stClass.oop !== NoteTaker.OTI_CLLARGEINTEGER) return false;
             size = largeSize.largeIntegerValue();
             if (size < 0 || size > 200000) return false; // we have our limits
             this.success = true;
