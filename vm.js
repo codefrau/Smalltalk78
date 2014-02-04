@@ -936,7 +936,7 @@ Object.subclass('users.bert.St78.vm.Object',
     },
     methodStartPC: function() {
         if (this.methodIsQuick()) return 0; 
-        return (this.bytes[1] & 126) - 2; // zero-based
+        return (this.bytes[1] & 126) - NoteTaker.PC_BIAS; // bias = 2 because 4-byte header became 2-byte for NT
     },
     methodEndPC: function() {
         if (this.methodIsQuick()) return 0; 
@@ -1049,6 +1049,10 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 
         // Make BP deltas match ST code for the debugger
         this.BPFix = 1;  // set this to one to test the fix
+
+        // Make other code match push/popPCBP by including NoteTaker.PC_BIAS
+        // NT method header is 2 bytes instead of 4 in normal ST76
+        this.PCFix = 0; //NoteTaker.PC_BIAS;  // set this to NoteTaker.PC_BIAS (=2) to test the fix
     },
 
     initVMState: function() {
@@ -1462,7 +1466,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             throw "stack overflow"
         // FIXME:  This should be reworked to use pushPCBP and so not need BPFix
         this.activeContextPointers[newFrame + NoteTaker.FI_SAVED_BP] = (this.currentFrame - newFrame) - this.BPFix;
-        this.activeContextPointers[newFrame + NoteTaker.FI_CALLER_PC] = this.pc;
+        this.activeContextPointers[newFrame + NoteTaker.FI_CALLER_PC] = this.pc + this.PCFix;
         this.activeContextPointers[newFrame + NoteTaker.FI_NUMARGS] = argumentCount;
         this.activeContextPointers[newFrame + NoteTaker.FI_METHOD] = newMethod;
         this.activeContextPointers[newFrame + NoteTaker.FI_MCLASS] = newMethodClass;
@@ -1485,7 +1489,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         var reply = this.pop();
         // FIXME:  This should be reworked to use PCBP and so not need BPFix
         var returnFrame = (this.activeContextPointers.length - this.pop());
-        var returnPC = this.pop();
+        var returnPC = this.pop() - this.PCFix;
         var rCode = this.pop(); // might want to check that we're in the same process
         /////// Whoosh //////
         this.currentFrame = this.loadFromFrame(returnFrame);
@@ -1506,7 +1510,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         var oldFrame = this.currentFrame;
         // FIXME:  This should be reworked to use popPCBP and so not need BPFix
         var newFrame = oldFrame + this.activeContextPointers[oldFrame + NoteTaker.FI_SAVED_BP] + this.BPFix;
-        var newPC = this.activeContextPointers[oldFrame + NoteTaker.FI_CALLER_PC];
+        var newPC = this.activeContextPointers[oldFrame + NoteTaker.FI_CALLER_PC] - this.PCFix;
         var newSP = oldFrame + NoteTaker.FI_LAST_ARG + this.methodNumArgs; // pop past old frame and args
         /////// Whoosh //////
         this.currentFrame = this.loadFromFrame(newFrame);
