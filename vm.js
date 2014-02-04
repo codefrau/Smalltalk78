@@ -1047,9 +1047,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         // Highjack user restart in ProjectWindow>>install to do thisProcess restart instead!
         this.patchByteCode(17520, 23, 0x85);     // thisProcess
 
-        // Skip the +1 in ProcessFrame callerBP by returning  -- this is no longer needed
+        // Make BP deltas match ST code for the debugger
         this.BPFix = 1;  // set this to one to test the fix
-        if (this.BPFix == 0) this.patchByteCode(21712, 18, 0x83);     // return
     },
 
     initVMState: function() {
@@ -1747,9 +1746,9 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                 }
             }
             var method = process[bp + NoteTaker.FI_METHOD],
-                deltaBP = process[bp + NoteTaker.FI_SAVED_BP + this.BPFix];
+                deltaBP = process[bp + NoteTaker.FI_SAVED_BP] + this.BPFix;
             stack = this.printMethod(method) + '\n' + stack;
-            if (!deltaBP) return stack;
+            if (deltaBP <= 1) return stack;
             bp += deltaBP;
         }
         return stack;
