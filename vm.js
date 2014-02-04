@@ -173,7 +173,7 @@ NoteTaker = {
     Keyboard_All: 8 + 16 + 32 + 64,
 };
 
-Object.subclass('users.bert.St78.vm.ImageReader',
+Object.subclass('users.bert.St78.vm.ObjectTableReader',
 'about', {
     about: function() {
 /*
@@ -214,7 +214,7 @@ The instsize is an integer (ie low bit = 1) with the following interpretation:
             if (this.refCountOf(oop))
                 oopMap[oop] = new users.bert.St78.vm.Object(oop);
         for (var oop in oopMap)
-            oopMap[oop].installFromImage(this, oopMap);
+            oopMap[oop].readFromObjectTable(this, oopMap);
         return oopMap;
     }
 }, 
@@ -292,7 +292,7 @@ Object.subclass('users.bert.St78.vm.Image',
     }
 },
 'initializing', {
-    initialize: function(objTable, objSpace, dataBias, name) {
+    initialize: function(oopMap, name) {
         this.name = name;
         this.totalMemory = 1000000; 
         this.gcCount = 0;
@@ -300,8 +300,6 @@ Object.subclass('users.bert.St78.vm.Image',
         this.newSpaceCount = 0;
         this.oldSpaceBytes = 0;
         this.freeOops = {};
-        var reader = new users.bert.St78.vm.ImageReader(objTable, objSpace, dataBias);
-        var oopMap = reader.readObjects();
         // link all objects into oldspace
         var prevObj;
         for (var oop = 0; oop < 0xFFFF; oop += 4)
@@ -668,26 +666,26 @@ Object.subclass('users.bert.St78.vm.Object',
     initialize: function(oop) {
         this.oop = oop;
     },
-    installFromImage: function(image, oopMap) {
-        var entry = image.otAt(this.oop);
-        var addr = image.dataAddress(this.oop);
-        var classOop = image.classOfOop(this.oop);
+    readFromObjectTable: function(reader, oopMap) {
+        var entry = reader.otAt(this.oop);
+        var addr = reader.dataAddress(this.oop);
+        var classOop = reader.classOfOop(this.oop);
         this.stClass = oopMap[classOop];
-        var instSize = image.fieldOfObject(3, classOop) >> 1;
+        var instSize = reader.fieldOfObject(3, classOop) >> 1;
         var objBytes = instSize & NoteTaker.FMT_ISVARIABLE
-            ? image.lengthBitsAtAddr(addr) : instSize & NoteTaker.FMT_BYTELENGTH;
+            ? reader.lengthBitsAtAddr(addr) : instSize & NoteTaker.FMT_BYTELENGTH;
         if (objBytes <= 2) return; // only class
         if (instSize & NoteTaker.FMT_HASPOINTERS) { // pointers
             this.pointers = [];
             for (var i = 1; i < objBytes/2; i++) {
-                var oop = image.fieldOfObject(i, this.oop);
-                var obj = image.isInteger(oop) ? image.integerValueOf(oop) : oopMap[oop];
+                var oop = reader.fieldOfObject(i, this.oop);
+                var obj = reader.isInteger(oop) ? reader.integerValueOf(oop) : oopMap[oop];
                 this.pointers.push(obj);
             }
         } else if (instSize & NoteTaker.FMT_HASWORDS) { // words
             this.words = [];
             for (var i = 1; i < objBytes/2; i++) {
-                var word = image.fieldOfObject(i, this.oop);
+                var word = reader.fieldOfObject(i, this.oop);
                 this.words.push(word);
             }
             if (classOop === NoteTaker.OTI_CLFLOAT) {
@@ -697,7 +695,7 @@ Object.subclass('users.bert.St78.vm.Object',
         } else { // bytes
             this.bytes = [];
             for (var i = 2; i < objBytes; i++) {
-                var byte = image.data[addr + i];
+                var byte = reader.data[addr + i];
                 this.bytes.push(byte);
             }
         }
@@ -902,7 +900,7 @@ Object.subclass('users.bert.St78.vm.Object',
         // n literal pointers starting at index were modified: copy oops to bytes
         if (n) return; // we ignore this if sent from bitblt
         // if sent from image saving, copy all
-        index = 0; n = this.pointers.length;
+        index = 0; n = this.methodNumLits();
         var bytesPtr = index * 2 + 2; // skip method header
         for (var i = index; i < index + n; i++) {
             var oop = image.fixedOopFor(this.pointers[i]);
