@@ -322,7 +322,6 @@ Object.subclass('users.bert.St78.vm.Image',
         this.specialOopsVector = this.globalNamed('SpecialOops');
     },
     initCompiledMethods: function(oopMap, doPatches) {
-        debugger;
         // make proper pointer objects for literals encoded in bytes
         var cmClass = this.objectFromOop(NoteTaker.OOP_CLCOMPILEDMETHOD, oopMap),
             cm = this.someInstanceOf(cmClass);
@@ -2646,7 +2645,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             window.webkitRequestFileSystem(PERSISTENT, grantedBytes, function(fs) {
                 fs.root.getFile('latest.st78', {create: true}, function(fileEntry) {
                     fileEntry.createWriter(function(fileWriter) {
-                        fileWriter.onwriteend = function(e) {console.log("Saved " + fileEntry.toURL())};
+                        fileWriter.onwriteend = function(e) {alertOK("Saved " + fileEntry.toURL())};
                         fileWriter.onerror = function(e) {alert('Write failed: ' + e.toString());};
                         fileWriter.write(new Blob([buffer]));
                     }, function(e){alert("Cannot create file writer " + e)});
