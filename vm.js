@@ -23,31 +23,31 @@ module('users.bert.St78.vm').requires().toRun(function() {
 
 
 NoteTaker = {
-	OTI_NIL: 0,
-	OTI_FALSE: 4,
-	OTI_TRUE: 8,
-	OTI_THEPROCESS: 0xc,
-	OTI_SMALLTALK: 0x10,
-	OTI_FIRST_SEL: 0x14,
-	OTI_LAST_SEL: 0x9c,
-	OTI_ERROR_SEL: 0x9c,
-	OTI_USTABLE: 0xa0,
+	OTI_NIL: 0 / 2,
+	OTI_FALSE: 4 / 2,
+	OTI_TRUE: 8 / 2,
+	OTI_THEPROCESS: 0xc / 2,
+	OTI_SMALLTALK: 0x10 / 2,
+	OTI_FIRST_SEL: 0x14 / 2,
+	OTI_LAST_SEL: 0x9c / 2,
+	OTI_ERROR_SEL: 0x9c / 2,
+	OTI_USTABLE: 0xa0 / 2,
 
 	// known classes
-	OTI_CLCLASS: 0x40,
-	OTI_CLINTEGER: 0x80,	// class of SmallIntegers
-	OTI_CLSTRING: 0xc0,
-	OTI_CLVECTOR: 0x100,
-	OTI_CLSTREAM: 0x140,
-	OTI_CLFLOAT: 0x180,
-	OTI_CLPROCESS: 0x1c0,
-	OTI_CLREMOTECODE: 0x200,
-	OTI_CLPOINT: 0x240,
-	OTI_CLNATURAL: 0x280,
-	OTI_CLLARGEINTEGER: 0x2c0,
-    OTI_CLUNIQUESTRING: 0x340,
-    OTI_CLCOMPILEDMETHOD: 0x3C0,
-    OTI_CLVLENGTHCLASS: 0x1380,
+	OTI_CLCLASS: 0x40 / 2,
+	OTI_CLINTEGER: 0x80 / 2,	// class of SmallIntegers
+	OTI_CLSTRING: 0xc0 / 2,
+	OTI_CLVECTOR: 0x100 / 2,
+	OTI_CLSTREAM: 0x140 / 2,
+	OTI_CLFLOAT: 0x180 / 2,
+	OTI_CLPROCESS: 0x1c0 / 2,
+	OTI_CLREMOTECODE: 0x200 / 2,
+	OTI_CLPOINT: 0x240 / 2,
+	OTI_CLNATURAL: 0x280 / 2,
+	OTI_CLLARGEINTEGER: 0x2c0 / 2,
+    OTI_CLUNIQUESTRING: 0x340 / 2,
+    OTI_CLCOMPILEDMETHOD: 0x3C0 / 2,
+    OTI_CLVLENGTHCLASS: 0x1380 / 2,
 
 	// CLCLASS layout:
 	PI_CLASS_TITLE: 0,
@@ -210,9 +210,12 @@ The instsize is an integer (ie low bit = 1) with the following interpretation:
     readObjects: function() {
         // create js objects for the st78 objects in ot+data
         var oopMap = {};
-        for (var oop = 0; oop < this.ot.length; oop += 4)
-            if (this.refCountOf(oop))
+        for (var oti = 0; oti < this.ot.length; oti += 4) {
+            var oop = oti / 2;      // 1 more bit for our oops so we get up to 32 K objects
+            if (this.refCountOf(oop)) {
                 oopMap[oop] = new users.bert.St78.vm.Object(oop);
+            }
+        }
         for (var oop in oopMap)
             oopMap[oop].readFromObjectTable(this, oopMap);
         return oopMap;
@@ -220,10 +223,10 @@ The instsize is an integer (ie low bit = 1) with the following interpretation:
 }, 
 'object access', {
     otAt: function(oop) {
-        // Return the OT entry for the given oop
+        // Return the OT entry for the oop
         // Decode two two-byte numbers into one 32-bit number
-        var i = oop;
-        var val = 0;
+        var i = oop * 2,
+            val = 0;
         val = this.ot[i+1];
         val = val*256 + this.ot[i];
         val = val*256 + this.ot[i+3];
@@ -241,7 +244,7 @@ The instsize is an integer (ie low bit = 1) with the following interpretation:
     	return this.data[a+1]*256 + this.data[a];
     },
     classOfOop: function(oop) {
-        return this.fieldOfObject(0, oop) & 0xFFC0;
+        return (this.fieldOfObject(0, oop) & 0xFFC0) / 2; // our oops are half the original
     },
     refCountOf: function (oop) {
         return this.otAt(oop) >>> 24;
@@ -274,21 +277,21 @@ Object.subclass('users.bert.St78.vm.Image',
         isTrue: (optional) true if this is the true object
         isFalse: (optional) true if this is the false object
         isFloat: (optional) true if this is a Float object
-        isFloatClass: (optional) true if this is the Float class
-        oop: unique integer
+        oop: unique integer (16 bits, lsb is 0, in classes 5 lower bits are 0)
         mark: boolean (used only during GC, otherwise false)
         nextObject: linked list of objects in old space (new space objects do not have this yet)
     }
 
     Object Table
     ============
-    Used for enumerating objects and GC.
+    There is no object table. Objects use direct references. We have immediate untagged ints (+/-16K).
+    The snapshot image format uses 16 bit words for oops and tags the ints.
 
     */    
     }
 },
 'initializing', {
-    initialize: function(oopMap, name) {
+    initialize: function(oopMap, name, doPatches) {
         this.name = name;
         this.totalMemory = 1000000; 
         this.gcCount = 0;
@@ -298,7 +301,7 @@ Object.subclass('users.bert.St78.vm.Image',
         this.freeOops = {};
         // link all objects into oldspace
         var prevObj;
-        for (var oop = 0; oop < 0xFFFF; oop += 4)
+        for (var oop = 0; oop < 0xFFFF; oop += 2)
             if (oopMap[oop]) {
                 this.oldSpaceCount++;
                 this.oldSpaceBytes += oopMap[oop].totalBytes();
@@ -309,9 +312,9 @@ Object.subclass('users.bert.St78.vm.Image',
             }
         this.firstOldObject = oopMap[0];
         this.lastOldObject = prevObj;
-        this.nextOop = -4; // new objects get negative preliminary oops
+        this.nextOop = -2; // new objects get negative preliminary oops
         this.initKnownObjects(oopMap);
-        this.initCompiledMethods(oopMap);
+        this.initCompiledMethods(oopMap, doPatches);
         console.log("Loaded image " + this.name);
     },
     initKnownObjects: function(oopMap) {
@@ -322,12 +325,12 @@ Object.subclass('users.bert.St78.vm.Image',
         this.userProcess = oopMap[NoteTaker.OTI_THEPROCESS];
         this.specialOopsVector = this.globalNamed('SpecialOops');
     },
-    initCompiledMethods: function(oopMap) {
+    initCompiledMethods: function(oopMap, doPatches) {
         // make proper pointer objects for literals encoded in bytes
         var cmClass = this.objectFromOop(NoteTaker.OTI_CLCOMPILEDMETHOD, oopMap),
             cm = this.someInstanceOf(cmClass);
         while (cm) {
-            cm.methodInitLits(this, oopMap);
+            cm.methodInitLits(this, oopMap, doPatches);
             cm = this.nextInstanceAfter(cm);
         }
     },
@@ -401,7 +404,7 @@ Object.subclass('users.bert.St78.vm.Image',
         var isClass = anObj.isClass();
         for (var oopStr in this.freeOops) {
             var oop = parseInt(oopStr);
-            var isClassOop = !(oop & 0x3F);    // class oop has lower bits 0
+            var isClassOop = !(oop & 0x1F);    // class oop has lower bits 0
             if (isClass !== isClassOop) continue;
             delete this.freeOops[oopStr];
             return anObj.oop = oop;
@@ -495,7 +498,7 @@ Object.subclass('users.bert.St78.vm.Image',
     tempOop: function() {
         // new objects get a temporary oop
         this.newSpaceCount++;
-        return this.nextOop -= 4;
+        return this.nextOop -= 2;
     },
     instantiateClass: function(aClass, indexableSize, nilObj) {
         var newObject = new users.bert.St78.vm.Object(this.tempOop());
@@ -758,6 +761,7 @@ Object.subclass('users.bert.St78.vm.Object',
             this.pointers = [];
             for (var i = 1; i < objBytes/2; i++) {
                 var oop = reader.fieldOfObject(i, this.oop);
+                if (!(oop&1)) oop /= 2; // our oops are half the original
                 var obj = this.objectFromOop(oop, oopMap);
                 this.pointers.push(obj);
             }
@@ -867,9 +871,9 @@ Object.subclass('users.bert.St78.vm.Object',
     totalBytes: function() { // size in bytes this object will take up in image snapshot
         var dataBytes = this.dataBytes(),
             dataWords = dataBytes+1 >> 1,
-            headerWords = dataBytes < 0x3E ? 2 // oop, classOopAndSizeOrLargeTag (up to 62 bytes)
-                : dataBytes <= 0xFFFF ? 3      // oop, class oop, 2 bytes size (tag 0x3E)
-                : 4;                           // oop, class oop, 4 bytes size (tag 0x3F)
+            headerWords = dataBytes < 0x1E ? 2 // oop, classOopAndSizeOrLargeTag (up to 30 bytes)
+                : dataBytes <= 0xFFFF ? 3      // oop, class oop, 2 bytes size (tag 0x1E)
+                : 4;                           // oop, class oop, 4 bytes size (tag 0x1F)
         return (headerWords + dataWords) * 2;
     },
 },
@@ -880,13 +884,13 @@ Object.subclass('users.bert.St78.vm.Object',
         data.setUint16(pos, this.oop); pos += 2;
         var byteSize = this.dataBytes();
         // write class oop and size in its lower 6 bits
-        if (byteSize < 0x3E) { // one word for class and size
+        if (byteSize < 0x1E) { // one word for class and size
            data.setUint16(pos, this.stClass.oop + byteSize);  pos += 2;
-        } else if (byteSize <= 0xFFFF) { // two words, marked by 0x3E size
-           data.setUint16(pos, this.stClass.oop + 0x3E);  pos += 2;
+        } else if (byteSize <= 0xFFFF) { // two words, marked by 0x1E size
+           data.setUint16(pos, this.stClass.oop + 0x1E);  pos += 2;
            data.setUint16(pos, byteSize); pos += 2;
-        } else { // three words, marked by 0x3F size
-           data.setUint16(pos, this.stClass.oop + 0x3F);  pos += 2;
+        } else { // three words, marked by 0x1F size
+           data.setUint16(pos, this.stClass.oop + 0x1F);  pos += 2;
            data.setUint32(pos, byteSize); pos += 4;
         }
         // now write data
@@ -974,7 +978,7 @@ Object.subclass('users.bert.St78.vm.Object',
     isCompiledMethod: function() {
         return this.stClass.oop === NoteTaker.OTI_CLCOMPILEDMETHOD;
     },
-    methodInitLits: function(image, optionalOopMap) {
+    methodInitLits: function(image, optionalOopMap, convertOops) {
         // make literals encoded as oops available as proper pointer objects
         var numLits = this.methodNumLits();
         if (numLits) {
@@ -982,6 +986,7 @@ Object.subclass('users.bert.St78.vm.Object',
                 bytesPtr = 2; // skip header word
             for (var i = 0; i < numLits; i++) {
                 var oop = this.bytes[bytesPtr++] + 256 * this.bytes[bytesPtr++];
+                if (convertOops && !(oop & 1)) oop /= 2;
                 lits.push(image.objectFromOop(oop, optionalOopMap));
             }
             this.pointers = lits;
@@ -1059,11 +1064,11 @@ Object.extend(users.bert.St78.vm.Object, {
     readFromBuffer: function(reader) {
         var oop = reader.nextUint16(),
             classOopAndSize = reader.nextUint16(),
-            byteSize = classOopAndSize & 0x3F,
+            byteSize = classOopAndSize & 0x1F,
             classOop = classOopAndSize - byteSize;
-        if (byteSize === 0x3E)
+        if (byteSize === 0x1E)
             byteSize = reader.nextUint16();
-        else if (byteSize === 0x3F)
+        else if (byteSize === 0x1F)
             byteSize = reader.nextUint32();
         var obj = new this(oop);
         obj.data = {
@@ -1142,21 +1147,21 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             NoteTaker.NON_INT = -0x9000;
             
             // Patches to make +-32K integers work while NoteTaker is true
-            this.patchByteCode(23988, 12, 0x7E); // Integer>>lshift:
-            this.patchByteCode(24620, 8, 0x7E); // Integer>>minVal
-            this.patchByteCode(24608, 8, 0x7E); // Integer>>maxVal
-            this.patchByteCode(26836, 24, 0x7E); // LargeInteger>>lshift:
-            this.patchByteCode(27024, 20, 0x7E); // LargeInteger>>land:
-            this.patchByteCode(26996, 30, 0x7E); // LargeInteger>>asSmall
-            this.patchByteCode(26912, 18, 0x7E); // LargeInteger>>lor:
-            this.patchByteCode(27032, 18, 0x7E); // LargeInteger>>lxor:
+            this.patchByteCode(23988/2, 12, 0x7E); // Integer>>lshift:
+            this.patchByteCode(24620/2, 8, 0x7E); // Integer>>minVal
+            this.patchByteCode(24608/2, 8, 0x7E); // Integer>>maxVal
+            this.patchByteCode(26836/2, 24, 0x7E); // LargeInteger>>lshift:
+            this.patchByteCode(27024/2, 20, 0x7E); // LargeInteger>>land:
+            this.patchByteCode(26996/2, 30, 0x7E); // LargeInteger>>asSmall
+            this.patchByteCode(26912/2, 18, 0x7E); // LargeInteger>>lor:
+            this.patchByteCode(27032/2, 18, 0x7E); // LargeInteger>>lxor:
         }
 
         // jump over Dorado code in UserView>>screenextent:tab: 
-        this.patchByteCode(16620, 34, 0xA4, (111-34)-2); // long jmp to 111 [jumps have a bias of 2]
+        this.patchByteCode(16620/2, 34, 0xA4, (111-34)-2); // long jmp to 111 [jumps have a bias of 2]
 
         // Highjack user restart in ProjectWindow>>install to do thisProcess restart instead!
-        this.patchByteCode(17520, 23, 0x85);     // thisProcess
+        this.patchByteCode(17520/2, 23, 0x85);     // thisProcess
     },
 
     initVMState: function() {
@@ -2047,7 +2052,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 33: return this.popNandPushIntIfOK(1,this.stackFloat(0)|0); // primitiveAsInteger
             case 34: return this.popNandPushFloatIfOK(1,this.stackFloat(0)|0); // primitiveIntegerPart
             case 35: {var f = this.stackFloat(0); return this.popNandPushFloatIfOK(1, f - (f|0));} // primitiveFractionPart
-            case 36: return this.popNandPushIntIfOK(1, this.vm.image.objectToOop(this.stackNonInteger(0)) >> 2); // Object.hash
+            case 36: return this.popNandPushIntIfOK(1, this.vm.image.objectToOop(this.stackNonInteger(0)) >> 1); // Object.hash
             case 39: return this.primitiveValueGets(argCount); // RemoteCode.value_
             case 40: return this.primitiveCopyBits(argCount);  // BitBlt.callBLT
             case 41: return this.primitiveSetDisplayAndCursor(argCount); // BitBlt install for display
@@ -2404,7 +2409,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var array = this.stackNonInteger(0);
         var index = this.stackPos16BitInt(1); //note non-int returns zero
         if (!this.success) return array;
-        var info = this.atCache[(array.oop >> 2) & this.atCacheMask];
+        var info = this.atCache[(array.oop >> 1) & this.atCacheMask];
         if (info.array !== array)
             info = this.makeAtCacheInfo(this.atCache, this.vm.specialSelectors[16], array, convertChars, includeInstVars);
         if (index < 1 || index > info.size) {this.success = false; return array;}
@@ -2424,7 +2429,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var array = this.stackNonInteger(0);
         var index = this.stackPos16BitInt(2); //note non-int returns zero
         if (!this.success) return array;
-        var info = this.atPutCache[(array.oop >> 2) & this.atCacheMask];
+        var info = this.atPutCache[(array.oop >> 1) & this.atCacheMask];
         if (info.array !== array)
             info = this.makeAtCacheInfo(this.atPutCache, this.vm.specialSelectors[17], array, convertChars, includeInstVars);
         if (index<1 || index>info.size) {this.success = false; return array;}
@@ -2482,7 +2487,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var cacheable = !this.vm.doSuper,           //not a super send
             instSize = array.stClass.classInstSize(),
             indexableSize = this.indexableSize(array),
-            info = cacheable ? atOrPutCache[(array.oop >> 2) & this.atCacheMask] : this.nonCachedInfo;
+            info = cacheable ? atOrPutCache[(array.oop >> 1) & this.atCacheMask] : this.nonCachedInfo;
         info.array = array;
         info.convertChars = convertChars;
         if (includeInstVars) {
