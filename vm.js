@@ -1978,7 +1978,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.display = display;
         this.display.vm = this.vm;
         this.initAtCache();
-        this.initModules();
 		this.remoteCodeClass = vm.image.objectFromOop(NoteTaker.OTI_CLREMOTECODE);
 		this.processClass = vm.image.objectFromOop(NoteTaker.OTI_CLPROCESS);
         this.pointClass = this.vm.image.objectFromOop(NoteTaker.OTI_CLPOINT);
@@ -1987,17 +1986,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.compiledMethodClass = this.vm.image.objectFromOop(NoteTaker.OTI_CLCOMPILEDMETHOD);
         this.uniqueStringClass = this.vm.image.objectFromOop(NoteTaker.OTI_CLUNIQUESTRING);
         this.idleCounter = 0;
-    },
-    initModules: function() {
-        this.loadedModules = {};
-        this.externalModules = {};
-        this.builtinModules = {
-            MiscPrimitivePlugin: {
-                exports: {
-                    primitiveStringHash: this.primitiveStringHash.bind(this),
-                },
-            },
-        };
     },
 },
 'dispatch', {
@@ -2508,9 +2496,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
 },
 'basic',{
-    someObject: function() {
-        return this.vm.image.firstOldObject;
-    },
     primitivePerform: function(argCount) {
         // handle perform: <selector> (with: arg)*
         if (this.vm.stackValue(argCount).stClass !== this.uniqueStringClass)
@@ -2521,23 +2506,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
         while (args.length) this.vm.push(args.pop());
         this.vm.send(selector, argCount - 1);
         return true;
-    },
-
-    nextObject: function(obj) {
-        var nextObj = this.vm.image.objectAfter(obj);
-        return nextObj ? nextObj : 0;
-    },
-    someInstanceOf: function(clsObj) {
-        var someInstance = this.vm.image.someInstanceOf(clsObj);
-        if (someInstance) return someInstance;
-        this.success = false;
-        return 0;
-    },
-    nextInstanceAfter: function(obj) {
-        var nextInstance = this.vm.image.nextInstanceAfter(obj);
-        if (nextInstance) return nextInstance;
-        this.success = false;
-        return 0;
     },
     primitiveMakePoint: function(argCount) {
         var x = this.vm.stackValue(0);
@@ -2569,74 +2537,12 @@ Object.subclass('users.bert.St78.vm.Primitives',
         }
         return this.popNandPushIfOK(2, this.vm.instantiateClass(rcvr, size));
     },
-    primitiveNewMethod: function(argCount) {
-        var header = this.stackInteger(0);
-        var byteCount = this.stackInteger(1);
-        if (!this.success) return 0;
-        var litCount = (header>>9) & 0xFF;
-        var method = this.vm.instantiateClass(this.vm.stackValue(2), byteCount);
-        method.pointers = [header];
-        while (method.pointers.length < litCount+1)
-            method.pointers.push(this.vm.nilObj);
-        this.vm.popNandPush(1+argCount, method);
-        if (this.vm.breakOnNewMethod)
-            this.vm.breakOnMethod = method;
-        return true;
-    },
     doArrayBecome: function(doBothWays) {
 	    var rcvr = this.stackNonInteger(0);
         var arg = this.stackNonInteger(1);
     	if (!this.success) return rcvr;
         this.success = this.vm.image.bulkBecome(rcvr.pointers, arg.pointers, doBothWays);
         return rcvr;
-    },
-    doStringReplace: function() {
-        throw "need to reverse args"
-        var dst = this.stackNonInteger(4);
-        var dstPos = this.stackInteger(3) - 1;
-        var count = this.stackInteger(2) - dstPos;
-        //	if (count<=0) {this.success = false; return dst;} //fail for compat, later succeed
-        var src = this.stackNonInteger(1);
-        var srcPos = this.stackInteger(0) - 1;
-        if (!this.success) return dst; //some integer not right
-        var srcFmt = src.format;
-        var dstFmt = dst.format;
-    	if (dstFmt < 8)
-            if (dstFmt != srcFmt) {this.success = false; return dst;} //incompatible formats
-        else
-            if ((dstFmt&0xC) != (srcFmt&0xC)) {this.success = false; return dst;} //incompatible formats
-        if (srcFmt<4) {//pointer type objects
-            var totalLength = src.pointersSize();
-            var srcInstSize = src.instSize();
-            srcPos += srcInstSize;
-            if ((srcPos < 0) || (srcPos + count) > totalLength)
-                {this.success = false; return dst;} //would go out of bounds
-            totalLength = dst.pointersSize();
-            var dstInstSize= dst.instSize();
-            dstPos += dstInstSize;
-            if ((dstPos < 0) || (dstPos + count) > totalLength)
-                {this.success= false; return dst;} //would go out of bounds
-            this.vm.arrayCopy(src.pointers, srcPos, dst.pointers, dstPos, count);
-            return dst;
-        } else if (srcFmt < 8) { //words type objects
-            var totalLength = src.wordsSize();
-            if ((srcPos < 0) || (srcPos + count) > totalLength)
-                {this.success = false; return dst;} //would go out of bounds
-            totalLength = dst.wordsSize();
-            if ((dstPos < 0) || (dstPos + count) > totalLength)
-                {this.success = false; return dst;} //would go out of bounds
-            this.vm.arrayCopy(src.words, srcPos, dst.words, dstPos, count);
-            return dst;
-        } else { //bytes type objects
-            var totalLength = src.bytesSize();
-            if ((srcPos < 0) || (srcPos + count) > totalLength)
-                {this.success = false; return dst;} //would go out of bounds
-            totalLength = dst.bytesSize();
-            if ((dstPos < 0) || (dstPos + count) > totalLength)
-                {this.success = false; return dst;} //would go out of bounds
-            this.vm.arrayCopy(src.bytes, srcPos, dst.bytes, dstPos, count);
-            return dst;
-        }
     },
 },
 'blocks', {
@@ -2691,21 +2597,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
 },
 'scheduling',
 {
-    primitiveResume: function() {
-        this.resume(this.vm.top());
-        return true;
-	},
-    primitiveSuspend: function() {
-        var activeProc = this.getScheduler().pointers[Squeak.ProcSched_activeProcess];
-        if (this.vm.top() !== activeProc) return false;
-        this.vm.popNandPush(1, this.vm.nilObj);
-        this.transferTo(this.pickTopProcess());
-        return true;
-    },
-    getScheduler: function() {
-        var assn = this.vm.specialObjects[Squeak.splOb_SchedulerAssociation];
-        return assn.pointers[Squeak.Assn_value];
-    },
     resume: function(processToRun) {
         // Called by <Process> eval - sleep the current process and wake processToRun
         // FIXME: this needs to be refactored with RCeval, RCreturn, and VM.loadActiveContext
@@ -2735,164 +2626,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.vm.executeNewMethod(newRcvr, method, mClass, argCount, primIndex);
         return true;
     },
-    putToSleep: function(aProcess) {
-        //Save the given process on the scheduler process list for its priority.
-        var priority = aProcess.pointers[Squeak.Proc_priority];
-        var processLists = this.getScheduler().pointers[Squeak.ProcSched_processLists];
-        var processList = processLists.pointers[priority - 1];
-        this.linkProcessToList(aProcess, processList);
-    },
-    transferTo: function(newProc) {
-        //Record a process to be awakened on the next interpreter cycle.
-        var sched = this.getScheduler();
-        var oldProc = sched.pointers[Squeak.ProcSched_activeProcess];
-        sched.pointers[Squeak.ProcSched_activeProcess] = newProc;
-        oldProc.pointers[Squeak.Proc_suspendedContext] = this.vm.activeContext;
-        this.vm.newActiveContext(newProc.pointers[Squeak.Proc_suspendedContext]);
-        newProc.pointers[Squeak.Proc_suspendedContext] = this.vm.nilObj;
-        this.vm.reclaimableContextCount = 0;
-        if (this.vm.breakOnFrameChanged || this.vm.breakOnFrameReturned) {
-            this.vm.breakOnFrameChanged = false;
-            this.vm.breakOnFrameReturned = null;
-            this.vm.breakOutOfInterpreter = 'break';
-        }
-    },
-
-
-    pickTopProcess: function() { // aka wakeHighestPriority
-        //Return the highest priority process that is ready to run.
-        //Note: It is a fatal VM error if there is no runnable process.
-        var schedLists = this.getScheduler().pointers[Squeak.ProcSched_processLists];
-        var p = schedLists.pointersSize() - 1;  // index of last indexable field
-        var processList;
-        do {
-            if (p < 0) throw "scheduler could not find a runnable process";
-            processList = schedLists.pointers[p--];
-        } while (this.isEmptyList(processList));
-        return this.removeFirstLinkOfList(processList);
-	},    
-    linkProcessToList: function(proc, aList) {
-        // Add the given process to the given linked list and set the backpointer
-        // of process to its new list.
-        if (this.isEmptyList(aList))
-            aList.pointers[Squeak.LinkedList_firstLink] = proc;
-        else {
-            var lastLink = aList.pointers[Squeak.LinkedList_lastLink];
-            lastLink.pointers[Squeak.Link_nextLink] = proc;
-        }
-        aList.pointers[Squeak.LinkedList_lastLink] = proc;
-        proc.pointers[Squeak.Proc_myList] = aList;
-    },
-    isEmptyList: function(aLinkedList) {
-        return aLinkedList.pointers[Squeak.LinkedList_firstLink].isNil;
-    },
-    removeFirstLinkOfList: function(aList) {
-        //Remove the first process from the given linked list.
-        var first = aList.pointers[Squeak.LinkedList_firstLink];
-        var last = aList.pointers[Squeak.LinkedList_lastLink];
-        if (first === last) {
-            aList.pointers[Squeak.LinkedList_firstLink] = this.vm.nilObj;
-            aList.pointers[Squeak.LinkedList_lastLink] = this.vm.nilObj;
-        } else {
-            var next = first.pointers[Squeak.Link_nextLink];
-            aList.pointers[Squeak.LinkedList_firstLink] = next;
-        }
-        first.pointers[Squeak.Link_nextLink] = this.vm.nilObj;
-        return first;
-    },
-    registerSemaphore: function(specialObjIndex) {
-        var sema = this.vm.top();
-        if (this.isA(sema, Squeak.splOb_ClassSemaphore))
-            this.vm.specialObjects[specialObjIndex] = sema;
-        else
-            this.vm.specialObjects[specialObjIndex] = this.vm.nilObj;
-        return this.vm.stackValue(1);
-    },
-    primitiveWait: function() {
-    	var sema = this.vm.top();
-        if (!this.isA(sema, Squeak.splOb_ClassSemaphore)) return false;
-        var excessSignals = sema.pointers[Squeak.Semaphore_excessSignals];
-        if (excessSignals > 0)
-            sema.pointers[Squeak.Semaphore_excessSignals] = excessSignals - 1;
-        else {
-            var activeProc = this.getScheduler().pointers[Squeak.ProcSched_activeProcess];
-            this.linkProcessToList(activeProc, sema);
-            this.transferTo(this.pickTopProcess());
-        }
-        return true;
-    },
-    primitiveSignal: function() {
-	    var sema = this.vm.top();
-        if (!this.isA(sema, Squeak.splOb_ClassSemaphore)) return false;
-        this.synchronousSignal(sema);
-        return true;
-    },
-    synchronousSignal: function(sema) {
-    	if (this.isEmptyList(sema)) {
-            // no process is waiting on this semaphore
-            sema.pointers[Squeak.Semaphore_excessSignals]++;
-        } else
-            this.resume(this.removeFirstLinkOfList(sema));
-        return;
-    },
-    primitiveSignalAtMilliseconds: function(argCount) { //Delay signal:atMs:
-        var msTime = this.stackInteger(0);
-        var sema = this.stackNonInteger(1);
-        var rcvr = this.stackNonInteger(2);
-        if (!this.success) return false;
-        if (this.isA(sema, Squeak.splOb_ClassSemaphore)) {
-            this.vm.specialObjects[Squeak.splOb_TheTimerSemaphore] = sema;
-            this.vm.nextWakeupTick = msTime;
-        } else {
-            this.vm.specialObjects[Squeak.splOb_TheTimerSemaphore] = this.vm.nilObj;
-            this.vm.nextWakeupTick = 0;
-        }
-        this.vm.popN(argCount); // return self
-        return true;
-	},
-},
-'vm settings', {
-    setLowSpaceThreshold: function() {
-        var nBytes = this.stackInteger(0);
-        if (this.success) this.vm.lowSpaceThreshold = nBytes;
-        return this.vm.stackValue(1);
-    },
-    primitiveVMParameter: function(argCount) {
-        /* Behaviour depends on argument count:
-		0 args:	return an Array of VM parameter values;
-		1 arg:	return the indicated VM parameter;
-		2 args:	set the VM indicated parameter. */
-		var paramsArraySize = 40;
-		switch (argCount) {
-		    case 0:
-		        var arrayObj = this.vm.instantiateClass(this.vm.specialObjects[Squeak.splOb_ClassArray], paramsArraySize);
-		        arrayObj.pointers = this.vm.fillArray(paramsArraySize, 0);
-		        return this.popNandPushIfOK(1, arrayObj);
-		    case 1:
-		        return this.popNandPushIfOK(2, 0);
-		    case 2:
-		        return this.popNandPushIfOK(3, 0);
-		};
-		return false;
-    },
-},
-'MiscPrimitivePlugin', {
-    primitiveStringHash: function(argCount) {
-        // need to implement this because in older Etoys image the fallback code is wrong
-        var initialHash = this.stackInteger(0);
-        var stringObj = this.stackNonInteger(1);
-        if (!this.success) return false;
-        var stringSize = stringObj.bytesSize();
-        var string = stringObj.bytes;
-    	var hash = initialHash & 0x0FFFFFFF;
-    	for (var i = 0; i < stringSize; i++) {
-    		hash += string[i];
-    		var low = hash & 0x3FFF;
-    		hash = (0x260D * low + ((0x260D * (hash >>> 14) + (0x0065 * low) & 16383) * 16384)) & 0x0FFFFFFF;
-    	}
-    	this.vm.popNandPush(3, hash);
-        return true;
-    }
 },
 'platform', {
     primitiveQuit: function(argCount) {
@@ -2975,26 +2708,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (this.display.fetchMousePos) this.display.fetchMousePos();
         return this.popNandPushIfOK(argCount+1, this.makePointWithXandY(this.checkSmallInt(this.display.mouseX), this.checkSmallInt(this.display.mouseY)));
     },
-    primitiveRelinquishProcessorForMicroseconds: function(argCount) {
-        var millis = 100;
-        if (argCount > 1) return false;
-        if (argCount > 0) {
-            var micros = this.stackInteger(0);
-            if (!this.success) return false;
-            this.vm.pop();
-            millis = micros / 1000;
-        }
-        // make sure we tend to pending delays
-        this.vm.interruptCheckCounter = 0;
-        this.vm.isIdle = true;
-        this.vm.breakOutOfInterpreter = true;
-        return true;
-    },
-    primitiveReverseDisplay: function(argCount) {
-        this.reverseDisplay = !this.reverseDisplay;
-        this.redrawFullDisplay();
-        return true;
-    },
     redrawFullDisplay: function() {
         var bitblt = new users.bert.St78.vm.BitBlt(this.vm);
         bitblt.loadBitBlt(this.displayBlt);
@@ -3055,14 +2768,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
     primitiveScreenSize: function(argCount) {
         return this.popNandPushIfOK(argCount+1, this.makePointWithXandY(this.display.width, this.display.height));
     },
-    primitiveSetFullScreen: function(argCount) {
-        return false; // fail for now
-    },
-    primitiveTestDisplayDepth: function(argCount) {
-        var supportedDepths =  [1, 2, 4, 8, 16, 32]; // match showOnDisplay()
-        return this.pop2andPushBoolIfOK(supportedDepths.indexOf(this.stackInteger(0)) >= 0);
-    },
-
 	millisecondClockValue: function() {
         //Return the value of the millisecond clock as an integer.
         //Note that the millisecond clock wraps around periodically.
