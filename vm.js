@@ -316,6 +316,7 @@ Object.subclass('users.bert.St78.vm.Image',
         this.nextOop = -4; // new objects get negative preliminary oops
         this.initKnownObjects(oopMap);
         this.initCompiledMethods(oopMap);
+        console.log("Loaded image " + this.name);
     },
     initKnownObjects: function(oopMap) {
         oopMap[NoteTaker.OTI_NIL].isNil = true;
@@ -390,7 +391,7 @@ Object.subclass('users.bert.St78.vm.Image',
         var removedObjects = this.removeUnmarkedOldObjects();
         this.appendToOldObjects(newObjects);
         this.relinkRemovedObjects(removedObjects);
-        alertOK(Strings.format("GC: %s of %s tenured\n%s of %s released\nnow %s total (%s bytes)", 
+        console.log(Strings.format("GC: %s of %s tenured\n%s of %s released\nnow %s total (%s bytes)", 
             newObjects.length, this.newSpaceCount,
             removedObjects.length, this.oldSpaceCount,
             this.oldSpaceCount + newObjects.length - removedObjects.length, this.oldSpaceBytes));
@@ -2901,7 +2902,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             window.webkitRequestFileSystem(PERSISTENT, grantedBytes, function(fs) {
                 fs.root.getFile('latest.st78', {create: true}, function(fileEntry) {
                     fileEntry.createWriter(function(fileWriter) {
-                        fileWriter.onwriteend = function(e) {alertOK("Saved " + fileEntry.toURL())};
+                        fileWriter.onwriteend = function(e) {console.log("Saved " + fileEntry.toURL())};
                         fileWriter.onerror = function(e) {alert('Write failed: ' + e.toString());};
                         fileWriter.write(new Blob([buffer]));
                     }, function(e){alert("Cannot create file writer " + e)});
