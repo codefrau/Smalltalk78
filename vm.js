@@ -870,7 +870,9 @@ Object.subclass('users.bert.St78.vm.Object',
     totalBytes: function() { // size in bytes this object will take up in image snapshot
         var dataBytes = this.dataBytes(),
             dataWords = dataBytes+1 >> 1,
-            headerWords = dataBytes < 0x3F ? 2 : 3; // oop, class oop, and possibly extra size
+            headerWords = dataBytes < 0x3E ? 2 // oop, classOopAndSizeOrLargeTag (up to 62 bytes)
+                : dataBytes <= 0xFFFF ? 3      // oop, class oop, 2 bytes size (tag 0x3E)
+                : 4;                           // oop, class oop, 4 bytes size (tag 0x3F)
         return (headerWords + dataWords) * 2;
     },
 },
@@ -881,11 +883,14 @@ Object.subclass('users.bert.St78.vm.Object',
         data.setUint16(pos, this.oop); pos += 2;
         var byteSize = this.dataBytes();
         // write class oop and size in its lower 6 bits
-        if (byteSize < 0x3F) { // one word for class and size
+        if (byteSize < 0x3E) { // one word for class and size
            data.setUint16(pos, this.stClass.oop + byteSize);  pos += 2;
-        } else { // two words, marked by 0x3F size
-           data.setUint16(pos, this.stClass.oop + 0x3F);  pos += 2;
+        } else if (byteSize <= 0xFFFF) { // two words, marked by 0x3E size
+           data.setUint16(pos, this.stClass.oop + 0x3E);  pos += 2;
            data.setUint16(pos, byteSize); pos += 2;
+        } else { // three words, marked by 0x3F size
+           data.setUint16(pos, this.stClass.oop + 0x3F);  pos += 2;
+           data.setUint32(pos, byteSize); pos += 4;
         }
         // now write data
         var beforePos = pos;
@@ -1059,8 +1064,10 @@ Object.extend(users.bert.St78.vm.Object, {
             classOopAndSize = reader.nextUint16(),
             byteSize = classOopAndSize & 0x3F,
             classOop = classOopAndSize - byteSize;
-        if (byteSize === 0x3F)
+        if (byteSize === 0x3E)
             byteSize = reader.nextUint16();
+        else if (byteSize === 0x3F)
+            byteSize = reader.nextUint32();
         var obj = new this(oop);
         obj.data = {
             classOop: classOop,
