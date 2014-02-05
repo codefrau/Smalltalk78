@@ -620,7 +620,6 @@ Object.subclass('users.bert.St78.vm.Image',
             this.appendToOldObjects([anObject]); // tenure the object
         return anObject.oop;
     },
-
     objectAfter: function(obj) {
         // if this was the last old object, tenure new objects and try again
         if (!obj.nextObject && this.newSpaceCount > 0)
@@ -656,8 +655,6 @@ Object.subclass('users.bert.St78.vm.Image',
         };
         return result
     },
-
-
     labelObjRefs: function() {
         // label object refs with their keys in all symbol tables
         var tableClass = this.globalNamed('SymbolTable'),
@@ -1222,7 +1219,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.activeContextPointers[NoteTaker.PI_PROCESS_TOP] = (this.activeContextPointers.length - this.sp) - 1;
         return this.activeContext;
     },
-
     patchByteCode: function(oop, index, replacementByte, maybeByte2, maybeByte3, maybeByte4) {
         var method = this.image.objectFromOop(oop);
         method.bytes[index] = replacementByte;
@@ -1230,7 +1226,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         if (maybeByte3) method.bytes[index+2] = maybeByte3
         if (maybeByte4) method.bytes[index+3] = maybeByte4
     },
-
 },
 'interpreting', {
     interpretOne: function() {
@@ -1397,7 +1392,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 				nono();
 		}
 	},
-
     interpret: function(forMilliseconds) {
         // run until idle, but at most for a couple milliseconds
         // answer milliseconds to sleep (until next timer wakeup)
@@ -1430,7 +1424,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         }
         return literal;
     },
-
     nono: function() {
         throw "Oh No!";
     },
@@ -2272,7 +2265,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (this.vm.canBeSmallInt(returnValue)) return this.popNandPushIfOK(nToPop, returnValue);
         return false; 
     },
-
     pos16BitIntFor: function(pos16Val) {
         // Return the 16-bit quantity as a positive 16-bit integer
         if (pos16Val >= 0)
@@ -2298,7 +2290,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
     stackFloat: function(nDeep) {
         return this.checkFloat(this.vm.stackValue(nDeep));
     }
-
 },
 'numbers', {
     doBitAnd: function() {
@@ -2329,7 +2320,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.success = false;
         return 0;
     },
-
     safeFDiv: function(dividend, divisor) {
         if (divisor === 0.0) {
             this.success = false;
@@ -2344,7 +2334,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
     doRem: function(rcvr, arg) {
         if (arg === 0) return NoteTaker.NON_INT;  // fail if divide by zero
         return rcvr - Math.floor(rcvr/arg) * arg;
-    },},
+    },
+},
 'utils', {
     checkFloat: function(maybeFloat) { // returns a float and sets success
         if (maybeFloat.isFloat)
@@ -2408,8 +2399,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (this.idleCounter < 100) return 0;
         var inactivityMS = Date.now() - this.display.timeStamp;
         return inactivityMS;
-    }
-
+    },
 },
 'indexing', {
     indexableSize: function(obj) {
@@ -2475,8 +2465,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (size === -1) {this.success = false; return -1}; //not indexable
         return size;
     },
-
-
     initAtCache: function() {
         // The purpose of the at-cache is to allow fast (bytecode) access to at/atput code
         // without having to check whether this object has overridden at, etc.
@@ -2733,7 +2721,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.vm.popPCBP();            // restore pc and current frame
         this.vm.loadFromFrame(this.vm.currentFrame);    // load all the rest from the frame
         return true;
-},
+    },
     primitiveRunMethod: function(argCount) {
         if (argCount !== 2) return false;
         var method = this.vm.stackValue(0),
@@ -3057,11 +3045,9 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.popNandPushIfOK(nargs+1, newString);
         return true
     },
-
     showCursor: function(cursorObj) {
         // todo
     },
-
     primitiveForceDisplayUpdate: function(argCount) {
         // not needed, we show everything immediately
         return true;
@@ -3120,7 +3106,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
             dest.methodPointersModified(this.vm.image, destIndex, count);
         return true;
     },
-
 	secondClock: function() {
 	    var date = new Date();
         var seconds = date.getTime() / 1000 | 0;    // milliseconds -> seconds
