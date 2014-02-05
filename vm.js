@@ -981,8 +981,8 @@ Object.subclass('users.bert.St78.vm.Object',
         var bytesPtr = index * 2 + 2; // skip method header
         for (var i = index; i < index + n; i++) {
             var oop = image.objectToOop(this.pointers[i]);
-            this.bytes[bytesPtr++] = (oop >> 8) & 0xFF;
             this.bytes[bytesPtr++] = oop & 0xFF;
+            this.bytes[bytesPtr++] = (oop >> 8) & 0xFF;
         }
     },
     methodIsQuick: function() {
