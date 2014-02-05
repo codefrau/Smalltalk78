@@ -23,31 +23,27 @@ module('users.bert.St78.vm').requires().toRun(function() {
 
 
 NoteTaker = {
-	OTI_NIL: 0 / 2,
-	OTI_FALSE: 4 / 2,
-	OTI_TRUE: 8 / 2,
-	OTI_THEPROCESS: 0xc / 2,
-	OTI_SMALLTALK: 0x10 / 2,
-	OTI_FIRST_SEL: 0x14 / 2,
-	OTI_LAST_SEL: 0x9c / 2,
-	OTI_ERROR_SEL: 0x9c / 2,
-	OTI_USTABLE: 0xa0 / 2,
+    OOP_NIL: 0,
+    OOP_FALSE: 2,
+    OOP_TRUE: 4,
+    OOP_THEPROCESS: 6,
+    OOP_SMALLTALK: 8,
 
-	// known classes
-	OTI_CLCLASS: 0x40 / 2,
-	OTI_CLINTEGER: 0x80 / 2,	// class of SmallIntegers
-	OTI_CLSTRING: 0xc0 / 2,
-	OTI_CLVECTOR: 0x100 / 2,
-	OTI_CLSTREAM: 0x140 / 2,
-	OTI_CLFLOAT: 0x180 / 2,
-	OTI_CLPROCESS: 0x1c0 / 2,
-	OTI_CLREMOTECODE: 0x200 / 2,
-	OTI_CLPOINT: 0x240 / 2,
-	OTI_CLNATURAL: 0x280 / 2,
-	OTI_CLLARGEINTEGER: 0x2c0 / 2,
-    OTI_CLUNIQUESTRING: 0x340 / 2,
-    OTI_CLCOMPILEDMETHOD: 0x3C0 / 2,
-    OTI_CLVLENGTHCLASS: 0x1380 / 2,
+    // known classes
+    OOP_CLCLASS: 0x20,
+    OOP_CLINTEGER: 0x40,	// class of SmallIntegers
+    OOP_CLSTRING: 0x60,
+    OOP_CLVECTOR: 0x80,
+    OOP_CLSTREAM: 0xa0,
+    OOP_CLFLOAT: 0xc0,
+    OOP_CLPROCESS: 0xe0,
+    OOP_CLREMOTECODE: 0x100,
+    OOP_CLPOINT: 0x120,
+    OOP_CLNATURAL: 0x140,
+    OOP_CLLARGEINTEGER: 0x160,
+    OOP_CLUNIQUESTRING: 0x1a0,
+    OOP_CLCOMPILEDMETHOD: 0x1e0,
+    OOP_CLVLENGTHCLASS: 0x9c0,
 
 	// CLCLASS layout:
 	PI_CLASS_TITLE: 0,
@@ -318,16 +314,17 @@ Object.subclass('users.bert.St78.vm.Image',
         console.log("Loaded image " + this.name);
     },
     initKnownObjects: function(oopMap) {
-        oopMap[NoteTaker.OTI_NIL].isNil = true;
-        oopMap[NoteTaker.OTI_TRUE].isTrue = true;
-        oopMap[NoteTaker.OTI_FALSE].isFalse = true;
-        this.globals = oopMap[NoteTaker.OTI_SMALLTALK];
-        this.userProcess = oopMap[NoteTaker.OTI_THEPROCESS];
+        oopMap[NoteTaker.OOP_NIL].isNil = true;
+        oopMap[NoteTaker.OOP_TRUE].isTrue = true;
+        oopMap[NoteTaker.OOP_FALSE].isFalse = true;
+        this.globals = oopMap[NoteTaker.OOP_SMALLTALK];
+        this.userProcess = oopMap[NoteTaker.OOP_THEPROCESS];
         this.specialOopsVector = this.globalNamed('SpecialOops');
     },
     initCompiledMethods: function(oopMap, doPatches) {
+        debugger;
         // make proper pointer objects for literals encoded in bytes
-        var cmClass = this.objectFromOop(NoteTaker.OTI_CLCOMPILEDMETHOD, oopMap),
+        var cmClass = this.objectFromOop(NoteTaker.OOP_CLCOMPILEDMETHOD, oopMap),
             cm = this.someInstanceOf(cmClass);
         while (cm) {
             cm.methodInitLits(this, oopMap, doPatches);
@@ -344,7 +341,7 @@ Object.subclass('users.bert.St78.vm.Image',
         }
     },
     selectorNamed: function(name) {
-        var symbolClass = this.objectFromOop(NoteTaker.OTI_CLUNIQUESTRING),
+        var symbolClass = this.objectFromOop(NoteTaker.OOP_CLUNIQUESTRING),
             symbol = this.someInstanceOf(symbolClass);
         while (symbol) {
             if (name.length == symbol.bytes.length && name == symbol.bytesAsString())
@@ -358,7 +355,7 @@ Object.subclass('users.bert.St78.vm.Image',
     smallifyLargeInts: function() {
         // visit every pointer field of every object, converting smallable LargeInts to Integers
         // We do this because the normal ST-76 range is +-32K
-        var lgIntClass = this.objectFromOop(NoteTaker.OTI_CLLARGEINTEGER),
+        var lgIntClass = this.objectFromOop(NoteTaker.OOP_CLLARGEINTEGER),
             obj = this.firstOldObject;
         while (obj) {
             var body = obj.pointers;
@@ -649,7 +646,7 @@ Object.subclass('users.bert.St78.vm.Image',
     variableClasses: function() {
         // enumerate classes to find all classes flagged as indexable in their instSize
         // this.variableClasses()
-        var clClass = this.objectFromOop(NoteTaker.OTI_CLCLASS),
+        var clClass = this.objectFromOop(NoteTaker.OOP_CLCLASS),
             cl = this.someInstanceOf(clClass),
             result = [];
         while (cl) {
@@ -728,7 +725,7 @@ Object.subclass('users.bert.St78.vm.Object',
                     this.pointers.push(obj);
                 }
             } else if (instSpec & NoteTaker.FMT_HASWORDS) { // words
-                if (this.data.classOop === NoteTaker.OTI_CLFLOAT) {
+                if (this.data.classOop === NoteTaker.OOP_CLFLOAT) {
                     this.isFloat = true;
                     this.float = this.data.body.getFloat64(0);
                 } else {
@@ -771,7 +768,7 @@ Object.subclass('users.bert.St78.vm.Object',
                 var word = reader.fieldOfObject(i, this.oop);
                 this.words.push(word);
             }
-            if (classOop === NoteTaker.OTI_CLFLOAT) {
+            if (classOop === NoteTaker.OOP_CLFLOAT) {
                 this.isFloat = true;
                 this.float = this.wordsAsFloat();
             }
@@ -914,8 +911,8 @@ Object.subclass('users.bert.St78.vm.Object',
 },
 'as class', {
     isClass: function() {
-        return this.stClass.oop === NoteTaker.OTI_CLCLASS
-            || this.stClass.oop === NoteTaker.OTI_CLVLENGTHCLASS;
+        return this.stClass.oop === NoteTaker.OOP_CLCLASS
+            || this.stClass.oop === NoteTaker.OOP_CLVLENGTHCLASS;
     },
     superclass: function() {
         return this.pointers[NoteTaker.PI_CLASS_SUPERCLASS];
@@ -948,13 +945,13 @@ Object.subclass('users.bert.St78.vm.Object',
     },
     stInstName: function(maxLength) {
         if (!this.stClass || !this.stClass.pointers) return "???";
-        if (this.oop === NoteTaker.OTI_NIL) return "nil";
-        if (this.oop === NoteTaker.OTI_FALSE) return "false";
-        if (this.oop === NoteTaker.OTI_TRUE) return "true";
+        if (this.oop === NoteTaker.OOP_NIL) return "nil";
+        if (this.oop === NoteTaker.OOP_FALSE) return "false";
+        if (this.oop === NoteTaker.OOP_TRUE) return "true";
         if (this.isFloat) {var str = this.float.toString(); if (!/\./.test(str)) str += '.0'; return str; }
         if (this.isClass()) return "the " + this.className() + " class";
-        if (this.stClass.oop === NoteTaker.OTI_CLSTRING) return "'" + this.bytesAsString(maxLength||16) + "'";
-        if (this.stClass.oop === NoteTaker.OTI_CLUNIQUESTRING) return "#" + this.bytesAsString(maxLength||16);
+        if (this.stClass.oop === NoteTaker.OOP_CLSTRING) return "'" + this.bytesAsString(maxLength||16) + "'";
+        if (this.stClass.oop === NoteTaker.OOP_CLUNIQUESTRING) return "#" + this.bytesAsString(maxLength||16);
         var className = this.stClass.className();
         return (/^[aeiou]/i.test(className) ? 'an ' : 'a ') + className;
     },
@@ -976,7 +973,7 @@ Object.subclass('users.bert.St78.vm.Object',
 },
 'as method', {
     isCompiledMethod: function() {
-        return this.stClass.oop === NoteTaker.OTI_CLCOMPILEDMETHOD;
+        return this.stClass.oop === NoteTaker.OOP_CLCOMPILEDMETHOD;
     },
     methodInitLits: function(image, optionalOopMap, convertOops) {
         // make literals encoded as oops available as proper pointer objects
@@ -1103,11 +1100,11 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.specialNargs = [
             1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 
             1, 2, 0, 1, 0, 1, 1, 1,   0, 0, 0, 0, 1, 0, 0, 0 ];
-        this.nilObj = this.image.objectFromOop(NoteTaker.OTI_NIL);
-        this.falseObj = this.image.objectFromOop(NoteTaker.OTI_FALSE);
-        this.trueObj = this.image.objectFromOop(NoteTaker.OTI_TRUE);
-        this.integerClass = this.image.objectFromOop(NoteTaker.OTI_CLINTEGER);
-        this.classClass = this.image.objectFromOop(NoteTaker.OTI_CLCLASS);
+        this.nilObj = this.image.objectFromOop(NoteTaker.OOP_NIL);
+        this.falseObj = this.image.objectFromOop(NoteTaker.OOP_FALSE);
+        this.trueObj = this.image.objectFromOop(NoteTaker.OOP_TRUE);
+        this.integerClass = this.image.objectFromOop(NoteTaker.OOP_CLINTEGER);
+        this.classClass = this.image.objectFromOop(NoteTaker.OOP_CLCLASS);
         this.errorSel = this.image.selectorNamed('error:');
     },
     notetakerPatches: function(display) {
@@ -1125,18 +1122,18 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         // from which the NT image was cloned. 
         // The one thing that would have revealed this error, the lookup of new:, was sidestepped
         // in both my original 8086 code and Helge's Java VM.  Truly amazing  ;-)
-        this.image.objectFromOop(NoteTaker.OTI_CLSTRING).stClass =
-            this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
-        this.image.objectFromOop(NoteTaker.OTI_CLUNIQUESTRING).stClass =
-            this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
-        this.image.objectFromOop(NoteTaker.OTI_CLVECTOR).stClass =
-            this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
-        this.image.objectFromOop(NoteTaker.OTI_CLPROCESS).stClass =
-            this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
-        this.image.objectFromOop(NoteTaker.OTI_CLNATURAL).stClass =
-            this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
-        this.image.objectFromOop(NoteTaker.OTI_CLCOMPILEDMETHOD).stClass =
-            this.image.objectFromOop(NoteTaker.OTI_CLVLENGTHCLASS);
+        this.image.objectFromOop(NoteTaker.OOP_CLSTRING).stClass =
+            this.image.objectFromOop(NoteTaker.OOP_CLVLENGTHCLASS);
+        this.image.objectFromOop(NoteTaker.OOP_CLUNIQUESTRING).stClass =
+            this.image.objectFromOop(NoteTaker.OOP_CLVLENGTHCLASS);
+        this.image.objectFromOop(NoteTaker.OOP_CLVECTOR).stClass =
+            this.image.objectFromOop(NoteTaker.OOP_CLVLENGTHCLASS);
+        this.image.objectFromOop(NoteTaker.OOP_CLPROCESS).stClass =
+            this.image.objectFromOop(NoteTaker.OOP_CLVLENGTHCLASS);
+        this.image.objectFromOop(NoteTaker.OOP_CLNATURAL).stClass =
+            this.image.objectFromOop(NoteTaker.OOP_CLVLENGTHCLASS);
+        this.image.objectFromOop(NoteTaker.OOP_CLCOMPILEDMETHOD).stClass =
+            this.image.objectFromOop(NoteTaker.OOP_CLVLENGTHCLASS);
 
         if (false) { // disabled because we need that 1 bit to 
                      // tell oops from ints in saved image 
@@ -1147,21 +1144,21 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             NoteTaker.NON_INT = -0x9000;
             
             // Patches to make +-32K integers work while NoteTaker is true
-            this.patchByteCode(23988/2, 12, 0x7E); // Integer>>lshift:
-            this.patchByteCode(24620/2, 8, 0x7E); // Integer>>minVal
-            this.patchByteCode(24608/2, 8, 0x7E); // Integer>>maxVal
-            this.patchByteCode(26836/2, 24, 0x7E); // LargeInteger>>lshift:
-            this.patchByteCode(27024/2, 20, 0x7E); // LargeInteger>>land:
-            this.patchByteCode(26996/2, 30, 0x7E); // LargeInteger>>asSmall
-            this.patchByteCode(26912/2, 18, 0x7E); // LargeInteger>>lor:
-            this.patchByteCode(27032/2, 18, 0x7E); // LargeInteger>>lxor:
+            this.patchByteCode(11994, 12, 0x7E); // Integer>>lshift:
+            this.patchByteCode(12310, 8, 0x7E); // Integer>>minVal
+            this.patchByteCode(12304, 8, 0x7E); // Integer>>maxVal
+            this.patchByteCode(13418, 24, 0x7E); // LargeInteger>>lshift:
+            this.patchByteCode(13512, 20, 0x7E); // LargeInteger>>land:
+            this.patchByteCode(13498, 30, 0x7E); // LargeInteger>>asSmall
+            this.patchByteCode(13456, 18, 0x7E); // LargeInteger>>lor:
+            this.patchByteCode(13516, 18, 0x7E); // LargeInteger>>lxor:
         }
 
         // jump over Dorado code in UserView>>screenextent:tab: 
-        this.patchByteCode(16620/2, 34, 0xA4, (111-34)-2); // long jmp to 111 [jumps have a bias of 2]
+        this.patchByteCode(8310, 34, 0xA4, (111-34)-2); // long jmp to 111 [jumps have a bias of 2]
 
         // Highjack user restart in ProjectWindow>>install to do thisProcess restart instead!
-        this.patchByteCode(17520/2, 23, 0x85);     // thisProcess
+        this.patchByteCode(8760, 23, 0x85);     // thisProcess
     },
 
     initVMState: function() {
@@ -1983,13 +1980,13 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.display = display;
         this.display.vm = this.vm;
         this.initAtCache();
-		this.remoteCodeClass = vm.image.objectFromOop(NoteTaker.OTI_CLREMOTECODE);
-		this.processClass = vm.image.objectFromOop(NoteTaker.OTI_CLPROCESS);
-        this.pointClass = this.vm.image.objectFromOop(NoteTaker.OTI_CLPOINT);
-        this.floatClass = this.vm.image.objectFromOop(NoteTaker.OTI_CLFLOAT);
-        this.stringClass = this.vm.image.objectFromOop(NoteTaker.OTI_CLSTRING);
-        this.compiledMethodClass = this.vm.image.objectFromOop(NoteTaker.OTI_CLCOMPILEDMETHOD);
-        this.uniqueStringClass = this.vm.image.objectFromOop(NoteTaker.OTI_CLUNIQUESTRING);
+        this.remoteCodeClass = vm.image.objectFromOop(NoteTaker.OOP_CLREMOTECODE);
+        this.processClass = vm.image.objectFromOop(NoteTaker.OOP_CLPROCESS);
+        this.pointClass = this.vm.image.objectFromOop(NoteTaker.OOP_CLPOINT);
+        this.floatClass = this.vm.image.objectFromOop(NoteTaker.OOP_CLFLOAT);
+        this.stringClass = this.vm.image.objectFromOop(NoteTaker.OOP_CLSTRING);
+        this.compiledMethodClass = this.vm.image.objectFromOop(NoteTaker.OOP_CLCOMPILEDMETHOD);
+        this.uniqueStringClass = this.vm.image.objectFromOop(NoteTaker.OOP_CLUNIQUESTRING);
         this.idleCounter = 0;
     },
 },
@@ -2531,7 +2528,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (this.success && size < 0) return false;  // negative size
         if (!this.success) {
             var largeSize = this.stackNonInteger(1);
-            if (largeSize.stClass.oop !== NoteTaker.OTI_CLLARGEINTEGER) return false;
+            if (largeSize.stClass.oop !== NoteTaker.OOP_CLLARGEINTEGER) return false;
             size = largeSize.largeIntegerValue();
             if (size < 0 || size > 200000) return false; // we have our limits
             this.success = true;
