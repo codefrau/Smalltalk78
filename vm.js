@@ -246,10 +246,6 @@ The instsize is an integer (ie low bit = 1) with the following interpretation:
     refCountOf: function (oop) {
         return this.otAt(oop) >>> 24;
     },
-    integerValueOf: function(oop) {
-        var val = oop>>1;
-        return (val&0x3FFF) - (val&0x4000);
-    },
     isInteger: function(oop) {
         return oop & 1;
     },
@@ -728,7 +724,7 @@ Object.subclass('users.bert.St78.vm.Object',
                 this.pointers = [];
                 for (var i = 0; i < bodyBytes; i+=2) {
                     var oop = this.data.body.getUint16(i);
-                    var obj = oop & 1 ? oop >> 1 : oopMap[oop];
+                    var obj = this.objectFromOop(oop, oopMap);
                     this.pointers.push(obj);
                 }
             } else if (instSpec & NoteTaker.FMT_HASWORDS) { // words
@@ -765,7 +761,7 @@ Object.subclass('users.bert.St78.vm.Object',
             this.pointers = [];
             for (var i = 1; i < objBytes/2; i++) {
                 var oop = reader.fieldOfObject(i, this.oop);
-                var obj = reader.isInteger(oop) ? reader.integerValueOf(oop) : oopMap[oop];
+                var obj = this.objectFromOop(oop, oopMap);
                 this.pointers.push(obj);
             }
         } else if (instSize & NoteTaker.FMT_HASWORDS) { // words
@@ -799,6 +795,13 @@ Object.subclass('users.bert.St78.vm.Object',
                     this.words = this.fillArray(indexableSize, 0); //Floats require further init of float value
                 else
                     this.bytes = this.fillArray(indexableSize, 0); //Methods require further init of pointers
+    },
+    objectFromOop: function(oop, oopMap) {
+        if (oop & 1) {
+            var val = oop >> 1;
+            return (val & 0x3FFF) - (val & 0x4000);
+        }
+        return oopMap[oop];
     },
     fillArray: function(length, filler) {
         for (var array = [], i = 0; i < length; i++)
