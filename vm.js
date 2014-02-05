@@ -2885,14 +2885,17 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
     primitiveSaveImage: function(argCount, newMethod, newMethodClass) {
         if (!window.webkitStorageInfo) return alert("Need webkitStorage");
-        // create a fake method frame
-        var oldSP = this.vm.sp;
-        this.vm.pushFrame(newMethod, newMethodClass, argCount);
+        //- create a fake method frame
+        //-var oldSP = this.vm.sp;
+        //-this.vm.pushFrame(newMethod, newMethodClass, argCount);
+        this.vm.pushPCBP();
         var process = this.vm.sleepProcess();
         debugger;
         var buffer = this.vm.image.writeToBuffer();
         this.vm.wakeProcess(process);
-        this.vm.popN(oldSP - this.vm.sp);   // drop fake frame
+        this.vm.popPCBP();
+        //-this.vm.popN(oldSP - this.vm.sp);   // drop fake frame
+
         // write file asynchronously
         window.webkitStorageInfo.requestQuota(PERSISTENT, 5*1024*1024, function(grantedBytes) {
             window.webkitRequestFileSystem(PERSISTENT, grantedBytes, function(fs) {
