@@ -1051,7 +1051,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 
         // Make other code match push/popPCBP by including NoteTaker.PC_BIAS
         // NT method header is 2 bytes instead of 4 in normal ST76
-        this.PCFix = 0; //NoteTaker.PC_BIAS;  // set this to NoteTaker.PC_BIAS (=2) to test the fix
+        this.PCFix = NoteTaker.PC_BIAS;  // set this to NoteTaker.PC_BIAS (=2) to test the fix
     },
 
     initVMState: function() {
@@ -1100,7 +1100,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         // Preserve state of sp in variable 'top' (after saving PC and BP)
         this.activeContextPointers[NoteTaker.PI_PROCESS_TOP] = (this.activeContextPointers.length - this.sp) - 1;
     },
-
 
     patchByteCode: function(oop, index, replacementByte, maybeByte2, maybeByte3, maybeByte4) {
         var method = this.image.objectFromOop(oop);
@@ -1460,22 +1459,13 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             if (this.tryPrimitive(primitiveIndex, argumentCount, newMethod))
                 return;  //Primitive succeeded -- end of story
         // sp points to new receiver, so this is where we base the new frame off
-        var newFrame = this.sp - NoteTaker.FI_RECEIVER;
-        if (newFrame <= NoteTaker.PI_PROCESS_STACK)
-            throw "stack overflow"
-        // FIXME:  This should be reworked to use pushPCBP and so not need BPFix
-        this.activeContextPointers[newFrame + NoteTaker.FI_SAVED_BP] = (this.currentFrame - newFrame) - this.BPFix;
-        this.activeContextPointers[newFrame + NoteTaker.FI_CALLER_PC] = this.pc + this.PCFix;
-        this.activeContextPointers[newFrame + NoteTaker.FI_NUMARGS] = argumentCount;
-        this.activeContextPointers[newFrame + NoteTaker.FI_METHOD] = newMethod;
-        this.activeContextPointers[newFrame + NoteTaker.FI_MCLASS] = newMethodClass;
+        this.pushFrame(newMethod, newMethodClass, argumentCount);
         /////// Whoosh //////
-        this.currentFrame = newFrame; //We're off and running...
+        this.currentFrame = this.sp; //We're off and running...
         this.method = newMethod;
         this.methodBytes = newMethod.bytes;
         this.methodNumArgs = argumentCount;
         this.pc = newMethod.methodStartPC();
-        this.sp = newFrame;
         for (var i = 0; i < newMethod.methodNumTemps(); i++)
             this.push(this.nilObj); //  make room for temps and init them
         this.receiver = this.activeContextPointers[this.currentFrame + NoteTaker.FI_RECEIVER];
@@ -1486,7 +1476,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     doRemoteReturn: function() {
         // reverse of primitiveValue()
         var reply = this.pop();
-        // FIXME:  This should be reworked to use PCBP and so not need BPFix
         var returnFrame = (this.activeContextPointers.length - this.pop());
         var returnPC = this.pop() - this.PCFix;
         var rCode = this.pop(); // might want to check that we're in the same process
@@ -1505,29 +1494,15 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             this.breakOnFrameReturned = null;
             this.breakNow();
         }
-        var reply = this.top();
-        var oldFrame = this.currentFrame;
-        // FIXME:  This should be reworked to use popPCBP and so not need BPFix
-        var newFrame = oldFrame + this.activeContextPointers[oldFrame + NoteTaker.FI_SAVED_BP] + this.BPFix;
-        var newPC = this.activeContextPointers[oldFrame + NoteTaker.FI_CALLER_PC] - this.PCFix;
-        var newSP = oldFrame + NoteTaker.FI_LAST_ARG + this.methodNumArgs; // pop past old frame and args
+        var reply = this.pop();
         /////// Whoosh //////
-        this.currentFrame = this.loadFromFrame(newFrame);
-        this.pc = newPC;
-        this.sp = newSP;
+        this.popFrame();
+        this.loadFromFrame(this.currentFrame);
         this.push(reply);
         if (this.breakOnFrameChanged) {
             this.breakOnFrameChanged = false;
             this.breakNow();
         }
-},
-    loadFromFrame: function(aFrame) {
-        // cache values from current frame in slots
-        this.method = this.activeContextPointers[aFrame + NoteTaker.FI_METHOD];
-        this.methodBytes = this.method.bytes;
-        this.methodNumArgs = this.activeContextPointers[aFrame + NoteTaker.FI_NUMARGS];
-        this.receiver = this.activeContextPointers[aFrame + NoteTaker.FI_RECEIVER];
-        return aFrame;
     },
     doQuickSend: function(obj, index) {
         // pop receiver, push self or my inst var at index
@@ -1599,7 +1574,40 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         return tempIndex < this.methodNumArgs ? 
             this.currentFrame + NoteTaker.FI_LAST_ARG + (this.methodNumArgs - 1 - tempIndex) :
             this.currentFrame + NoteTaker.FI_FIRST_TEMP - (tempIndex - this.methodNumArgs);
-    }
+    },
+    pushPCBP: function() {
+        // Save the state of PC and BP on the stack
+        this.push(this.pc + NoteTaker.PC_BIAS);
+        this.push(this.currentFrame - this.sp);  // delta relative to sp before the push
+    },
+    popPCBP: function() {
+        // Load context frame from the stack
+        this.currentFrame = this.pop() + this.sp;  // + 1 because delta was computed before push
+        this.pc = this.pop() - NoteTaker.PC_BIAS;  // Bias due to NT shorter header
+    },
+    pushFrame: function(method, methodClass, argCount) {
+        var newFrame = this.sp - NoteTaker.FI_RECEIVER;
+        if (newFrame <= NoteTaker.PI_PROCESS_STACK)
+            throw "stack overflow" // implement stack growing here
+        this.push(methodClass);
+        this.push(method);
+        this.push(argCount);
+        this.pushPCBP();
+        if (this.sp !== newFrame) throw "bad frame size";
+    },
+    popFrame: function() {
+        this.popN(this.currentFrame - this.sp); // drop temps
+        this.popPCBP();                         // restore previous frame and pc
+        this.popN(4 + this.methodNumArgs);      // drop old frame + args
+    },
+    loadFromFrame: function(aFrame) {
+        // cache values from current frame in slots
+        this.method = this.activeContextPointers[aFrame + NoteTaker.FI_METHOD];
+        this.methodBytes = this.method.bytes;
+        this.methodNumArgs = this.activeContextPointers[aFrame + NoteTaker.FI_NUMARGS];
+        this.receiver = this.activeContextPointers[aFrame + NoteTaker.FI_RECEIVER];
+        return aFrame;
+    },
 },
 'stack access', {
     pop: function() {
@@ -1618,18 +1626,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     top: function() {
         return this.activeContextPointers[this.sp];
     },
-    pushPCBP: function() {
-        // Save the state of PC and BP on the stack
-        this.push(this.pc + NoteTaker.PC_BIAS);
-        this.push(this.currentFrame - this.sp);  // delta relative to sp before the push
-    },
-
-    popPCBP: function() {
-        // Load context frame from the stack
-        this.currentFrame = this.pop() + this.sp;  // + 1 because delta was computed before push
-        this.pc = this.pop() - NoteTaker.PC_BIAS;  // Bias due to NT shorter header
-    },
-
     stackValue: function(depthIntoStack) {
         return this.activeContext.pointers[this.sp + depthIntoStack];
     },
@@ -1793,13 +1789,13 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         if (debugFrame) stack += Strings.format("\npc: %s sp: %s bp: %s numArgs: %s\n",
             this.pc, this.sp, this.currentFrame, numArgs);
         for (var i = this.sp; i < ctx.length; i++) {
-            if (!debugFrame && bp + NoteTaker.FI_SAVED_BP + this.BPFix <= i && bp + NoteTaker.FI_RECEIVER > i) continue;
+            if (!debugFrame && bp + NoteTaker.FI_SAVED_BP <= i && bp + NoteTaker.FI_RECEIVER > i) continue;
             var obj = ctx[i];
             var value = obj && obj.stInstName ? obj.stInstName(32) : obj;
             stack += Strings.format('\n[%s] %s%s', i,
                 bp + NoteTaker.FI_FIRST_TEMP - numTemps < i && i <= bp + NoteTaker.FI_FIRST_TEMP
                     ? ('  temp ' + (bp + NoteTaker.FI_FIRST_TEMP + numArgs - i) + ': ') :
-                bp + NoteTaker.FI_SAVED_BP + this.BPFix == i ? ' savedBP: ' :
+                bp + NoteTaker.FI_SAVED_BP == i ? ' savedBP: ' :
                 bp + NoteTaker.FI_CALLER_PC == i ? 'callerPC: ' :
                 bp + NoteTaker.FI_NUMARGS == i ? ' numArgs: ' :
                 bp + NoteTaker.FI_METHOD == i ? '  method: ' :
@@ -1812,7 +1808,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             if (i >= bp + NoteTaker.FI_RECEIVER + numArgs && i+1 < ctx.length) {
                 if (!printAll) return stack;
                 sp = bp + NoteTaker.FI_LAST_ARG + numArgs;
-                bp += ctx[bp + NoteTaker.FI_SAVED_BP + this.BPFix];
+                bp += ctx[bp + NoteTaker.FI_SAVED_BP] + this.BPFix;
                 // look for remoteCode activation on stack
                 for (var j = sp; j < bp; j++){
                     var rCode = ctx[j];
@@ -1823,6 +1819,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                         stack += '\n\n[] in ' + this.printMethod(homeMethod);
                         if (debugFrame) {
                             while (++i <= j) {
+                                if (emergencyCounter++ > 2000) return stack;
                                 obj = ctx[i];
                                 value = obj && obj.stInstName ? obj.stInstName(32) : obj;
                                 stack += Strings.format('\n[%s] %s%s', i,
@@ -2541,9 +2538,9 @@ Object.subclass('users.bert.St78.vm.Primitives',
 		    jumpInstr = this.vm.method.bytes[pc],
     		rCode = this.vm.instantiateClass(this.remoteCodeClass, 0);
 		pc += jumpInstr < 0xA0 ? 1 : 2;
-		// these are uses in primitiveValue
+		// these are used in primitiveValue
 		rCode.pointers[NoteTaker.PI_RCODE_FRAMEOFFSET] = relBP; // offset from end, used in ProcessFrame>>from:
-		rCode.pointers[NoteTaker.PI_RCODE_STARTINGPC] = pc; // maybe + 1?
+		rCode.pointers[NoteTaker.PI_RCODE_STARTINGPC] = pc + this.vm.PCFix;
 		rCode.pointers[NoteTaker.PI_RCODE_PROCESS] = rcvr;
 		this.vm.popNandPush(1, rCode);
 		return true;
@@ -2560,13 +2557,13 @@ Object.subclass('users.bert.St78.vm.Primitives',
 		rCode.pointers[NoteTaker.PI_RCODE_STACKOFFSET] = contextLength - this.vm.sp;
 
         // Common code to sleep this frame
-        this.vm.push(this.vm.pc);           // save PC and relBP for remoteReturn
+        this.vm.push(this.vm.pc + this.vm.PCFix);           // save PC and relBP for remoteReturn
         this.vm.push(contextLength - this.vm.currentFrame);
         
         // Wake the remote context frame
         var frame = contextLength - rCode.pointers[NoteTaker.PI_RCODE_FRAMEOFFSET];
 		this.vm.currentFrame = this.vm.loadFromFrame(frame);
-		this.vm.pc = rCode.pointers[NoteTaker.PI_RCODE_STARTINGPC];
+		this.vm.pc = rCode.pointers[NoteTaker.PI_RCODE_STARTINGPC] - this.vm.PCFix;
         return true;
     },
     primitiveValueGets: function(argCount) {
