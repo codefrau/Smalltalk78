@@ -2643,7 +2643,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         // write file asynchronously
         window.webkitStorageInfo.requestQuota(PERSISTENT, 5*1024*1024, function(grantedBytes) {
             window.webkitRequestFileSystem(PERSISTENT, grantedBytes, function(fs) {
-                fs.root.getFile('latest.st78', {create: true}, function(fileEntry) {
+                fs.root.getFile('default.st78', {create: true}, function(fileEntry) {
                     fileEntry.createWriter(function(fileWriter) {
                         fileWriter.onwriteend = function(e) {alertOK("Saved " + fileEntry.toURL())};
                         fileWriter.onerror = function(e) {alert('Write failed: ' + e.toString());};
