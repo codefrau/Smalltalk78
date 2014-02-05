@@ -422,6 +422,8 @@ Object.subclass('users.bert.St78.vm.Image',
         // Visit all reachable objects and mark them.
         // Return surviving new objects
         var todo = [this.globals, this.vm.activeContext];
+        if (this.vm.primHandler.displayBlt) // stored in image header so must be retained
+            todo.push(this.vm.primHandler.displayBlt);
         var newObjects = [];
         while (todo.length > 0) {
             var object = todo.pop();
@@ -566,7 +568,7 @@ Object.subclass('users.bert.St78.vm.Image',
         this.fullGC(); // collect all objects
         var magic = 'St78',
             version = 0x0100, // 1.0
-            headerSize = 16,
+            headerSize = 18,
             data = new DataView(new ArrayBuffer(headerSize + this.oldSpaceBytes)),
             pos = 0;
         // magic bytes
@@ -579,18 +581,22 @@ Object.subclass('users.bert.St78.vm.Image',
         // image size
         data.setUint16(pos, this.oldSpaceCount); pos += 2;
         data.setUint32(pos, this.oldSpaceBytes); pos += 4;
-        // current process
+        // current process and display
         data.setUint16(pos, this.vm.activeContext.oop); pos += 2;
-        if (pos !== headerSize) throw "header mismatch";
+        data.setUint16(pos,this.vm.primHandler.displayBlt.oop); pos += 2;
+        if (pos !== headerSize) throw "wrong header size";
         // objects
-        var obj = this.firstOldObject;
+        var obj = this.firstOldObject,
+            n = 0;
         while (obj) {
             if (obj.isCompiledMethod())           // store literal oops into bytes
                 obj.methodPointersModified(this);
             pos = obj.writeTo(data, pos, this);
             obj = obj.nextObject;
+            n++;
         }
-        if (pos !== headerSize + this.oldSpaceBytes) throw "image size mismatch";
+        if (pos !== headerSize + this.oldSpaceBytes) throw "wrong image size";
+        if (n !== this.oldSpaceCount) throw "wrong object count";
         return data.buffer;
     },
     objectFromOop: function(oop, optionalOopMap) {
@@ -687,7 +693,8 @@ Object.extend(users.bert.St78.vm.Image, {
         var headerSize = reader.nextUint16(),
             objectCount = reader.nextUint16(),
             imageSize = reader.nextUint32(),
-            processOop = reader.nextUint16();
+            processOop = reader.nextUint16(),
+            displayOop = reader.nextUint16();
         if (pos !== headerSize) throw "header mismatch";
         var oopMap = {};
         for (var i = 0; i < objectCount; i++) {
@@ -700,6 +707,7 @@ Object.extend(users.bert.St78.vm.Image, {
         if (pos !== headerSize + imageSize) throw "size mismatch"
         var image = new this(oopMap, name);
         image.userProcess = oopMap[processOop];
+        image.userDisplay = oopMap[displayOop];
         return image;
     },
 });
