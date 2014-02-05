@@ -1195,6 +1195,11 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 
         // fix up the image
         this.notetakerPatches(display);
+        // initial refresh
+        if (this.image.userDisplay) {
+            this.primHandler.displayBlt = this.image.userDisplay;
+            this.primHandler.redrawFullDisplay();
+        }
     },
     wakeProcess: function(proc) {
         // Install a new active process and load sp, ready to restore other state
