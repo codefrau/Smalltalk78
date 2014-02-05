@@ -1150,13 +1150,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 
         // Highjack user restart in ProjectWindow>>install to do thisProcess restart instead!
         this.patchByteCode(17520, 23, 0x85);     // thisProcess
-
-        // Make BP deltas match ST code for the debugger
-        this.BPFix = 1;  // set this to one to test the fix
-
-        // Make other code match push/popPCBP by including NoteTaker.PC_BIAS
-        // NT method header is 2 bytes instead of 4 in normal ST76
-        this.PCFix = NoteTaker.PC_BIAS;  // set this to NoteTaker.PC_BIAS (=2) to test the fix
     },
 
     initVMState: function() {
@@ -1188,18 +1181,25 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.startupTime = Date.now(); // base for millisecond clock
     },
     loadInitialContext: function(display) {
-        debugger;
         this.wakeProcess(this.image.userProcess);  // set up activeProcess and sp
         this.popPCBP();                          // restore pc and current frame
         this.loadFromFrame(this.currentFrame);   // load all the rest from the frame
 
-        // fix up the image
-        this.notetakerPatches(display);
         // initial refresh
         if (this.image.userDisplay) {
             this.primHandler.displayBlt = this.image.userDisplay;
             this.primHandler.redrawFullDisplay();
+        } else {
+            // we loaded the original NoteTaker snapshot
+            this.notetakerPatches(display);
         }
+
+        // Make BP deltas match ST code for the debugger
+        this.BPFix = 1;  // set this to one to test the fix
+
+        // Make other code match push/popPCBP by including NoteTaker.PC_BIAS
+        // NT method header is 2 bytes instead of 4 in normal ST76
+        this.PCFix = NoteTaker.PC_BIAS;  // set this to NoteTaker.PC_BIAS (=2) to test the fix
     },
     wakeProcess: function(proc) {
         // Install a new active process and load sp, ready to restore other state
@@ -2899,17 +2899,11 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
     primitiveSaveImage: function(argCount, newMethod, newMethodClass) {
         if (!window.webkitStorageInfo) return alert("Need webkitStorage");
-        //- create a fake method frame
-        //-var oldSP = this.vm.sp;
-        //-this.vm.pushFrame(newMethod, newMethodClass, argCount);
         this.vm.pushPCBP();
         var process = this.vm.sleepProcess();
-        debugger;
         var buffer = this.vm.image.writeToBuffer();
         this.vm.wakeProcess(process);
         this.vm.popPCBP();
-        //-this.vm.popN(oldSP - this.vm.sp);   // drop fake frame
-
         // write file asynchronously
         window.webkitStorageInfo.requestQuota(PERSISTENT, 5*1024*1024, function(grantedBytes) {
             window.webkitRequestFileSystem(PERSISTENT, grantedBytes, function(fs) {
