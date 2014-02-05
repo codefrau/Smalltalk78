@@ -1723,17 +1723,21 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 },
 'stack access', {
     pop: function() {
-        //Note leaves garbage above SP.  Serious reclaim should store nils above SP
-        return this.activeContextPointers[this.sp++];  
+        var value = this.activeContextPointers[this.sp];  
+        this.activeContextPointers[this.sp++] = this.nilObj;
+        return value;
     },
     popN: function(nToPop) {
-        this.sp += nToPop;
+        for (var i = 0; i < nToPop; i++)
+            this.activeContextPointers[this.sp++] = this.nilObj;
     },
     push: function(oop) {
         this.activeContextPointers[--this.sp] = oop;
     },
     popNandPush: function(nToPop, oop) {
-        this.activeContextPointers[this.sp += nToPop - 1] = oop;
+        for (var i = 1; i < nToPop; i++)
+            this.activeContextPointers[this.sp++] = this.nilObj;
+        this.activeContextPointers[this.sp] = oop;
     },
     top: function() {
         return this.activeContextPointers[this.sp];
