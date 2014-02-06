@@ -1553,12 +1553,14 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
     lookupSelectorInDict: function(mDict, messageSelector) {
         //Returns a method or nilObject
-        var selectors = mDict.pointers[NoteTaker.PI_MESSAGEDICT_OBJECTS].pointers;
-        var methods = mDict.pointers[NoteTaker.PI_MESSAGEDICT_METHODS].pointers;
-        //TODO: use selector hash as start
-        for (var i = 0; i < selectors.length; i++)
-            if (selectors[i] === messageSelector)
-                return methods[i];
+        var selectors = mDict.pointers[NoteTaker.PI_MESSAGEDICT_OBJECTS].pointers,
+            methods = mDict.pointers[NoteTaker.PI_MESSAGEDICT_METHODS].pointers,
+            index = this.getHash(messageSelector) % selectors.length;
+        for (var i = 0; i < selectors.length; i++) {
+            if (selectors[index] === messageSelector)
+                return methods[index];
+            index = (index + 1) % selectors.length;
+        }
         return this.nilObj;
     },
     executeNewMethod: function(newRcvr, newMethod, newMethodClass, argumentCount, primitiveIndex) {
@@ -1779,6 +1781,9 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 {
     instantiateClass: function(aClass, indexableSize) {
         return this.image.instantiateClass(aClass, indexableSize, this.nilObj);
+    },
+    getHash: function(object) {
+        return (this.image.objectToOop(object) >> 1) & NoteTaker.MAX_INT;
     },
     arrayFill: function(array, fromIndex, toIndex, value) {
         // assign value to range from fromIndex (inclusive) to toIndex (exclusive)
@@ -2032,7 +2037,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 33: return this.popNandPushIntIfOK(1,this.stackFloat(0)|0); // primitiveAsInteger
             case 34: return this.popNandPushFloatIfOK(1,this.stackFloat(0)|0); // primitiveIntegerPart
             case 35: {var f = this.stackFloat(0); return this.popNandPushFloatIfOK(1, f - (f|0));} // primitiveFractionPart
-            case 36: return this.popNandPushIntIfOK(1, this.vm.image.objectToOop(this.stackNonInteger(0)) >> 1); // Object.hash
+            case 36: return this.popNandPushIntIfOK(1, this.vm.getHash(this.stackNonInteger(0))); // Object.hash
             case 39: return this.primitiveValueGets(argCount); // RemoteCode.value_
             case 40: return this.primitiveCopyBits(argCount);  // BitBlt.callBLT
             case 41: return this.primitiveSetDisplayAndCursor(argCount); // BitBlt install for display
