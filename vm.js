@@ -45,6 +45,10 @@ NoteTaker = {
     OOP_CLCOMPILEDMETHOD: 0x1e0,
     OOP_CLVLENGTHCLASS: 0x9c0,
 
+    OOP_MASK: 0x1F,       // mask for class oops
+    OOP_TAG_SMALL: 0x1E,  // tag for 16 bit size header
+    OOP_TAG_LARGE: 0x1F,  // tag for 32 bit size header
+
 	// CLCLASS layout:
 	PI_CLASS_TITLE: 0,
 	PI_CLASS_MYINSTVARS: 1,
@@ -294,7 +298,9 @@ Object.subclass('users.bert.St78.vm.Image',
         this.oldSpaceCount = 0;
         this.newSpaceCount = 0;
         this.oldSpaceBytes = 0;
-        this.freeOops = {};
+        this.nextTempOop = -2;      // new objects get negative preliminary oops
+        this.freeOops = {};         // pool for real oops
+        this.freeClassOops = {};    // pool for real class oops (lower bits 0)
         // link all objects into oldspace
         var prevObj;
         for (var oop = 0; oop < 0xFFFF; oop += 2)
@@ -304,11 +310,10 @@ Object.subclass('users.bert.St78.vm.Image',
                 if (prevObj) prevObj.nextObject = oopMap[oop];
                 prevObj = oopMap[oop];
             } else {
-                this.freeOops[oop] = true;
+                (oop & NoteTaker.OOP_MASK ? this.freeOops : this.freeClassOops)[oop] = true;
             }
         this.firstOldObject = oopMap[0];
         this.lastOldObject = prevObj;
-        this.nextOop = -2; // new objects get negative preliminary oops
         this.initKnownObjects(oopMap);
         this.initCompiledMethods(oopMap, doPatches);
         console.log("Loaded image " + this.name);
@@ -392,24 +397,23 @@ Object.subclass('users.bert.St78.vm.Image',
             this.oldSpaceCount + newObjects.length - removedObjects.length, this.oldSpaceBytes));
         this.oldSpaceCount += newObjects.length - removedObjects.length;
         this.newSpaceCount = 0;
+        this.nextTempOop = -2;
         this.gcCount++;
         return this.totalMemory - this.oldSpaceBytes;
     },
     allocateOopFor: function(anObj) {
         // get an oop from the pool of unused oops
-        var isClass = anObj.isClass();
-        for (var oopStr in this.freeOops) {
-            var oop = parseInt(oopStr);
-            var isClassOop = !(oop & 0x1F);    // class oop has lower bits 0
-            if (isClass !== isClassOop) continue;
-            delete this.freeOops[oopStr];
-            return anObj.oop = oop;
+        var isClass = anObj.isClass(),
+            pool = isClass ? this.freeClassOops : this.freeOops;
+        for (var oopStr in pool) {
+            delete pool[oopStr];
+            return anObj.oop = parseInt(oopStr);
         }
         throw isClass ? "too many classes" : "too many objects";
     },
     freeOopFor: function(anObj) {
         if (anObj.oop > 0) {
-            this.freeOops[anObj.oop] = true;
+            (anObj.oop & NoteTaker.OOP_MASK ? this.freeOops : this.freeClassOops)[anObj.oop] = true;
             anObj.oop = null;
         } else throw "attempt to free invalid oop";
     },
@@ -494,7 +498,7 @@ Object.subclass('users.bert.St78.vm.Image',
     tempOop: function() {
         // new objects get a temporary oop
         this.newSpaceCount++;
-        return this.nextOop -= 2;
+        return this.nextTempOop -= 2;
     },
     instantiateClass: function(aClass, indexableSize, nilObj) {
         var newObject = new users.bert.St78.vm.Object(this.tempOop());
@@ -544,20 +548,6 @@ Object.subclass('users.bert.St78.vm.Image',
         }
         this.vm.flushMethodCacheAfterBecome(mutations);
         return true;
-    },
-    someInstanceOf: function(clsObj) {
-        var obj = this.firstOldObject;
-        while (true) {
-            if (obj.stClass === clsObj)
-                return obj;
-            if (!obj.nextObject) {
-                // this was the last old object, tenure new objects and try again
-                if (this.newSpaceCount > 0) this.fullGC();
-                // if this really was the last object, we're done
-                if (!obj.nextObject) return null;
-            }
-            obj = obj.nextObject;
-        }
     },
     writeToBuffer: function() {
         this.fullGC(); // collect all objects
@@ -619,11 +609,19 @@ Object.subclass('users.bert.St78.vm.Image',
             this.appendToOldObjects([anObject]); // tenure the object
         return anObject.oop;
     },
-    objectAfter: function(obj) {
-        // if this was the last old object, tenure new objects and try again
-        if (!obj.nextObject && this.newSpaceCount > 0)
-            this.fullGC();
-        return obj.nextObject;
+    someInstanceOf: function(clsObj) {
+        var obj = this.firstOldObject;
+        while (true) {
+            if (obj.stClass === clsObj)
+                return obj;
+            if (!obj.nextObject) {
+                // this was the last old object, tenure new objects and try again
+                if (this.newSpaceCount > 0) this.fullGC();
+                // if this really was the last object, we're done
+                if (!obj.nextObject) return null;
+            }
+            obj = obj.nextObject;
+        }
     },
     nextInstanceAfter: function(obj) {
         var clsObj = obj.stClass;
@@ -867,9 +865,10 @@ Object.subclass('users.bert.St78.vm.Object',
     totalBytes: function() { // size in bytes this object will take up in image snapshot
         var dataBytes = this.dataBytes(),
             dataWords = dataBytes+1 >> 1,
-            headerWords = dataBytes < 0x1E ? 2 // oop, classOopAndSizeOrLargeTag (up to 30 bytes)
-                : dataBytes <= 0xFFFF ? 3      // oop, class oop, 2 bytes size (tag 0x1E)
-                : 4;                           // oop, class oop, 4 bytes size (tag 0x1F)
+            maxSmall = NoteTaker.OOP_TAG_SMALL,    // 0x1E
+            headerWords = dataBytes < maxSmall ? 2 // oop, classOopAndSizeOrLargeTag (up to 30 bytes)
+                : dataBytes <= 0xFFFF ? 3          // oop, class oop, 2 bytes size (OOP_TAG_SMALL, 0x1E)
+                : 4;                               // oop, class oop, 4 bytes size (OOP_TAG_LARGE, 0x1F)
         return (headerWords + dataWords) * 2;
     },
 },
@@ -880,13 +879,13 @@ Object.subclass('users.bert.St78.vm.Object',
         data.setUint16(pos, this.oop); pos += 2;
         var byteSize = this.dataBytes();
         // write class oop and size in its lower 6 bits
-        if (byteSize < 0x1E) { // one word for class and size
+        if (byteSize < NoteTaker.OOP_TAG_SMALL) { // one word for class and size
            data.setUint16(pos, this.stClass.oop + byteSize);  pos += 2;
-        } else if (byteSize <= 0xFFFF) { // two words, marked by 0x1E size
-           data.setUint16(pos, this.stClass.oop + 0x1E);  pos += 2;
+        } else if (byteSize <= 0xFFFF) { // two words, marked by 0x1E
+           data.setUint16(pos, this.stClass.oop + NoteTaker.OOP_TAG_SMALL);  pos += 2;
            data.setUint16(pos, byteSize); pos += 2;
-        } else { // three words, marked by 0x1F size
-           data.setUint16(pos, this.stClass.oop + 0x1F);  pos += 2;
+        } else { // three words, marked by 0x1F
+           data.setUint16(pos, this.stClass.oop + NoteTaker.OOP_TAG_LARGE);  pos += 2;
            data.setUint32(pos, byteSize); pos += 4;
         }
         // now write data
@@ -1060,11 +1059,11 @@ Object.extend(users.bert.St78.vm.Object, {
     readFromBuffer: function(reader) {
         var oop = reader.nextUint16(),
             classOopAndSize = reader.nextUint16(),
-            byteSize = classOopAndSize & 0x1F,
+            byteSize = classOopAndSize & NoteTaker.OOP_MASK,
             classOop = classOopAndSize - byteSize;
-        if (byteSize === 0x1E)
+        if (byteSize === NoteTaker.OOP_TAG_SMALL)
             byteSize = reader.nextUint16();
-        else if (byteSize === 0x1F)
+        else if (byteSize === NoteTaker.OOP_TAG_LARGE)
             byteSize = reader.nextUint32();
         var obj = new this(oop);
         obj.data = {
