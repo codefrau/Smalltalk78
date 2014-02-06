@@ -1656,27 +1656,11 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         entry.method = null;
         return entry;
     },
-    flushMethodCache: function() { //clear all cache entries (prim 89)
+    flushMethodCache: function() { //clear all cache entries
         for (var i = 0; i < this.methodCacheSize; i++) {
             this.methodCache[i].selector = null;   // mark it free
             this.methodCache[i].method = null;  // release the method
         }
-        return true;
-    },
-    flushMethodCacheForSelector: function(selector) { //clear cache entries for selector (prim 119)
-        for (var i = 0; i < this.methodCacheSize; i++)
-            if (this.methodCache[i].selector === selector) {
-                this.methodCache[i].selector = null;   // mark it free
-                this.methodCache[i].method = null;  // release the method
-            }
-        return true;
-    },
-    flushMethodCacheForMethod: function(method) { //clear cache entries for method (prim 116)
-        for (var i = 0; i < this.methodCacheSize; i++)
-            if (this.methodCache[i].method === method) {
-                this.methodCache[i].selector = null;   // mark it free
-                this.methodCache[i].method = null;  // release the method
-            }
         return true;
     },
     flushMethodCacheAfterBecome: function(mutations) {
@@ -2064,147 +2048,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 62: return this.primitiveKeyboardNext(argCount);
             case 66: return this.readStringFromLively(argCount);  //  co-opted from user primPort: 
             case 68: return this.primitiveMouseButtons(argCount);
-/*
-            case 29: return false; // primitiveMultiplyLargeIntegers
-            case 30: return false; // primitiveDivideLargeIntegers
-            case 31: return false; // primitiveModLargeIntegers
-            case 32: return false; // primitiveDivLargeIntegers
-            case 33: return false; // primitiveQuoLargeIntegers
-            case 34: return false; // primitiveBitAndLargeIntegers
-            case 35: return false; // primitiveBitOrLargeIntegers
-            case 36: return false; // primitiveBitXorLargeIntegers
-            case 37: return false; // primitiveBitShiftLargeIntegers
-            case 38: return false; // TODO: primitiveFloatAt
-            case 39: return false; // TODO: primitiveFloatAtPut
-            case 40: return this.popNandPushFloatIfOK(1,this.stackInteger(0)); // primitiveAsFloat
-            case 41: return this.popNandPushFloatIfOK(2,this.stackFloat(0)+this.stackFloat(1));  // Float +
-            case 42: return this.popNandPushFloatIfOK(2,this.stackFloat(0)-this.stackFloat(1));  // Float -	
-            case 43: return this.pop2andPushBoolIfOK(this.stackFloat(0)<this.stackFloat(1));  // Float <
-            case 44: return this.pop2andPushBoolIfOK(this.stackFloat(0)>this.stackFloat(1));  // Float >
-            case 45: return this.pop2andPushBoolIfOK(this.stackFloat(0)<=this.stackFloat(1));  // Float <=
-            case 46: return this.pop2andPushBoolIfOK(this.stackFloat(0)>=this.stackFloat(1));  // Float >=
-            case 47: return this.pop2andPushBoolIfOK(this.stackFloat(0)===this.stackFloat(1));  // Float =
-            case 48: return this.pop2andPushBoolIfOK(this.stackFloat(0)!==this.stackFloat(1));  // Float !=
-            case 49: return this.popNandPushFloatIfOK(2,this.stackFloat(0)*this.stackFloat(1));  // Float.mul
-            case 50: return this.popNandPushFloatIfOK(2,this.safeFDiv(this.stackFloat(0),this.stackFloat(1)));  // Float.div
-            case 51: return this.popNandPushIfOK(1, this.checkSmallInt(this.stackFloat(0)|0));  // Float.asInteger
-            case 52: return false;  // Float.fractionPart
-            case 53: return this.popNandPushIfOK(1, Math.log(this.stackFloat(0)) / Math.log(2) | 0); // Exponent
-            case 54: return this.popNandPushFloatIfOK(2, this.stackFloat(0) * Math.pow(2, this.stackFloat(1))); // TimesTwoPower
-            case 55: return this.popNandPushFloatIfOK(1, Math.sqrt(this.stackFloat(0))); // SquareRoot
-            case 56: return this.popNandPushFloatIfOK(1, Math.sin(this.stackFloat(0))); // Sine
-            case 57: return this.popNandPushFloatIfOK(1, Math.atan(this.stackFloat(0))); // Arctan
-            case 58: return this.popNandPushFloatIfOK(1, Math.log(this.stackFloat(0))); // LogN
-            case 59: return this.popNandPushFloatIfOK(1, Math.exp(this.stackFloat(0))); // Exp
-            case 60: return this.popNandPushIfOK(2, this.objectAt(false,false,false)); // basicAt:
-            case 61: return this.popNandPushIfOK(3, this.objectAtPut(false,false,false)); // basicAt:put:
-            case 62: return this.popNandPushIfOK(1, this.objectSize()); // size
-            case 63: return this.popNandPushIfOK(2, this.objectAt(false,true,false)); // String.basicAt:
-            case 64: return this.popNandPushIfOK(3, this.objectAtPut(false,true,false)); // String.basicAt:put:
-            case 65: return false; // primitiveNext
-            case 66: return false; // primitiveNextPut
-            case 67: return false; // primitiveAtEnd
-            case 68: return this.popNandPushIfOK(2, this.objectAt(false,false,true)); // Method.objectAt:
-            case 69: return this.popNandPushIfOK(3, this.objectAtPut(false,false,true)); // Method.objectAt:put:
-            case 72: return this.popNandPushIfOK(2, this.doArrayBecome(false)); //arrayBecomeOneWay
-            case 73: return this.popNandPushIfOK(2, this.objectAt(false,false,true)); // instVarAt:
-            case 74: return this.popNandPushIfOK(3, this.objectAtPut(false,false,true)); // instVarAt:put:
-            case 75: return this.popNandPushIfOK(1, this.stackNonInteger(0).hash); // Object.identityHash
-            case 76: return false; // primitiveStoreStackp (Blue Book: primitiveAsObject)
-            case 77: return this.popNandPushIfOK(1, this.someInstanceOf(this.stackNonInteger(0))); // Class.someInstance
-            case 78: return this.popNandPushIfOK(1, this.nextInstanceAfter(this.stackNonInteger(0))); // Object.nextInstance
-            case 79: return this.primitiveNewMethod(); // Compiledmethod.new
-            case 80: return this.popNandPushIfOK(2,this.doBlockCopy()); // blockCopy:
-            case 81: return this.primitiveBlockValue(argCount); // BlockContext.value
-            case 82: return this.primitiveValueWithArgs(argCount); // BlockContext.valueWithArguments:
-            case 83: return this.vm.primitivePerform(argCount); // Object.perform:(with:)*
-            case 84: return this.vm.primitivePerformWithArgs(argCount, false); //  Object.perform:withArguments:
-            case 85: return this.primitiveSignal(); // Semaphore.wait
-            case 86: return this.primitiveWait(); // Semaphore.wait
-            case 87: return this.primitiveResume(); // Process.resume
-            case 88: return this.primitiveSuspend(); // Process.suspend
-            case 89: return this.vm.flushMethodCache(); //primitiveFlushCache
-            case 90: return this.primitiveMousePoint(argCount); // mousePoint
-            case 91: return this.primitiveTestDisplayDepth(argCount); // cursorLocPut in old images
-            case 92: return false; // primitiveSetDisplayMode				"Blue Book: primitiveCursorLink"
-            case 93: return false; // primitiveInputSemaphore
-            case 94: return false; // primitiveGetNextEvent				"Blue Book: primitiveSampleInterval"
-            case 95: return false; // primitiveInputWord
-            case 96: return this.primitiveCopyBits(argCount);  // BitBlt.copyBits
-            case 97: return false; // primitiveSnapshot
-            case 98: return false; // primitiveStoreImageSegment
-            case 99: return false; // primitiveLoadImageSegment
-            case 100: return this.vm.primitivePerformWithArgs(argCount, true); // Object.perform:withArguments:inSuperclass: (Blue Book: primitiveSignalAtTick)
-            case 103: return false; // primitiveScanCharacters
-            case 104: return false; // primitiveDrawLoop
-            case 105: return this.popNandPushIfOK(5, this.doStringReplace()); // string and array replace
-            case 106: return this.primitiveScreenSize(argCount); // actualScreenSize
-            case 110: return this.pop2andPushBoolIfOK(this.vm.stackValue(0) === this.vm.stackValue(1)); // ==
-            case 111: return this.popNandPushIfOK(1, this.vm.getClass(this.vm.top())); // Object.class
-            case 112: return this.popNandPushIfOK(1, 1000000); //primitiveBytesLeft
-            case 113: return this.primitiveQuit(argCount);
-            case 114: return this.primitiveExitToDebugger(argCount);
-            case 115: return false; //TODO primitiveChangeClass					"Blue Book: primitiveOopsLeft"
-            case 116: return this.vm.flushMethodCacheForMethod(this.vm.top());
-            case 117: return this.doNamedPrimitive(argCount, newMethod); // named prims
-            case 118: return false; //TODO primitiveDoPrimitiveWithArgs
-            case 119: return this.vm.flushMethodCacheForSelector(this.vm.top());
-            case 120: return false; //primitiveCalloutToFFI
-            case 121: return this.popNandPushIfOK(1, this.makeStString("/home/bert/mini.image")); //imageName
-            case 122: return this.primitiveReverseDisplay(argCount); // Blue Book: primitiveImageVolume
-            case 123: return false; //TODO primitiveValueUninterruptably
-            case 124: return this.popNandPushIfOK(2, this.registerSemaphore(Squeak.splOb_TheLowSpaceSemaphore));
-            case 125: return this.popNandPushIfOK(2, this.setLowSpaceThreshold());
-            case 126: return false; //TODO primitiveDeferDisplayUpdates
-    		case 127: return false; //TODO primitiveShowDisplayRect
-            case 128: return this.popNandPushIfOK(2, this.doArrayBecome(true)); //arrayBecome
-            case 129: return this.popNandPushIfOK(1, this.vm.image.specialObjectsArray); //specialObjectsOop
-            case 130: return this.popNandPushIfOK(1, this.vm.image.fullGC()); // GC
-            case 131: return this.popNandPushIfOK(1, this.vm.image.partialGC()); // GCmost
-            case 132: return this.pop2andPushBoolIfOK(this.pointsTo(this.stackNonInteger(1), this.vm.top())); //Object.pointsTo
-            case 133: return false; //TODO primitiveSetInterruptKey
-            case 134: return this.popNandPushIfOK(2, this.registerSemaphore(Squeak.splOb_TheInterruptSemaphore));
-            case 135: return this.popNandPushIfOK(1, this.millisecondClockValue());
-            case 136: return this.primitiveSignalAtMilliseconds(argCount); //Delay signal:atMs:());
-            case 137: return this.popNandPushIfOK(1, this.secondClock()); // seconds since Jan 1, 1901
-            case 138: return this.popNandPushIfOK(1, this.someObject()); // Object.someObject
-            case 139: return this.popNandPushIfOK(1, this.nextObject(this.vm.top())); // Object.nextObject
-            case 140: return false; // TODO primitiveBeep
-            case 141: return this.primitiveClipboardText(argCount);
-            case 142: return this.popNandPushIfOK(1, this.makeStString("/users/bert/st78vm/")); //vmPath
-            case 143: return false; // TODO primitiveShortAt
-            case 144: return false; // TODO primitiveShortAtPut
-            case 145: return false; // TODO primitiveConstantFill
-            case 146: return false; // TODO primitiveReadJoystick
-            case 147: return false; // TODO primitiveWarpBits
-            case 148: return this.popNandPushIfOK(1, this.vm.image.clone(this.vm.top())); //shallowCopy
-            case 149: return false; // TODO primitiveGetAttribute
-            case 153: return false; // File.open 
-            case 156: return false; // primDeleteFileNamed:
-            case 159: return false; // primRename:to:
-            case 160: return false; // TODO primitiveAdoptInstance
-            case 161: return this.popNandPushIfOK(1, this.charFromInt('/'.charCodeAt(0))); //path delimiter
-            case 162: return this.popNandPushIfOK(1, this.vm.nilObj);  // FileDirectory.primLookupEntryIn:index: 
-            case 167: return false; // Processor.yield
-            case 195: return false; // Context.findNextUnwindContextUpTo:
-            case 196: return false; // Context.terminateTo:
-            case 197: return false; // Context.findNextHandlerContextStarting
-            case 198: return false; // MarkUnwindMethod (must fail)
-            case 199: return false; // MarkHandlerMethod (must fail)
-            case 230: return this.primitiveRelinquishProcessorForMicroseconds(argCount);
-            case 231: return this.primitiveForceDisplayUpdate(argCount);
-            case 233: return this.primitiveSetFullScreen(argCount);
-            case 234: return false; // primBitmapdecompressfromByteArrayat
-            case 235: return false; // primStringcomparewithcollated
-            case 236: return false; // primSampledSoundconvert8bitSignedFromto16Bit
-            case 237: return false; // primBitmapcompresstoByteArray
-            case 238: case 239: case 240: case 241: return false; // serial port primitives
-            case 243: return false; // primStringtranslatefromtotable
-            case 244: return false; // primStringfindFirstInStringinSetstartingAt
-            case 245: return false; // primStringindexOfAsciiinStringstartingAt
-            case 246: return false; // primStringfindSubstringinstartingAtmatchTable
-            case 254: return this.primitiveVMParameter(argCount);
-*/
         }
         throw "primitive " + index + " not implemented yet";
         return false;
@@ -2536,6 +2379,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
             console.log("Failure of new: due to instSize bit not set for class " + rcvr);
             return false
         }
+        if (rcvr === this.compiledMethodClass)
+            this.vm.flushMethodCache();
         return this.popNandPushIfOK(2, this.vm.instantiateClass(rcvr, size));
     },
     doArrayBecome: function(doBothWays) {
