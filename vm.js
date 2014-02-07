@@ -1194,8 +1194,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 
         // initial refresh
         if (this.image.userDisplay) {
-            this.primHandler.displayBlt = this.image.userDisplay;
-            this.primHandler.redrawFullDisplay();
+            this.primHandler.setDisplayAndCursor(this.image.userDisplay, true);
         } else {
             // we loaded the original NoteTaker snapshot
             this.notetakerPatches(display);
@@ -1964,8 +1963,15 @@ Object.subclass('users.bert.St78.vm.Primitives',
 'initialization', {
     initialize: function(vm, display) {
         this.vm = vm;
-        this.display = display;
+        this.display = display;         // display interface
         this.display.vm = this.vm;
+        this.displayPixels = null;      // HTML canvas pixel data matching this.display.ctx
+        this.displayBlt = null;         // the current Smalltalk display/cursor object, also stored in image header
+        this.displayBits = null;        // accessor for words in Smalltalk display
+        this.displayPitch = 0;          // number of words per line in displayBits
+        this.cursorBits = null;         // accessor for words in Smalltalk cursor
+        this.cursorX = 0;
+        this.cursorY = 0;
         this.initAtCache();
         this.remoteCodeClass = vm.image.objectFromOop(NoteTaker.OOP_CLREMOTECODE);
         this.processClass = vm.image.objectFromOop(NoteTaker.OOP_CLPROCESS);
@@ -2509,9 +2515,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return true;
     },
     primitiveSetDisplayAndCursor: function(argCount) {
-        // dest is display form, source is cursor form
-        this.displayBlt = this.vm.stackValue(0);
-        this.showCursor(this.displayBlt.pointers[NoteTaker.PI_BITBLT_SOURCEBITS]);
+        this.setDisplayAndCursor(this.vm.stackValue(0));
         this.vm.popN(argCount); // return self
         return true;
 	},
@@ -2536,7 +2540,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (!bitblt.loadBitBlt(bitbltObj)) return false;
         bitblt.copyBits();
         if (bitblt.destForm === this.displayBlt.pointers[NoteTaker.PI_BITBLT_DEST])
-            this.showOnDisplay(bitblt, bitblt.affectedRect());
+            this.displayUpdate(bitblt.affectedRect());
         return true;
 	},
     primitiveKeyboardNext: function(argCount) {
@@ -2556,27 +2560,39 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
     primitiveMousePoint: function(argCount) {
         if (this.display.fetchMousePos) this.display.fetchMousePos();
+        this.cursorMove(this.display.mouseX, this.display.mouseY);
         return this.popNandPushIfOK(argCount+1, this.makePointWithXandY(this.checkSmallInt(this.display.mouseX), this.checkSmallInt(this.display.mouseY)));
     },
-    redrawFullDisplay: function() {
-        var bitblt = new users.bert.St78.vm.BitBlt(this.vm);
-        bitblt.loadBitBlt(this.displayBlt);
-        var bounds = { x: 0, y: 0, w: bitblt.clipW, h: bitblt.clipH};
-        this.showOnDisplay(bitblt, bounds);
+    setDisplayAndCursor: function(bitBlt, fullRedraw){
+        // dest is display form, source is cursor form
+        this.displayBlt = bitBlt;   // also stored in image
+        var blt = new users.bert.St78.vm.BitBlt(this.vm);
+        blt.loadBitBlt(this.displayBlt);
+        this.displayBits = blt.destBits;
+        this.displayPitch = blt.destPitch;
+        this.cursorBits = blt.sourceBits;
+        if (fullRedraw) this.redrawFullDisplay();
+        // often called to change the cursor
     },
-    showOnDisplay: function(bitBlt, rect) {
+    redrawFullDisplay: function() {
+        this.displayUpdate({x: 0, y: 0, w: this.display.width, h: this.display.height});
+    },
+    displayUpdate: function(rect, noCursor) {
         if (!rect) return;
-        var ctx = this.display.ctx;
-        var pixels = ctx.createImageData(rect.w, rect.h);
-        var dest = new Uint32Array(pixels.data.buffer);
-        var leftMask = 0x8000 >> (rect.x & 15);
-        var source = bitBlt.destBits;
-        var srcY = rect.y;
-        for (var y = 0; y < rect.h; y++) {
-            var srcIndex = bitBlt.destPitch * srcY + (rect.x >> 4);
+        if (!this.displayPixels) // our actual screen pixels, 32 bits ARGB
+            this.displayPixels = this.display.ctx.createImageData(this.display.width, this.display.height);
+        var dest = new Uint32Array(this.displayPixels.data.buffer),
+            dstPitch = this.displayPixels.width,
+            dstX = rect.x,
+            source = this.displayBits,
+            srcPitch = this.displayPitch,
+            srcX = rect.x >> 4, // 16 bit words
+            leftMask = 0x8000 >> (rect.x & 15);
+        for (var y = rect.y; y < rect.y + rect.h; y++) {
+            var srcIndex = srcPitch * y + srcX;
             var mask = leftMask;
             var src = source.getWord(srcIndex);
-            var dstIndex = pixels.width * y;
+            var dstIndex = dstPitch * y + dstX;
             for (var x = 0; x < rect.w; x++) {
                 dest[dstIndex++] = src & mask ? 0xFF000000 : 0xFFFFFFFF;
                 if (!(mask = mask >> 1)) {
@@ -2584,9 +2600,39 @@ Object.subclass('users.bert.St78.vm.Primitives',
                     src = source.getWord(++srcIndex);
                 }
             }
-            srcY++;
         };
-        ctx.putImageData(pixels, rect.x, rect.y);
+        this.display.ctx.putImageData(this.displayPixels, 0, 0, rect.x, rect.y, rect.w, rect.h);
+        // show cursor if it was just overwritten
+        if (noCursor) return;
+        if (this.cursorX + 8 > rect.x && this.cursorX < rect.x + rect.w &&
+            this.cursorY + 16 > rect.y && this.cursorY < rect.y + rect.h) 
+                this.cursorDraw();
+    },
+    cursorMove: function(x, y) {
+        if (x === this.cursorX && y === this.cursorY) return;
+        var oldBounds = {x: this.cursorX, y: this.cursorY, w: 8, h: 16 };
+        this.cursorX = x;
+        this.cursorY = y;
+        // restore display at old cursor pos
+        this.displayUpdate(oldBounds, true);
+        // draw cursor at new pos
+        this.cursorDraw();
+    },
+    cursorDraw: function() {
+        var src = this.cursorBits, // 8x16 cursor form
+            srcY = 0,
+            dst = new Uint32Array(this.displayPixels.data.buffer),
+            dstPitch = this.displayPixels.width,
+            dstX = this.cursorX,
+            dstY = this.cursorY;
+        for (var y = 0; y < 16; y++) {
+            var srcWord = src.getWord(srcY);
+            if ((srcY += 8) >= 16) srcY -= 15;  // undo interleaving
+            var dstIndex = dstPitch * dstY++ + dstX;
+            for (var x = 0; x < 8; x++, dstIndex++, srcWord*=2)
+                if (srcWord & 0x80) dst[dstIndex] = 0xFF000000;
+        };
+        this.display.ctx.putImageData(this.displayPixels, 0, 0, this.cursorX, this.cursorY, 8, 16);
     },
     readStringFromLively: function(nargs) {
         // The Notetaker panel object includes an object named 'fileStrings'
@@ -2607,13 +2653,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
         for (var i=0; i<livelyData.length; i++) newString.bytes[i] = livelyData[i];
         this.popNandPushIfOK(nargs+1, newString);
         return true
-    },
-    showCursor: function(cursorObj) {
-        // todo
-    },
-    primitiveForceDisplayUpdate: function(argCount) {
-        // not needed, we show everything immediately
-        return true;
     },
     primitiveScreenSize: function(argCount) {
         return this.popNandPushIfOK(argCount+1, this.makePointWithXandY(this.display.width, this.display.height));
