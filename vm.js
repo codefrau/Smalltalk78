@@ -2617,13 +2617,13 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.display.ctx.putImageData(this.displayPixels, 0, 0, rect.x, rect.y, rect.w, rect.h);
         // show cursor if it was just overwritten
         if (noCursor) return;
-        if (this.cursorX + 8 > rect.x && this.cursorX < rect.x + rect.w &&
+        if (this.cursorX + 16 > rect.x && this.cursorX < rect.x + rect.w &&
             this.cursorY + 16 > rect.y && this.cursorY < rect.y + rect.h) 
                 this.cursorDraw();
     },
     cursorMove: function(x, y) {
         if (x === this.cursorX && y === this.cursorY) return;
-        var oldBounds = {x: this.cursorX, y: this.cursorY, w: 8, h: 16 };
+        var oldBounds = {x: this.cursorX, y: this.cursorY, w: 16, h: 16 };
         this.cursorX = x;
         this.cursorY = y;
         // restore display at old cursor pos
@@ -2632,7 +2632,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.cursorDraw();
     },
     cursorDraw: function() {
-        var src = this.cursorBits, // 8x16 cursor form
+        var src = this.cursorBits, // 16x16 cursor form
             srcY = 0,
             dst = new Uint32Array(this.displayPixels.data.buffer),
             dstPitch = this.displayPixels.width,
@@ -2641,11 +2641,15 @@ Object.subclass('users.bert.St78.vm.Primitives',
         for (var y = 0; y < 16; y++) {
             var srcWord = src.getWord(srcY);
             if ((srcY += 8) >= 16) srcY -= 15;  // undo interleaving
+            var mask = 0x80;
             var dstIndex = dstPitch * dstY++ + dstX;
-            for (var x = 0; x < 8; x++, dstIndex++, srcWord*=2)
-                if (srcWord & 0x80) dst[dstIndex] = 0xFF000000;
+            for (var x = 0; x < 16; x++, dstIndex++) {
+                if (srcWord & mask) dst[dstIndex] = 0xFF000000;
+                mask = mask >> 1;
+                if (!mask) mask = 0x8000;      // undo byte swap
+            }
         };
-        this.display.ctx.putImageData(this.displayPixels, 0, 0, this.cursorX, this.cursorY, 8, 16);
+        this.display.ctx.putImageData(this.displayPixels, 0, 0, this.cursorX, this.cursorY, 16, 16);
     },
     readStringFromLively: function(nargs) {
         // The Notetaker panel object includes an object named 'fileStrings'
