@@ -2047,7 +2047,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 39: return this.primitiveValueGets(argCount); // RemoteCode.value_
             case 40: return this.primitiveCopyBits(argCount);  // BitBlt.callBLT
             case 41: return this.primitiveSetDisplayAndCursor(argCount); // BitBlt install for display
-            case 45: return this.primitiveSaveImage(argCount, newMethod, newMethodClass);
+            case 45: return this.primitiveSaveImage(argCount);
             case 48: return this.primitivePerform(argCount); // Object>>perform:
             case 49: return this.popNandPushIntIfOK(1,999); // Object>>refct
             case 50: return false; // TextScanner>>scanword:
@@ -2489,7 +2489,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.vm.breakOutOfInterpreter = 'break'; 
         return true;
     },
-    primitiveSaveImage: function(argCount, newMethod, newMethodClass) {
+    primitiveSaveImage: function(argCount) {
         if (!window.webkitStorageInfo) return alert("Need webkitStorage");
         this.vm.pushPCBP();
         var process = this.vm.sleepProcess();
