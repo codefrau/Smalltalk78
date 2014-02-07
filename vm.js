@@ -1972,6 +1972,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.cursorBits = null;         // accessor for words in Smalltalk cursor
         this.cursorX = 0;
         this.cursorY = 0;
+        this.damage = {dirtyRects: []};
         this.initAtCache();
         this.remoteCodeClass = vm.image.objectFromOop(NoteTaker.OOP_CLREMOTECODE);
         this.processClass = vm.image.objectFromOop(NoteTaker.OOP_CLPROCESS);
@@ -2540,7 +2541,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (!bitblt.loadBitBlt(bitbltObj)) return false;
         bitblt.copyBits();
         if (bitblt.destForm === this.displayBlt.pointers[NoteTaker.PI_BITBLT_DEST])
-            this.displayUpdate(bitblt.affectedRect());
+            this.displayDirty(bitblt.affectedRect());
         return true;
 	},
     primitiveKeyboardNext: function(argCount) {
@@ -2550,12 +2551,15 @@ Object.subclass('users.bert.St78.vm.Primitives',
     primitiveKeyboardPeek: function(argCount) {
         var length = this.display.keys.length;
         if (!length) this.idleCounter++;
+        this.displayFlush();
         return this.popNandPushIfOK(argCount+1, length ? this.checkSmallInt(this.display.keys[0] || 0) : this.vm.falseObj);
     },
     primitiveMouseButtons: function(argCount) {
         if (this.display.fetchMouseButtons) this.display.fetchMouseButtons();
         if (this.display.buttons & 7) this.idleCounter = 0;
         else this.idleCounter++;
+        this.displayFlush();
+        this.cursorMove(this.display.mouseX, this.display.mouseY);
         return this.popNandPushIfOK(argCount+1, this.checkSmallInt(this.display.buttons));
     },
     primitiveMousePoint: function(argCount) {
@@ -2577,8 +2581,17 @@ Object.subclass('users.bert.St78.vm.Primitives',
     redrawFullDisplay: function() {
         this.displayUpdate({x: 0, y: 0, w: this.display.width, h: this.display.height});
     },
-    displayUpdate: function(rect, noCursor) {
+    displayDirty: function(rect) {
         if (!rect) return;
+        if (this.damage) this.damage.dirtyRects.push(rect);
+        else this.displayUpdate(rect);
+    },
+    displayFlush: function(rect) {
+        if (!this.damage) return;
+        while (this.damage.dirtyRects.length)
+            this.displayUpdate(this.damage.dirtyRects.shift());
+    },
+    displayUpdate: function(rect, noCursor) {
         if (!this.displayPixels) // our actual screen pixels, 32 bits ARGB
             this.displayPixels = this.display.ctx.createImageData(this.display.width, this.display.height);
         var dest = new Uint32Array(this.displayPixels.data.buffer),
