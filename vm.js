@@ -2048,6 +2048,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 40: return this.primitiveCopyBits(argCount);  // BitBlt.callBLT
             case 41: return this.primitiveSetDisplayAndCursor(argCount); // BitBlt install for display
             case 45: return this.primitiveSaveImage(argCount);
+            case 46: return this.popNandPushIfOK(argCount, this.primitiveInstField(argCount)); //instField:
+            case 47: return this.popNandPushIfOK(argCount, this.primitiveInstField(argCount)); //instField: <-
             case 48: return this.primitivePerform(argCount); // Object>>perform:
             case 49: return this.popNandPushIntIfOK(1,999); // Object>>refct
             case 50: return false; // TextScanner>>scanword:
@@ -2273,6 +2275,19 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (array.pointers)
             return array.pointers[index-1+info.ivarOffset];
         throw "indexing problem"
+    },
+    primitiveInstField: function(argCount) {
+        // Both instField: and instField: <-
+        debugger
+        var rcvr = this.stackNonInteger(0);
+        var index = this.stackPos16BitInt(argCount); //args out of order ;-)
+        if (!this.success) return false;
+        var instSize = rcvr.stClass.classInstSize();
+        if (index < 1 || index > instSize) {this.success = false; return false;}
+        if (argCount = 1) return rcvr.pointers[index-1]; // instField:
+        var objToPut = this.vm.stackValue(1);
+        rcvr.pointers[index-1] = objToPut;
+        return objToPut; // instField: <-
     },
     objectAtPut: function(cameFromBytecode, convertChars, includeInstVars) {
         //Returns result of at:put: or sets success false
