@@ -2594,12 +2594,36 @@ Object.subclass('users.bert.St78.vm.Primitives',
         // often called to change the cursor
     },
     redrawFullDisplay: function() {
-        this.displayUpdate({x: 0, y: 0, w: this.display.width, h: this.display.height});
+        this.displayUpdate({left: 0, top: 0, right: this.display.width, bottom: this.display.height});
     },
     displayDirty: function(rect) {
         if (!rect) return;
-        if (this.damage) this.damage.dirtyRects.push(rect);
-        else this.displayUpdate(rect);
+        if (!this.damage) return this.displayUpdate(rect);
+        // look for overlapping rect to merge with
+        var rectArea = (rect.right - rect.left) * (rect.bottom - rect.top);
+        for (var i = 0; i < this.damage.dirtyRects.length; i++) {
+            var existing = this.damage.dirtyRects[i];
+            if (rect.left < existing.right && rect.right > existing.left
+                && rect.top < existing.bottom && rect.bottom > existing.top) {
+                    // found overlap
+                    var left = Math.min(rect.left, existing.left),
+                        top = Math.min(rect.top, existing.top),
+                        right = Math.max(rect.right, existing.right),
+                        bottom = Math.max(rect.bottom, existing.bottom),
+                        mergedArea = (right - left) * (bottom - top),
+                        existingArea = (existing.right - existing.left) * (existing.bottom - existing.top);
+                    // if merged area is smaller, do the merge
+                    if (mergedArea < rectArea + existingArea) {
+                        existing.left = left;
+                        existing.right = right;
+                        existing.top = top;
+                        existing.bottom = bottom;
+                        return; // merged, so we're done
+                    }
+                }
+        }
+        // non found: add this as extra
+        this.damage.dirtyRects.push(rect);
     },
     displayFlush: function(rect) {
         if (!this.damage) return;
@@ -2611,17 +2635,17 @@ Object.subclass('users.bert.St78.vm.Primitives',
             this.displayPixels = this.display.ctx.createImageData(this.display.width, this.display.height);
         var dest = new Uint32Array(this.displayPixels.data.buffer),
             dstPitch = this.displayPixels.width,
-            dstX = rect.x,
+            dstX = rect.left,
             source = this.displayBits,
             srcPitch = this.displayPitch,
-            srcX = rect.x >> 4, // 16 bit words
-            leftMask = 0x8000 >> (rect.x & 15);
-        for (var y = rect.y; y < rect.y + rect.h; y++) {
+            srcX = rect.left >> 4, // 16 bit words
+            leftMask = 0x8000 >> (rect.left & 15);
+        for (var y = rect.top; y < rect.bottom; y++) {
             var srcIndex = srcPitch * y + srcX;
             var mask = leftMask;
             var src = source.getWord(srcIndex);
             var dstIndex = dstPitch * y + dstX;
-            for (var x = 0; x < rect.w; x++) {
+            for (var x = rect.left; x < rect.right; x++) {
                 dest[dstIndex++] = src & mask ? 0xFF000000 : 0xFFFFFFFF;
                 if (!(mask = mask >> 1)) {
                     mask = 0x8000;
@@ -2629,16 +2653,16 @@ Object.subclass('users.bert.St78.vm.Primitives',
                 }
             }
         };
-        this.display.ctx.putImageData(this.displayPixels, 0, 0, rect.x, rect.y, rect.w, rect.h);
+        this.display.ctx.putImageData(this.displayPixels, 0, 0, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
         // show cursor if it was just overwritten
         if (noCursor) return;
-        if (this.cursorX + 16 > rect.x && this.cursorX < rect.x + rect.w &&
-            this.cursorY + 16 > rect.y && this.cursorY < rect.y + rect.h) 
+        if (this.cursorX + 16 > rect.left && this.cursorX < rect.right &&
+            this.cursorY + 16 > rect.top && this.cursorY < rect.bottom) 
                 this.cursorDraw();
     },
     cursorMove: function(x, y) {
         if (x === this.cursorX && y === this.cursorY) return;
-        var oldBounds = {x: this.cursorX, y: this.cursorY, w: 16, h: 16 };
+        var oldBounds = {left: this.cursorX, top: this.cursorY, right: this.cursorX + 16, bottom: this.cursorY + 16 };
         this.cursorX = x;
         this.cursorY = y;
         // restore display at old cursor pos
@@ -3153,7 +3177,7 @@ Object.subclass('users.bert.St78.vm.BitBlt',
         } else {
             affectedT = (this.dy - this.bbH) + 1;
             affectedB = this.dy + 1; }
-        return {x: affectedL, y: affectedT, w: affectedR-affectedL, h: affectedB-affectedT};
+        return {left: affectedL, top: affectedT, right: affectedR, bottom: affectedB};
     },
 });
 
