@@ -2862,6 +2862,8 @@ Object.subclass('users.bert.St78.vm.BitBlt',
         this.bitCount = 0;
         this.clipRange();
         if (this.bbW <= 0 || this.bbH <= 0) return;
+        //console.log("Blt " + ['src', '~src', 'halftone in src', 'halftone'][this.sourceRule] + ' ' + ['set', 'or', 'xor', 'and'][this.destRule] + " dest ")
+        //console.log(Strings.format("x: %s y: %s w: %s h: %s", this.destX, this.destY, this.width, this.height));
         this.destMaskAndPointerInit();
         /* Choose and perform the actual copy loop. */
         if (this.noSource) {
@@ -2879,9 +2881,9 @@ Object.subclass('users.bert.St78.vm.BitBlt',
         for (var i = 0; i < this.bbH; i++) { // vertical loop
             if (this.halftone) halftoneWord = this.halftone[(this.dy + i) % 4];
             // First word in row is masked
-            var destMask = this.mask1;
-            var destWord = this.destBits.getWord(this.destIndex);
-            var mergeWord = this.destFn(halftoneWord, destWord);
+            var destMask = this.mask1,
+                destWord = this.destBits.getWord(this.destIndex),
+                mergeWord = this.destFn(halftoneWord, destWord);
             destWord = (destMask & mergeWord) | (destWord & (~destMask));
             this.destBits.setWord(this.destIndex++, destWord);
             destMask = 0xFFFF;
@@ -2891,17 +2893,17 @@ Object.subclass('users.bert.St78.vm.BitBlt',
                     this.destBits.setWord(this.destIndex++, halftoneWord);
             else
                 for (var word = 2; word < this.nWords; word++) {
-                        destWord = this.destBits.getWord(this.destIndex);
-                        mergeWord = this.destFn(halftoneWord, destWord);
-                        this.destBits.setWord(this.destIndex++, mergeWord);
+                    destWord = this.destBits.getWord(this.destIndex);
+                    mergeWord = this.destFn(halftoneWord, destWord);
+                    this.destBits.setWord(this.destIndex++, mergeWord);
                 }
             //last word in row is masked
             if (this.nWords > 1) {
-                    destMask = this.mask2;
-                    destWord = this.destBits.getWord(this.destIndex);
-                    mergeWord = this.destFn(halftoneWord, destWord);
-                    destWord = (destMask & mergeWord) | (destWord & (~destMask));
-                    this.destBits.setWord(this.destIndex++, destWord);
+                destMask = this.mask2;
+                destWord = this.destBits.getWord(this.destIndex);
+                mergeWord = this.destFn(halftoneWord, destWord);
+                destWord = (destMask & mergeWord) | (destWord & (~destMask));
+                this.destBits.setWord(this.destIndex++, destWord);
             }
             this.destIndex += this.destDelta;
         }
@@ -3103,14 +3105,12 @@ Object.subclass('users.bert.St78.vm.BitBlt',
         if ((this.clipY + this.clipH) > this.destHeight) {this.clipH = this.destHeight - this.clipY; }
         // intersect with clipRect
         var leftOffset = Math.max(this.clipX - this.destX, 0);
-        this.sx = this.sourceX + leftOffset;
         this.dx = this.destX + leftOffset;
         this.bbW = this.width - leftOffset;
         var rightOffset = (this.dx + this.bbW) - (this.clipX + this.clipW);
     	if (rightOffset > 0)
     		this.bbW -= rightOffset;
         var topOffset = Math.max(this.clipY - this.destY, 0);
-        this.sy = this.sourceY + topOffset;
         this.dy = this.destY + topOffset;
         this.bbH = this.height - topOffset;
         var bottomOffset = (this.dy + this.bbH) - (this.clipY + this.clipH);
@@ -3118,6 +3118,8 @@ Object.subclass('users.bert.St78.vm.BitBlt',
     		this.bbH -= bottomOffset;
         // intersect with sourceForm bounds
     	if (this.noSource) return;
+        this.sx = this.sourceX + leftOffset;
+        this.sy = this.sourceY + topOffset;
     	if (this.sx < 0) {
     		this.dx -= this.sx;
     		this.bbW += this.sx;
