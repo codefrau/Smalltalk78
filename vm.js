@@ -2591,7 +2591,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.displayPitch = blt.destPitch;
         this.cursorBits = blt.sourceBits;
         if (fullRedraw) this.redrawFullDisplay();
-        // often called to change the cursor
+        else this.cursorMove(this.cursorX, this.cursorY, true);
     },
     redrawFullDisplay: function() {
         this.displayUpdate({left: 0, top: 0, right: this.display.width, bottom: this.display.height});
@@ -2656,8 +2656,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
             this.cursorY + 16 > rect.top && this.cursorY < rect.bottom) 
                 this.cursorDraw();
     },
-    cursorMove: function(x, y) {
-        if (x === this.cursorX && y === this.cursorY) return;
+    cursorMove: function(x, y, force) {
+        if (x === this.cursorX && y === this.cursorY && !force) return;
         var oldBounds = {left: this.cursorX, top: this.cursorY, right: this.cursorX + 16, bottom: this.cursorY + 16 };
         this.cursorX = x;
         this.cursorY = y;
