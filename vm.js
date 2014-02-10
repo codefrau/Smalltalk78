@@ -2159,8 +2159,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var rcvr = this.stackInteger(0);
         var arg = this.stackInteger(1);
         if (!this.success) return 0;
-        var result = this.vm.safeShift(rcvr, arg); // returns negative result if failed
-        if (result >= 0 && this.vm.canBeSmallInt(result))
+        var result = this.vm.safeShift(rcvr, arg); // returns non-int if failed
+        if (this.vm.canBeSmallInt(result))
             return result;
         this.success = false;
         return 0;
