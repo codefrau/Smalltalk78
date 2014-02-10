@@ -2010,7 +2010,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
     doPrimitive: function(index, argCount, newMethod, newMethodClass) {
         this.success = true;
-        this.gotFloat = false;
+        this.floatReceiver = false;
         switch (index) {
             case 0: return this.popNandPushNumIfOK(2,this.stackIntOrFloat(0) + this.stackIntOrFloat(1));  // add
             case 1: return this.popNandPushNumIfOK(2,this.stackIntOrFloat(0) - this.stackIntOrFloat(1));  // subtract
@@ -2078,7 +2078,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
     popNandPushNumIfOK: function(nToPop, returnValue) {
         if (!this.success) return false;
-        if (this.gotFloat)
+        if (this.floatReceiver)
             returnValue = this.makeFloat(returnValue);
         else if (!this.vm.canBeSmallInt(returnValue)) return false;
         this.vm.popNandPush(nToPop, returnValue);
@@ -2125,8 +2125,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
     stackIntOrFloat: function(nDeep) {
         var obj = this.vm.stackValue(nDeep);
         if (this.vm.isSmallInt(obj)) return obj;
-        if (obj.isFloat) {
-            this.gotFloat = true;
+        if (obj.isFloat && (nDeep === 0 || this.floatReceiver)) {
+            this.floatReceiver = true;
             return obj.float;
         }
         this.success = false;
@@ -2174,7 +2174,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
     doDiv: function(rcvr, arg) {
         if (arg === 0) return NoteTaker.NON_INT;  // fail if divide by zero
-        return this.gotFloat ? rcvr/arg : Math.floor(rcvr/arg);
+        return this.floatReceiver ? rcvr/arg : Math.floor(rcvr/arg);
     },
     doRem: function(rcvr, arg) {
         if (arg === 0) return NoteTaker.NON_INT;  // fail if divide by zero
