@@ -2599,30 +2599,26 @@ Object.subclass('users.bert.St78.vm.Primitives',
     displayDirty: function(rect) {
         if (!rect) return;
         if (!this.damage) return this.displayUpdate(rect);
-        // look for overlapping rect to merge with
-        var rectArea = (rect.right - rect.left) * (rect.bottom - rect.top);
+        // look for rect to merge with
+        rect.area = (rect.right - rect.left) * (rect.bottom - rect.top);
         for (var i = 0; i < this.damage.dirtyRects.length; i++) {
-            var existing = this.damage.dirtyRects[i];
-            if (rect.left < existing.right && rect.right > existing.left
-                && rect.top < existing.bottom && rect.bottom > existing.top) {
-                    // found overlap
-                    var left = Math.min(rect.left, existing.left),
-                        top = Math.min(rect.top, existing.top),
-                        right = Math.max(rect.right, existing.right),
-                        bottom = Math.max(rect.bottom, existing.bottom),
-                        mergedArea = (right - left) * (bottom - top),
-                        existingArea = (existing.right - existing.left) * (existing.bottom - existing.top);
-                    // if merged area is smaller, do the merge
-                    if (mergedArea < rectArea + existingArea) {
-                        existing.left = left;
-                        existing.right = right;
-                        existing.top = top;
-                        existing.bottom = bottom;
-                        return; // merged, so we're done
-                    }
-                }
+            var existing = this.damage.dirtyRects[i],
+                mergedLeft = Math.min(rect.left, existing.left),
+                mergedTop = Math.min(rect.top, existing.top),
+                mergedRight = Math.max(rect.right, existing.right),
+                mergedBottom = Math.max(rect.bottom, existing.bottom),
+                mergedArea = (mergedRight - mergedLeft) * (mergedBottom - mergedTop);
+            // if merged area is smaller, do the merge
+            if (mergedArea <= rect.area + existing.area) {
+                existing.left = mergedLeft;
+                existing.right = mergedRight;
+                existing.top = mergedTop;
+                existing.bottom = mergedBottom;
+                existing.area = mergedArea;
+                return; // merged, so we're done
+            }
         }
-        // non found: add this as extra
+        // non found: add this as extra region
         this.damage.dirtyRects.push(rect);
     },
     displayFlush: function(rect) {
