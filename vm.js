@@ -1395,16 +1395,13 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         // run until idle, but at most for a couple milliseconds
         // answer milliseconds to sleep (until next timer wakeup)
         // or 'break' if reached breakpoint
-        //this.isIdle = false;
+        this.primHandler.cursorUpdate();
         this.breakOutOfInterpreter = false;
         this.breakOutTick = this.lastTick + (forMilliseconds || 500);
         while (!this.breakOutOfInterpreter)
             this.interpretOne();
         if (this.breakOutOfInterpreter == 'break') return 'break';
         return Math.min(this.primHandler.idleMS(), 200);
-        //if (!this.isIdle) return 0;
-        //if (!this.nextWakeupTick) return 'sleep'; // all processes waiting
-        //return Math.max(0, this.nextWakeupTick - this.primHandler.millisecondClockValue());
     },
     nextByte: function() {
         return this.methodBytes[this.pc++] & 0xFF;
@@ -2575,12 +2572,10 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (this.display.buttons & 7) this.idleCounter = 0;
         else this.idleCounter++;
         this.displayFlush();
-        this.cursorMove(this.display.mouseX, this.display.mouseY);
         return this.popNandPushIfOK(argCount+1, this.checkSmallInt(this.display.buttons));
     },
     primitiveMousePoint: function(argCount) {
         if (this.display.fetchMousePos) this.display.fetchMousePos();
-        this.cursorMove(this.display.mouseX, this.display.mouseY);
         return this.popNandPushIfOK(argCount+1, this.makePointWithXandY(this.checkSmallInt(this.display.mouseX), this.checkSmallInt(this.display.mouseY)));
     },
     setDisplayAndCursor: function(bitBlt, fullRedraw){
@@ -2592,7 +2587,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.displayPitch = blt.destPitch;
         this.cursorBits = blt.sourceBits;
         if (fullRedraw) this.redrawFullDisplay();
-        else this.cursorMove(this.cursorX, this.cursorY, true);
+        else this.cursorUpdate(true);
     },
     redrawFullDisplay: function() {
         this.displayUpdate({left: 0, top: 0, right: this.display.width, bottom: this.display.height});
@@ -2657,7 +2652,9 @@ Object.subclass('users.bert.St78.vm.Primitives',
             this.cursorY + 16 > rect.top && this.cursorY < rect.bottom) 
                 this.cursorDraw();
     },
-    cursorMove: function(x, y, force) {
+    cursorUpdate: function(force) {
+        var x = this.display.mouseX,
+            y = this.display.mouseY;
         if (x === this.cursorX && y === this.cursorY && !force) return;
         var oldBounds = {left: this.cursorX, top: this.cursorY, right: this.cursorX + 16, bottom: this.cursorY + 16 };
         this.cursorX = x;
