@@ -2495,6 +2495,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var primIndex = method.methodPrimitiveIndex();
             argCount = method.methodNumArgs();
         this.vm.popN(3);
+        if (this.vm.breakOnDoit) this.vm.breakNow();
         this.vm.executeNewMethod(newRcvr, method, mClass, argCount, primIndex);
         return true;
     },
