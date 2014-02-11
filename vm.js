@@ -2251,8 +2251,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (array.bytes) { // bytes...
             var byteToPut = this.checkSmallInt(objToPut);
             if (!this.success) return objToPut;
-            if (byteToPut < 0 || byteToPut > 255) {this.success = false; return objToPut;}
-            return array.bytes[index-1] = byteToPut;
+            if (byteToPut < 0) {this.success = false; return objToPut;}
+            return array.bytes[index-1] = byteToPut & 0xFF;
         }
         throw "indexing problem"
     },
