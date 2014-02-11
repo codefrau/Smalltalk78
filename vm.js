@@ -854,6 +854,19 @@ Object.subclass('users.bert.St78.vm.Object',
         // why not use setInt64()? Because JavaScript does not have 64 bit ints
         return ieee.getFloat64(0);
     },
+    bytesAsInteger: function() {
+        // Return numeric value of my bytes
+        var value = 0;
+        for (var i = 0; i < this.bytes.length; i++)
+            value = value * 256 + this.bytes[this.bytes.length - (i+1)];
+        return value;
+    },
+    largeIntegerValue: function() {
+        // Return numeric value of a LargeInteger
+        var value = this.pointers[NoteTaker.PI_LARGEINTEGER_BYTES].naturalIntegerValue();
+        if (this.pointers[NoteTaker.PI_LARGEINTEGER_NEG].isTrue) value = - value;
+        return value;
+    },
     dataBytes: function() {
         // number of bytes in this object excluding header and class information
         return this.isFloat ? 8 :               // we use IEEE floats instead of the original 3-word format
@@ -928,14 +941,6 @@ Object.subclass('users.bert.St78.vm.Object',
         return Strings.format('stObj(%s)',
             this.stClass.constructor == users.bert.St78.vm.Object ? this.stInstName() : this.stClass);
     },
-    largeIntegerValue: function() {
-        // Return numeric value of a LargeInteger
-        var nat = this.pointers[NoteTaker.PI_LARGEINTEGER_BYTES],
-            value = 0;
-        for (var i=0; i<nat.bytes.length; i++) value = value*256 + nat.bytes[nat.bytes.length - (i+1)];
-        if (this.pointers[NoteTaker.PI_LARGEINTEGER_NEG].isTrue) value = - value;
-        return value
-    },
     className: function() {
         var classNameObj = this.pointers[NoteTaker.PI_CLASS_TITLE];
         if (!classNameObj.stClass) return "???";
@@ -950,6 +955,8 @@ Object.subclass('users.bert.St78.vm.Object',
         if (this.isClass()) return "the " + this.className() + " class";
         if (this.stClass.oop === NoteTaker.OOP_CLSTRING) return "'" + this.bytesAsString(maxLength||16) + "'";
         if (this.stClass.oop === NoteTaker.OOP_CLUNIQUESTRING) return "#" + this.bytesAsString(maxLength||16);
+        if (this.stClass.oop === NoteTaker.OOP_CLLARGEINTEGER) return this.largeIntegerValue() + "L";
+        if (this.stClass.oop === NoteTaker.OOP_CLNATURAL) return this.bytesAsInteger() + "N";
         var className = this.stClass.className();
         return (/^[aeiou]/i.test(className) ? 'an ' : 'a ') + className;
     },
