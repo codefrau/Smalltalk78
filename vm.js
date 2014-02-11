@@ -956,16 +956,19 @@ Object.subclass('users.bert.St78.vm.Object',
     slotNameAt: function(index) {
         // one-based index
         var vars = this.stClass.allInstVarNames();
-        return index <= vars.length ? vars[index - 1] : index.toString();
+        return index <= vars.length ? vars[index - 1] : "◦" + (index - vars.length).toString();
     },
     allInstVarNames: function() {
         var superclass = this.superclass();
         var vars = superclass.isNil ? [] : superclass.allInstVarNames();
-        var string = this.pointers[1].bytesAsString();
-        // remove comments, make comma-separated
-        string = string.replace(/"[^"]*"/g, ' ').replace(/\s+/g, ',').replace(/,$/, '');
+        var string = this.pointers[NoteTaker.PI_CLASS_MYINSTVARS].bytesAsRawString();
+        // remove comments, make comma-separated, then split
+        string = string.replace(/"[^"]*"/g, ' ');   // replace comments "..." with space
+        string = string.replace(/\s+/g, ',');       // replace whitespace runs with comma 
+        string = string.replace(/^,/, '');          // remove lone comma at start 
+        string = string.replace(/,$/, '');          // remove lone comma at end
         if (string.length)
-            vars = vars.concat(string.split(','));
+            vars = vars.concat(string.split(','));  // split into words at commas
         return vars;
     } 
 },
