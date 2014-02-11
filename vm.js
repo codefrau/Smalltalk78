@@ -1954,7 +1954,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 7: return this.pop2andPushBoolIfOK(this.stackIntOrFloat(0) !== this.stackIntOrFloat(1)); // notequal
             case 8: return this.popNandPushNumIfOK(2,this.stackIntOrFloat(0) * this.stackIntOrFloat(1));  // multiply *
             case 9: return this.popNandPushNumIfOK(2,this.doDiv(this.stackIntOrFloat(0),this.stackIntOrFloat(1)));  // divide /  
-            case 10: return this.popNandPushNumIfOK(2,this.doRem(this.stackInteger(0),this.stackInteger(1)));  // rem \\
+            case 10: return this.popNandPushNumIfOK(2,this.doRem(this.stackIntOrFloat(0),this.stackIntOrFloat(1)));  // rem \\
             case 11: return this.primitiveMakePoint(argCount);  // @ - make a Point
             case 12: return this.popNandPushIfOK(2,this.doBitShift());  // SmallInt.bitShift
             case 13: return this.popNandPushIfOK(2,this.doBitXor());  // SmallInt.bitXor
