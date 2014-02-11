@@ -1834,7 +1834,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             var value = obj && obj.stInstName ? obj.stInstName(32) : obj;
             stack += Strings.format('\n[%s] %s%s', i,
                 bp + NoteTaker.FI_FIRST_TEMP - numTemps < i && i <= bp + NoteTaker.FI_FIRST_TEMP
-                    ? ('  temp ' + (bp + NoteTaker.FI_FIRST_TEMP + numArgs - i) + ': ') :
+                    ? ('temp' + (bp-1+numArgs-i) + '/t' + (bp+numArgs-i) + ': ') :
                 bp + NoteTaker.FI_SAVED_BP == i ? ' savedBP: ' :
                 bp + NoteTaker.FI_CALLER_PC == i ? 'callerPC: ' :
                 bp + NoteTaker.FI_NUMARGS == i ? ' numArgs: ' :
@@ -1842,7 +1842,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                 bp + NoteTaker.FI_MCLASS == i ? '  mclass: ' :
                 bp + NoteTaker.FI_RECEIVER == i ? 'receiver: ' :
                 bp + NoteTaker.FI_RECEIVER < i && i <= bp + NoteTaker.FI_RECEIVER + numArgs 
-                    ? ('   arg ' + (bp + NoteTaker.FI_RECEIVER + numArgs - i) + ': ') :
+                    ? (' arg' + (bp+5+numArgs-i) + '/t' + (bp+6+numArgs-i) + ': ') :
                 sp == i ? '   sp ==> ' : 
                 '          ', value);
             if (i >= bp + NoteTaker.FI_RECEIVER + numArgs && i+1 < ctx.length) {
