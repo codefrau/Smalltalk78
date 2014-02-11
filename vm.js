@@ -1202,13 +1202,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             // we loaded the original NoteTaker snapshot
             this.notetakerPatches(display);
         }
-
-        // Make BP deltas match ST code for the debugger
-        this.BPFix = 1;  // set this to one to test the fix
-
-        // Make other code match push/popPCBP by including NoteTaker.PC_BIAS
-        // NT method header is 2 bytes instead of 4 in normal ST76
-        this.PCFix = NoteTaker.PC_BIAS;  // set this to NoteTaker.PC_BIAS (=2) to test the fix
     },
     wakeProcess: function(proc) {
         // Install a new active process and load sp, ready to restore other state
@@ -1593,7 +1586,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         // reverse of primitiveValue()
         var reply = this.pop();
         var returnFrame = (this.activeContextPointers.length - this.pop());
-        var returnPC = this.pop() - this.PCFix;
+        var returnPC = this.pop() - NoteTaker.PC_BIAS;
         var rCode = this.pop(); // might want to check that we're in the same process
         /////// Whoosh //////
         this.currentFrame = this.loadFromFrame(returnFrame);
@@ -1852,7 +1845,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                 }
             }
             var method = process[bp + NoteTaker.FI_METHOD],
-                deltaBP = process[bp + NoteTaker.FI_SAVED_BP] + this.BPFix;
+                deltaBP = process[bp + NoteTaker.FI_SAVED_BP] + 1;
             stack = this.printMethod(method) + '\n' + stack;
             if (deltaBP <= 1) return stack;
             bp += deltaBP;
@@ -1915,7 +1908,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             if (i >= bp + NoteTaker.FI_RECEIVER + numArgs && i+1 < ctx.length) {
                 if (!printAll) return stack;
                 sp = bp + NoteTaker.FI_LAST_ARG + numArgs;
-                bp += ctx[bp + NoteTaker.FI_SAVED_BP] + this.BPFix;
+                bp += ctx[bp + NoteTaker.FI_SAVED_BP] + 1;
                 // look for remoteCode activation on stack
                 for (var j = sp; j < bp; j++){
                     var rCode = ctx[j];
@@ -1926,7 +1919,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                         stack += '\n\n[] in ' + this.printMethod(homeMethod);
                         if (debugFrame) {
                             while (++i <= j) {
-                                if (emergencyCounter++ > 2000) return stack;
                                 obj = ctx[i];
                                 value = obj && obj.stInstName ? obj.stInstName(32) : obj;
                                 stack += Strings.format('\n[%s] %s%s', i,
@@ -2432,7 +2424,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
 		pc += jumpInstr < 0xA0 ? 1 : 2;
 		// these are used in primitiveValue
 		rCode.pointers[NoteTaker.PI_RCODE_FRAMEOFFSET] = relBP; // offset from end, used in ProcessFrame>>from:
-		rCode.pointers[NoteTaker.PI_RCODE_STARTINGPC] = pc + this.vm.PCFix;
+		rCode.pointers[NoteTaker.PI_RCODE_STARTINGPC] = pc + NoteTaker.PC_BIAS;
 		rCode.pointers[NoteTaker.PI_RCODE_PROCESS] = rcvr;
 		this.vm.popNandPush(1, rCode);
 		return true;
@@ -2449,13 +2441,13 @@ Object.subclass('users.bert.St78.vm.Primitives',
 		rCode.pointers[NoteTaker.PI_RCODE_STACKOFFSET] = contextLength - this.vm.sp;
 
         // Common code to sleep this frame
-        this.vm.push(this.vm.pc + this.vm.PCFix);           // save PC and relBP for remoteReturn
+        this.vm.push(this.vm.pc + NoteTaker.PC_BIAS);           // save PC and absBP for remoteReturn
         this.vm.push(contextLength - this.vm.currentFrame);
         
         // Wake the remote context frame
         var frame = contextLength - rCode.pointers[NoteTaker.PI_RCODE_FRAMEOFFSET];
 		this.vm.currentFrame = this.vm.loadFromFrame(frame);
-		this.vm.pc = rCode.pointers[NoteTaker.PI_RCODE_STARTINGPC] - this.vm.PCFix;
+		this.vm.pc = rCode.pointers[NoteTaker.PI_RCODE_STARTINGPC] - NoteTaker.PC_BIAS;
         return true;
     },
     primitiveValueGets: function(argCount) {
@@ -2475,7 +2467,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         // All should use common pushPCBP, popPCBP, and sleep/wake (for storing SP in top)
 
         // Push this frame and sleep this process
-        this.vm.pop(); // drop receiver **maybe store nil since it holds a process
+        this.vm.pop(); // drop receiver
         this.vm.pushPCBP();           // save PC and BP for remoteReturn, then preserve in top
         this.vm.sleepProcess();
 
