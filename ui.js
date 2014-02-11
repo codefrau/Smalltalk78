@@ -23,7 +23,7 @@ module('users.bert.St78.ui').requires("lively.data.FileUpload").toRun(function()
 
 lively.data.FileUpload.Handler.subclass('users.bert.St78.ui.St78Loader', {
     handles: function(file) {
-        return file.type == 'application/st78-image' || file.name.match(/\.st78image$/);
+        return file.type == 'application/st78-image' || file.name.match(/\.st78$/);
     },
     getUploadSpec: function(evt, file) {
         return {readMethod: "asArrayBuffer"}
@@ -33,11 +33,11 @@ lively.data.FileUpload.Handler.subclass('users.bert.St78.ui.St78Loader', {
     },
     openImage: function(name, mime, buffer, pos) {
         var morph = this.findSt78Morph();
-        if (morph) return morph.loadImageFromBuffer(buffer, name);
+        if (morph) return morph.loadSt78ImageFromBuffer(buffer, name);
         alert("Please open an St78 morph first");
     },
     findSt78Morph: function() {
-        return $world.submorphs.detect(function(morph){return !!morph.loadImageFromBuffer});
+        return $world.submorphs.detect(function(morph){return !!morph.loadSt78ImageFromBuffer});
     },
 });
 
