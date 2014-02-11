@@ -1972,7 +1972,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 27: return this.primitiveNew(argCount); // argCount = 0 fixed size
             case 28: return this.primitiveNew(argCount); // argCount = 1 variable
             case 32: return this.popNandPushFloatIfOK(1,this.stackInteger(0)); // primitiveAsFloat
-            case 33: return this.popNandPushIntIfOK(1,this.stackFloat(0)|0); // primitiveAsInteger
+            case 33: return this.popNandPushIntIfOK(1,Math.floor(this.stackFloat(0))); // primitiveAsInteger
             case 34: return this.popNandPushFloatIfOK(1,this.stackFloat(0)|0); // primitiveIntegerPart
             case 35: {var f = this.stackFloat(0); return this.popNandPushFloatIfOK(1, f - (f|0));} // primitiveFractionPart
             case 36: return this.popNandPushIntIfOK(1, this.vm.getHash(this.stackNonInteger(0))); // Object.hash
