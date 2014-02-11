@@ -1169,14 +1169,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.interruptCheckCounter = 0;
         this.interruptCheckCounterFeedBackReset = 1000;
         this.interruptChecksEveryNms = 3;
-        this.nextPollTick = 0;
-        this.nextWakeupTick = 0;
         this.lastTick = 0;
-        this.interruptKeycode = 2094;  //"cmd-."
-        this.interruptPending = false;
-        //this.semaphoresToSignal = [];
-        //this.deferDisplayUpdates = false;
-        //this.pendingFinalizationSignals = 0;
         this.methodCacheSize = 1024;
         this.methodCacheMask = this.methodCacheSize - 1;
         this.methodCacheRandomish = 0;
@@ -1389,7 +1382,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 	},
     interpret: function(forMilliseconds) {
         // run until idle, but at most for a couple milliseconds
-        // answer milliseconds to sleep (until next timer wakeup)
+        // answer milliseconds to sleep
         // or 'break' if reached breakpoint
         this.primHandler.cursorUpdate();
         this.breakOutOfInterpreter = false;
@@ -1424,10 +1417,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         if (this.interruptCheckCounter-- > 0) return; //only really check every 100 times or so
         var now = this.primHandler.millisecondClockValue();
         if (now < this.lastTick) { // millisecond clock wrapped
-            this.nextPollTick = now + (this.nextPollTick - this.lastTick);
             this.breakOutTick = now + (this.breakOutTick - this.lastTick);
-            if (this.nextWakeupTick !== 0)
-                this.nextWakeupTick = now + (this.nextWakeupTick - this.lastTick);
         }
         //Feedback logic attempts to keep interrupt response around 3ms...
         if ((now - this.lastTick) < this.interruptChecksEveryNms)  //wrapping is not a concern
@@ -1440,58 +1430,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         }
     	this.interruptCheckCounter = this.interruptCheckCounterFeedBackReset; //reset the interrupt check counter
     	this.lastTick = now; //used to detect wraparound of millisecond clock
-        //	if(signalLowSpace) {
-        //            signalLowSpace= false; //reset flag
-        //            sema= getSpecialObject(Squeak.splOb_TheLowSpaceSemaphore);
-        //            if(sema != nilObj) synchronousSignal(sema); }
-        //	if(now >= nextPollTick) {
-        //            ioProcessEvents(); //sets interruptPending if interrupt key pressed
-        //            nextPollTick= now + 500; } //msecs to wait before next call to ioProcessEvents"
-        if (this.interruptPending) {
-            this.interruptPending = false; //reset interrupt flag
-            var sema = this.specialObjects[Squeak.splOb_TheInterruptSemaphore];
-            if (!sema.isNil) this.primHandler.synchronousSignal(sema);
-        }
-        if ((this.nextWakeupTick !== 0) && (now >= this.nextWakeupTick)) {
-            this.nextWakeupTick = 0; //reset timer interrupt
-            var sema = this.specialObjects[Squeak.splOb_TheTimerSemaphore];
-            if (!sema.isNil) this.primHandler.synchronousSignal(sema);
-        }
-        //	if (pendingFinalizationSignals > 0) { //signal any pending finalizations
-        //            sema= getSpecialObject(Squeak.splOb_ThefinalizationSemaphore);
-        //            pendingFinalizationSignals= 0;
-        //            if(sema != nilObj) primHandler.synchronousSignal(sema); }
-        //if (this.semaphoresToSignal.length)
-        //    this.signalExternalSemaphores();  //signal all semaphores in semaphoresToSignal
         if (now >= this.breakOutTick) // have to return to web browser once in a while
             this.breakOutOfInterpreter = this.breakOutOfInterpreter || true; // do not overwrite break string
-    },
-    extendedPush: function(nextByte) {
-        var lobits = nextByte & 63;
-        switch (nextByte>>6) {
-            case 0: this.push(this.receiver.pointers[lobits]);break;
-            case 1: this.push(this.homeContext.pointers[Squeak.Context_tempFrameStart+lobits]); break;
-            case 2: this.push(this.methodLiteral(lobits)); break;
-            case 3: this.push(this.methodLiteral(lobits).pointers[Squeak.Assn_value]); break;
-        }
-    },
-    extendedStore: function( nextByte) {
-        var lobits = nextByte & 63;
-        switch (nextByte>>6) {
-            case 0: this.receiver.pointers[lobits] = this.top(); break;
-            case 1: this.homeContext.pointers[Squeak.Context_tempFrameStart+lobits] = this.top(); break;
-            case 2: this.nono(); break;
-            case 3: this.methodLiteral(lobits).pointers[Squeak.Assn_value] = this.top(); break;
-        }
-    },
-    extendedStorePop: function(nextByte) {
-        var lobits = nextByte & 63;
-        switch (nextByte>>6) {
-            case 0: this.receiver.pointers[lobits] = this.pop(); break;
-            case 1: this.homeContext.pointers[Squeak.Context_tempFrameStart+lobits] = this.pop(); break;
-            case 2: this.nono(); break;
-            case 3: this.methodLiteral(lobits).pointers[Squeak.Assn_value] = this.pop(); break;
-        }
     },
     sendSpecial: function(lobits) {
         this.send(this.specialSelectors[lobits], this.specialNargs[lobits]); 
