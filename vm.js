@@ -863,7 +863,7 @@ Object.subclass('users.bert.St78.vm.Object',
     },
     largeIntegerValue: function() {
         // Return numeric value of a LargeInteger
-        var value = this.pointers[NoteTaker.PI_LARGEINTEGER_BYTES].naturalIntegerValue();
+        var value = this.pointers[NoteTaker.PI_LARGEINTEGER_BYTES].bytesAsInteger();
         if (this.pointers[NoteTaker.PI_LARGEINTEGER_NEG].isTrue) value = - value;
         return value;
     },
