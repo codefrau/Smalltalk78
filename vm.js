@@ -519,13 +519,13 @@ Object.subclass('users.bert.St78.vm.Image',
         var mutations = {};
         for (var i = 0; i < n; i++) {
             var obj = fromArray[i];
-            if (!obj.sqClass) return false;  //non-objects in from array
+            if (!obj.stClass) return false;  //non-objects in from array
             if (mutations[obj.id]) return false; //repeated oops in from array
             else mutations[obj.id] = toArray[i];
         }
         if (twoWay) for (var i = 0; i < n; i++) {
             var obj = toArray[i];
-            if (!obj.sqClass) return false;  //non-objects in to array
+            if (!obj.stClass) return false;  //non-objects in to array
             if (mutations[obj.id]) return false; //repeated oops in to array
             else mutations[obj.id] = fromArray[i];
         }
@@ -536,8 +536,8 @@ Object.subclass('users.bert.St78.vm.Image',
         var obj = this.firstOldObject;
         while (obj) {
             // mutate the class
-            var mut = mutations[obj.sqClass.id];
-            if (mut) obj.sqClass = mut;
+            var mut = mutations[obj.stClass.id];
+            if (mut) obj.stClass = mut;
             // and mutate body pointers
             var body = obj.pointers;
             if (body) for (var j = 0; j < body.length; j++) {
@@ -2054,12 +2054,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (pos16Val >= 0)
             if (this.vm.canBeSmallInt(pos16Val)) return pos16Val;
         debugger; throw "large ints not implemented yet"
-        var lgIntClass = this.vm.specialObjects[Squeak.splOb_ClassLargePositiveInteger];
-        var lgIntObj = this.vm.instantiateClass(lgIntClass, 4);
-        var bytes = lgIntObj.bytes;
-        for (var i=0; i<4; i++)
-            bytes[i] = (pos16Val>>>(8*i))&255;
-        return lgIntObj;
     },
     stackIntOrFloat: function(nDeep) {
         var obj = this.vm.stackValue(nDeep);
@@ -2133,27 +2127,11 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.success = false;
         return 0;
     },
-    checkNonInteger: function(obj) { // returns a SqObj and sets success
+    checkNonInteger: function(obj) { // returns an St78Object and sets success
         if (!this.vm.isSmallInt(obj))
             return obj;
         this.success = false;
         return this.vm.nilObj;
-    },
-    isA: function(obj, knownClass) {
-        return obj.sqClass === this.vm.specialObjects[knownClass];
-    },
-    isKindOf: function(obj, knownClass) {
-        var classOrSuper = obj.sqClass;
-        var theClass = this.vm.specialObjects[knownClass];
-        while (!classOrSuper.isNil) {
-            if (classOrSuper === theClass) return true;
-            classOrSuper = classOrSuper.pointers[Squeak.Class_superclass];
-        }
-        return false;
-    },
-    charFromInt: function(ascii) {
-        var charTable = this.vm.specialObjects[Squeak.splOb_CharacterTable];
-        return charTable.pointers[ascii];
     },
     makeFloat: function(value) {
         var newFloat = this.vm.instantiateClass(this.floatClass, 0);
