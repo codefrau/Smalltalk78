@@ -857,8 +857,8 @@ Object.subclass('users.bert.St78.vm.Object',
     bytesAsInteger: function() {
         // Return numeric value of my bytes
         var value = 0;
-        for (var i = 0; i < this.bytes.length; i++)
-            value = value * 256 + this.bytes[this.bytes.length - (i+1)];
+        for (var i = this.bytes.length - 1; i >= 0; i--)
+            value = value * 256 + this.bytes[i];
         return value;
     },
     largeIntegerValue: function() {
