@@ -957,8 +957,14 @@ Object.subclass('users.bert.St78.vm.Object',
         if (this.stClass.oop === NoteTaker.OOP_CLUNIQUESTRING) return "#" + this.bytesAsString(maxLength||16);
         if (this.stClass.oop === NoteTaker.OOP_CLLARGEINTEGER) return this.largeIntegerValue() + "L";
         if (this.stClass.oop === NoteTaker.OOP_CLNATURAL) return this.bytesAsInteger() + "N";
+        if (this.stClass.oop === NoteTaker.OOP_CLPOINT) return this.stInstNames().join("⌾");
         var className = this.stClass.className();
         return (/^[aeiou]/i.test(className) ? 'an ' : 'a ') + className;
+    },
+    stInstNames: function() {
+        return this.pointers.map(function(ea){
+            return ea.stInstName ? ea.stInstName() : ea.toString();
+        });
     },
     slotNameAt: function(index) {
         // one-based index
