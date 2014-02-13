@@ -391,11 +391,8 @@ Object.subclass('users.bert.St78.vm.Image',
         var removedObjects = this.removeUnmarkedOldObjects();
         this.appendToOldObjects(newObjects);
         this.relinkRemovedObjects(removedObjects);
-        console.log(Strings.format("GC: %s of %s tenured\n%s of %s released\nnow %s total (%s bytes)", 
-            newObjects.length, this.newSpaceCount,
-            removedObjects.length, this.oldSpaceCount,
-            this.oldSpaceCount + newObjects.length - removedObjects.length, this.oldSpaceBytes));
-        this.oldSpaceCount += newObjects.length - removedObjects.length;
+        console.log(Strings.format("GC: %s allocations, %s released, %s tenured, now %s total (%s bytes)", 
+            this.newSpaceCount, newObjects.length, removedObjects.length, this.oldSpaceCount, this.oldSpaceBytes));
         this.newSpaceCount = 0;
         this.nextTempOop = -2;
         this.gcCount++;
@@ -460,6 +457,7 @@ Object.subclass('users.bert.St78.vm.Image',
             } else { // otherwise, remove it
                 var corpse = next; 
                 obj.nextObject = corpse.nextObject; // drop from list
+                this.oldSpaceCount--;
                 this.oldSpaceBytes -= corpse.totalBytes();
                 this.freeOopFor(corpse);
                 removed.push(corpse);               // remember for relinking
@@ -483,6 +481,7 @@ Object.subclass('users.bert.St78.vm.Image',
             this.allocateOopFor(newObj);
             oldObj.nextObject = newObj;
             oldObj = newObj;
+            this.oldSpaceCount++;
             this.oldSpaceBytes += newObj.totalBytes();
         }
         this.lastOldObject = oldObj;
