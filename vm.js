@@ -2615,17 +2615,29 @@ Object.subclass('users.bert.St78.vm.Primitives',
         // They can be read using this primitive, co-opted from user primPort:
         
         // check that arg is a string
-        var fName = this.stackNonInteger(1);
-        if (!this.success || (fName.stClass !== this.stringClass)) return false;
+        var fName = this.stackNonInteger(nargs);
+        if (!this.success || (fName.stClass !== this.stringClass)) return null;
         // check that it matches a property of $morph('Notetaker').fileStrings
         var livelyPanel = $morph('Notetaker');
         var livelyDirectory = livelyPanel && livelyPanel.fileStrings;
+        if (livelyDirectory && nargs == 2) {
+            // if nargs == 2, then check for a string argument and store it out to Lively
+            var stString = this.stackNonInteger(1)
+            if (!this.success || (stString.stClass !== this.stringClass)) return null;
+            livelyDirectory[fName.bytesAsString()] = stString.bytesAsString();
+            this.popNandPushIfOK(nargs+1, stString);
+            return true
+        }
+        // If nargs == 1, then check that the fileString exists and return it
         var livelyData = livelyDirectory && livelyDirectory[fName.bytesAsString()];
-        if (!livelyData) return false;
-
-        // if so, return a string object with the byte array copied into it
+        if (!livelyData) return null;
+        // Return a string object with the byte array copied into it
         var newString = this.vm.image.instantiateClass(this.stringClass, livelyData.length, 0)
-        for (var i=0; i<livelyData.length; i++) newString.bytes[i] = livelyData[i];
+        if (typeof livelyData == "string") {
+                for (var i=0; i<livelyData.length; i++) newString.bytes[i] = livelyData.charCodeAt(i);
+            } else {
+                for (var i=0; i<livelyData.length; i++) newString.bytes[i] = livelyData[i];
+            }
         this.popNandPushIfOK(nargs+1, newString);
         return true
     },
