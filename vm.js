@@ -2548,6 +2548,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             this.displayUpdate(this.damage.dirtyRects.shift());
     },
     displayUpdate: function(rect, noCursor) {
+        if (!this.displayBits) return; // image has not created display bitmap yet
         if (!this.displayPixels) // our actual screen pixels, 32 bits ARGB
             this.displayPixels = this.display.ctx.createImageData(this.display.width, this.display.height);
         var dest = new Uint32Array(this.displayPixels.data.buffer),
@@ -2590,6 +2591,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.cursorDraw();
     },
     cursorDraw: function() {
+        if (!this.cursorBits || !this.displayPixels) return;
         var src = this.cursorBits, // 16x16 cursor form
             srcY = 0,
             dst = new Uint32Array(this.displayPixels.data.buffer),
