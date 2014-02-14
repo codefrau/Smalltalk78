@@ -2626,7 +2626,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             // if nargs == 2, then check for a string argument and store it out to Lively
             var stString = this.stackNonInteger(1)
             if (!this.success || (stString.stClass !== this.stringClass)) return null;
-            livelyDirectory[fName.bytesAsString()] = stString.bytesAsString();
+            livelyDirectory[fName.bytesAsString()] = stString.bytesAsRawString();
             this.popNandPushIfOK(nargs+1, stString);
             return true
         }
