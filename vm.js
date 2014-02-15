@@ -293,10 +293,11 @@ Object.subclass('users.bert.St78.vm.Image',
 'initializing', {
     initialize: function(oopMap, name, doPatches) {
         this.name = name;
-        this.totalMemory = 1000000; 
+        this.maxTenuresBeforeGC = 1000;
+        this.tenuresSinceLastGC = 0;
         this.gcCount = 0;
-        this.oldSpaceCount = 0;
         this.newSpaceCount = 0;
+        this.oldSpaceCount = 0;
         this.oldSpaceBytes = 0;
         this.nextTempOop = -2;      // new objects get negative preliminary oops
         this.freeOops = {};         // pool for real oops
@@ -396,7 +397,6 @@ Object.subclass('users.bert.St78.vm.Image',
         this.newSpaceCount = 0;
         this.nextTempOop = -2;
         this.gcCount++;
-        return this.totalMemory - this.oldSpaceBytes;
     },
     allocateOopFor: function(anObj) {
         // get an oop from the pool of unused oops
@@ -473,6 +473,7 @@ Object.subclass('users.bert.St78.vm.Image',
     appendToOldObjects: function(newObjects) {
         // append new objects to linked list of old objects
         // and unmark them. Also, assign a real oop.
+        // Note: also called outside GC to quickly tenure an object
         var oldObj = this.lastOldObject;
         for (var i = 0; i < newObjects.length; i++) {
             var newObj = newObjects[i];
@@ -604,8 +605,16 @@ Object.subclass('users.bert.St78.vm.Image',
         // newly created objects have a temporary oop, so assign a real one
         if (this.vm.isSmallInt(anObject))
             return (anObject * 2 + 0x10001) & 0xFFFF; // add tag bit, make unsigned
-        if (anObject.oop < 0) // it's a temp oop
-            this.appendToOldObjects([anObject]); // tenure the object
+        if (anObject.oop < 0) { // it's a temp oop
+            if (this.tenuresSinceLastGC++ > this.maxTenuresBeforeGC) {
+                console.log("Forcing GC after " + this.maxTenuresBeforeGC + " unchecked tenures");
+                this.fullGC();    // force a GC since we tenured many objects already
+                if (!(anObject.oop > 0))
+                    throw "attempt to tenure unreachable object";
+            } else {
+                this.appendToOldObjects([anObject]); // just tenure the object
+            }
+        }
         return anObject.oop;
     },
     someInstanceOf: function(clsObj) {
