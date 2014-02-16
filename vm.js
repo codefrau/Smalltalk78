@@ -1934,6 +1934,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.stringClass = this.vm.image.objectFromOop(NoteTaker.OOP_CLSTRING);
         this.compiledMethodClass = this.vm.image.objectFromOop(NoteTaker.OOP_CLCOMPILEDMETHOD);
         this.uniqueStringClass = this.vm.image.objectFromOop(NoteTaker.OOP_CLUNIQUESTRING);
+        this.bitBltClass = this.vm.image.globalNamed('BitBlt');
         this.idleCounter = 0;
     },
 },
@@ -1999,7 +2000,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 36: return this.popNandPushIntIfOK(1, this.vm.getHash(this.stackNonInteger(0))); // Object.hash
             case 39: return this.primitiveValueGets(argCount); // RemoteCode.value_
             case 40: return this.primitiveCopyBits(argCount);  // BitBlt.callBLT
-            case 41: return this.primitiveSetDisplayAndCursor(argCount); // BitBlt install for display
+            case 41: return this.primitiveBeDisplayAndCursor(argCount); // BitBlt install for display
             case 45: return this.primitiveSaveImage(argCount);
             case 46: return this.popNandPushIfOK(argCount, this.primitiveInstField(argCount)); //instField:
             case 47: return this.popNandPushIfOK(argCount, this.primitiveInstField(argCount)); //instField: <-
@@ -2462,11 +2463,15 @@ Object.subclass('users.bert.St78.vm.Primitives',
         debugger;
         return true;
     },
-    primitiveSetDisplayAndCursor: function(argCount) {
-        this.setDisplayAndCursor(this.vm.stackValue(0));
+    primitiveBeDisplayAndCursor: function(argCount) {
+        var rcvr = this.vm.top();
+        if (rcvr.stClass !== this.bitBltClass)
+            return this.popNandPushIfOK(argCount+1, this.makePointWithXandY(this.display.width, this.display.height));
+        this.setDisplayAndCursor(rcvr);
         this.vm.popN(argCount); // return self
         return true;
 	},
+
 	primitiveClipboardText: function(argCount) {
         if (argCount === 0) { // read from clipboard
             if (typeof(this.display.clipboardString) !== 'string') return false;
@@ -2651,9 +2656,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
             }
         this.popNandPushIfOK(nargs+1, newString);
         return true
-    },
-    primitiveScreenSize: function(argCount) {
-        return this.popNandPushIfOK(argCount+1, this.makePointWithXandY(this.display.width, this.display.height));
     },
 	millisecondClockValue: function() {
         //Return the value of the millisecond clock as an integer.
