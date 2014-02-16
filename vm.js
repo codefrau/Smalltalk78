@@ -1515,7 +1515,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         }
         return this.nilObj;
     },
-    executeNewMethod: function(newRcvr, newMethod, newMethodClass, argumentCount, primitiveIndex) {
+    executeNewMethod: function(newRcvr, newMethod, newMethodClass, argumentCount, primitiveIndex, overrideReceiver) {
         this.sendCount++;
         if (this.logSends) console.log(this.sendCount + ' ' + this.printMethod(newMethod));
         if (this.breakOnMethod === newMethod) this.breakNow();
@@ -1538,7 +1538,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.pc = newMethod.methodStartPC();
         for (var i = 0; i < newMethod.methodNumTemps(); i++)
             this.push(this.nilObj); //  make room for temps and init them
-        this.receiver = this.activeContextPointers[this.currentFrame + NoteTaker.FI_RECEIVER];
+        this.receiver = overrideReceiver ? newRcvr : this.activeContextPointers[this.currentFrame + NoteTaker.FI_RECEIVER];
         if (this.receiver !== newRcvr)
             throw "receivers don't match";
         this.checkForInterrupts();
@@ -2428,7 +2428,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             argCount = method.methodNumArgs();
         this.vm.popN(3);
         if (this.vm.breakOnDoit) this.vm.breakNow();
-        this.vm.executeNewMethod(newRcvr, method, mClass, argCount, primIndex);
+        this.vm.executeNewMethod(newRcvr, method, mClass, argCount, primIndex, true);
         return true;
     },
 },
