@@ -1009,6 +1009,7 @@ Object.subclass('users.bert.St78.vm.Object',
                 lits.push(image.objectFromOop(oop, optionalOopMap));
             }
             this.pointers = lits;
+            if (convertOops) this.methodPointersModified(image);
         }
     },
     methodPointersModified: function(image, index, n) {
