@@ -319,6 +319,7 @@ Object.subclass('users.bert.St78.vm.Image',
         this.initCompiledMethods(oopMap, doPatches);
         console.log("Loaded image " + this.name);
     },
+
     initKnownObjects: function(oopMap) {
         oopMap[NoteTaker.OOP_NIL].isNil = true;
         oopMap[NoteTaker.OOP_TRUE].isTrue = true;
@@ -417,9 +418,13 @@ Object.subclass('users.bert.St78.vm.Image',
     markReachableObjects: function() {
         // Visit all reachable objects and mark them.
         // Return surviving new objects
-        var todo = [this.globals, this.vm.activeContext];
-        if (this.vm.primHandler.displayBlt) // stored in image header so must be retained
-            todo.push(this.vm.primHandler.displayBlt);
+        if (this.vm) {
+            this.userProcess = this.vm.activeContext;
+            this.userDisplay = this.vm.primHandler.displayBlt;
+        }
+        var todo = [this.globals, this.userProcess];
+        if (this.userDisplay) // stored in image header so must be retained
+            todo.push(this.userDisplay);
         var newObjects = [];
         while (todo.length > 0) {
             var object = todo.pop();
