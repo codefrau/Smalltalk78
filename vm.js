@@ -554,6 +554,64 @@ Object.subclass('users.bert.St78.vm.Image',
         this.vm.flushMethodCacheAfterBecome(mutations);
         return true;
     },
+    diffFrom: function(base) {
+        // assumes both images have ordered oops
+        // which is the case right after loading them
+        var thisObj = this.firstOldObject,
+            baseObj = base.firstOldObject,
+            delta = [];
+        while (thisObj) {
+            if (!thisObj.sameAs(baseObj)) {
+                if (!baseObj || thisObj.oop <= baseObj.oop) {
+                    // after end of base, or modified, or new
+                    delta.push(thisObj);
+                    if (baseObj && thisObj.oop < baseObj.oop) {
+                        thisObj = thisObj.nextObject;
+                        continue;
+                    }
+                } else { // baseObj.oop < thisObj.oop
+                    baseObj = baseObj.nextObject;
+                    continue;
+                }
+            }
+            // same oops, or after end of base image 
+            if (baseObj) baseObj = baseObj.nextObject;
+            thisObj = thisObj.nextObject;
+        }
+        return delta;
+    },
+    writeDiffToBuffer: function(baseImage) {
+        // write only objects in this image that are not in baseImage
+        // assumes both images are freshly loaded, not run
+        var delta = this.diffFrom(baseImage),
+            deltaBytes = 0;
+        for (var i = 0; i < delta.length; i++)
+            deltaBytes += delta[i].totalBytes();
+        var magic = 'Sd78',
+            version = 0x0100, // 1.0
+            headerSize = 18,
+            data = new DataView(new ArrayBuffer(headerSize + deltaBytes)),
+            pos = 0;
+        // magic bytes
+        for (var i = 0; i < 4; i++)
+            data.setUint8(pos++, magic.charCodeAt(i));
+        // version
+        data.setUint16(pos, version); pos += 2;
+        // header size
+        data.setUint16(pos, headerSize); pos += 2;
+        // delta size
+        data.setUint16(pos, delta.length); pos += 2;
+        data.setUint32(pos, deltaBytes); pos += 4;
+        // current process and display
+        data.setUint16(pos, this.userProcess.oop); pos += 2;
+        data.setUint16(pos, this.userDisplay.oop); pos += 2;
+        if (pos !== headerSize) throw "wrong header size";
+        // objects
+        for (var i = 0; i < delta.length; i++)
+            pos = delta[i].writeTo(data, pos, this);
+        if (pos !== headerSize + deltaBytes) throw "wrong image size";
+        return data.buffer;
+    },
     writeToBuffer: function() {
         this.fullGC(); // collect all objects
         var magic = 'St78',
@@ -608,7 +666,7 @@ Object.subclass('users.bert.St78.vm.Image',
     },
     objectToOop: function(anObject) {
         // newly created objects have a temporary oop, so assign a real one
-        if (this.vm.isSmallInt(anObject))
+        if (typeof anObject ===  "number")
             return (anObject * 2 + 0x10001) & 0xFFFF; // add tag bit, make unsigned
         if (anObject.oop < 0) { // it's a temp oop
             if (this.tenuresSinceLastGC++ > this.maxTenuresBeforeGC) {
@@ -678,7 +736,61 @@ Object.subclass('users.bert.St78.vm.Image',
 
 Object.extend(users.bert.St78.vm.Image, {
     readFromBuffer: function(buffer, name) {
-        // reads an image created by writeToBuffer()
+        var result = this.oopmapFromBuffer(buffer, 'St78'),
+            oopMap = result.oopMap,
+            processOop = result.processOop,
+            displayOop = result.displayOop;
+        for (var oop in oopMap)
+            oopMap[oop].initFromImage(oopMap);
+        var image = new this(oopMap, name);
+        image.userProcess = oopMap[processOop];
+        image.userDisplay = oopMap[displayOop];
+        return image;
+    },
+    withDeltaFromBuffer: function(baseImage, buffer, name) {
+        // reads an image created by writeDiffToBuffer()
+        debugger;
+        var delta = this.oopmapFromBuffer(buffer, 'Sd78'),
+            oopMap = {},
+            obj = baseImage.firstOldObject;
+        // get all objects from base image into oopMap
+        while (obj) {
+            oopMap[obj.oop] = obj;
+            obj = obj.nextObject;
+        }
+        // add objects from delta to oopMap
+        var modifiedObjects = {};
+        for (var oop in delta.oopMap) {
+            if (oopMap[oop])
+                modifiedObjects[oop] = delta.oopMap[oop];
+            oopMap[oop] = delta.oopMap[oop];
+        }
+        // init objects from delta
+        for (var oop in delta.oopMap)
+            delta.oopMap[oop].initFromImage(oopMap);
+        // redirect old pointers to modified objects
+        for (var oop in oopMap) {
+            var obj = oopMap[oop];
+            // mutate the class
+            var mut = modifiedObjects[obj.stClass.oop];
+            if (mut) 
+                obj.stClass = mut;
+            // and mutate body pointers
+            var body = obj.pointers;
+            if (body) for (var j = 0; j < body.length; j++) {
+                mut = modifiedObjects[body[j].oop];
+                if (mut)
+                    body[j] = mut;
+            }
+        }
+        // make new image from oopMap
+        var image = new this(oopMap, name);
+        image.userProcess = oopMap[delta.processOop];
+        image.userDisplay = oopMap[delta.displayOop];
+        return image;
+    },
+    oopmapFromBuffer: function(buffer, magic) {
+        // reads objects created by writeToBuffer() or writeDiffToBuffer()
         var data = new DataView(buffer),
             pos = 0,
             reader = {
@@ -687,7 +799,6 @@ Object.extend(users.bert.St78.vm.Image, {
                 nextUint32: function(){pos += 4; return data.getUint32(pos-4)},
                 nextBytes: function(n){pos += n; return new DataView(data.buffer, pos - n, n)},
             },
-            magic = 'St78',
             onePointOh = 0x0100;
         for (var i = 0; i < 4; i++)
             if (reader.nextUint8() !== magic.charCodeAt(i)) throw "magic number not found";
@@ -705,13 +816,8 @@ Object.extend(users.bert.St78.vm.Image, {
             oopMap[obj.oop] = obj;
             if (pos & 1) pos++; // odd size
         }
-        for (var oop in oopMap)
-            oopMap[oop].initFromImage(oopMap);
-        if (pos !== headerSize + imageSize) throw "size mismatch"
-        var image = new this(oopMap, name);
-        image.userProcess = oopMap[processOop];
-        image.userDisplay = oopMap[displayOop];
-        return image;
+        if (pos !== headerSize + imageSize) throw "size mismatch";
+        return {oopMap: oopMap, processOop: processOop, displayOop: displayOop};
     },
 });
 
@@ -721,7 +827,7 @@ Object.subclass('users.bert.St78.vm.Object',
         this.oop = oop;
     },
     initFromImage: function(oopMap) {
-        var stClass = oopMap[this.data.classOop],
+        var stClass = this.objectFromOop(this.data.classOop, oopMap),
             instSpec = stClass.pointers ? stClass.pointers[NoteTaker.PI_CLASS_INSTSIZE] :
                 stClass.data.body.getUint16(NoteTaker.PI_CLASS_INSTSIZE * 2) >> 1,
             bodyBytes = this.data.body && this.data.body.byteLength;
@@ -809,6 +915,7 @@ Object.subclass('users.bert.St78.vm.Object',
             var val = oop >> 1;
             return (val & 0x3FFF) - (val & 0x4000);
         }
+        if (!oopMap[oop]) throw "oop not found";
         return oopMap[oop];
     },
     fillArray: function(length, filler) {
@@ -899,6 +1006,49 @@ Object.subclass('users.bert.St78.vm.Object',
     },
 },
 'writing', {
+
+
+    sameAs: function(other) {
+        // answer true if this is the same object as the other from a different image
+        if (!other) return false;
+        if (this.oop !== other.oop) return false;
+        if (this.stClass.oop !== other.stClass.oop) return false;
+        if (this.isFloat) return this.float == other.float;
+        var thisBody = this.pointers || this.words || this.bytes,
+            otherBody = other.pointers || other.words || other.bytes;
+        if (!thisBody && !otherBody) return true;
+        if (!thisBody || !otherBody) return false;
+        if (thisBody.length !== otherBody.length) return false;
+        if (thisBody === this.pointers) { // compare objects
+            for (var i = 0; i < thisBody.length; i++) {
+                var a = thisBody[i], b = otherBody[i];
+                if (typeof a !== typeof b ||                    // number vs obj
+                    (typeof a === "number" && a !== b) ||       // both numbers
+                    a.oop !== b.oop)                            // both objects
+                        return false;
+            }
+            if (!this.bytes) return true;   // unless it's a method, we're done 
+        }
+        // compare words / bytes
+        var isMethod = !!this.pointers;
+        if (!isMethod) {
+            for (var i = 0; i < thisBody.length; i++)
+                if (thisBody[i] !== otherBody[i])
+                    return false;
+            return true
+        }
+        // compare method header
+        for (var i = 0; i < 2; i++)
+            if (this.bytes[i] !== other.bytes[i])
+                return false;
+        // compare bytecodes
+        var firstBytecode = 2 + (this.pointers.length * 2); // after header and literals
+        for (var i = firstBytecode; i < this.bytes.length; i++)
+            if (this.bytes[i] !== other.bytes[i])
+                return false;
+        return true;
+    },
+
     writeTo: function(data, pos, image) {
         // Write oop, class.oop + small size, optional large size, optional data
         // oop goes first
