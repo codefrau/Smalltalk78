@@ -520,14 +520,14 @@ Object.subclass('users.bert.St78.vm.Image',
         for (var i = 0; i < n; i++) {
             var obj = fromArray[i];
             if (!obj.stClass) return false;  //non-objects in from array
-            if (mutations[obj.id]) return false; //repeated oops in from array
-            else mutations[obj.id] = toArray[i];
+            if (mutations[obj.oop]) return false; //repeated oops in from array
+            else mutations[obj.oop] = toArray[i];
         }
         if (twoWay) for (var i = 0; i < n; i++) {
             var obj = toArray[i];
             if (!obj.stClass) return false;  //non-objects in to array
-            if (mutations[obj.id]) return false; //repeated oops in to array
-            else mutations[obj.id] = fromArray[i];
+            if (mutations[obj.oop]) return false; //repeated oops in to array
+            else mutations[obj.oop] = fromArray[i];
         }
         // ensure new objects have nextObject pointers
         if (this.newSpaceCount > 0)
@@ -536,12 +536,12 @@ Object.subclass('users.bert.St78.vm.Image',
         var obj = this.firstOldObject;
         while (obj) {
             // mutate the class
-            var mut = mutations[obj.stClass.id];
+            var mut = mutations[obj.stClass.oop];
             if (mut) obj.stClass = mut;
             // and mutate body pointers
             var body = obj.pointers;
             if (body) for (var j = 0; j < body.length; j++) {
-                mut = mutations[body[j].id];
+                mut = mutations[body[j].oop];
                 if (mut) body[j] = mut;
             }
             obj = obj.nextObject;
