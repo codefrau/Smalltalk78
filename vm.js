@@ -1969,7 +1969,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         }
         return stack;
     },
-    breakOn: function(classAndMethodString) {
+    findMethod: function(classAndMethodString) {
         // classAndMethodString is 'Class>>method'
         var found;
         this.allMethodsDo(function(classObj, methodObj, selectorObj) {
@@ -1977,8 +1977,11 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             if (classAndMethodString == thisMethod)
                 return found = methodObj;
         });
-        this.breakOnMethod = found;
         return found;
+    },
+    breakOn: function(classAndMethodString) {
+        // classAndMethodString is 'Class>>method'
+        this.breakOnMethod = classAndMethodString && this.findMethod(classAndMethodString);
     },
     breakOnGlobal: function(name) {
         this.breakOnLiteral = this.image.globalRefNamed(name);
