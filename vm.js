@@ -419,7 +419,7 @@ Object.subclass('users.bert.St78.vm.Image',
         // Visit all reachable objects and mark them.
         // Return surviving new objects
         if (this.vm) {
-            this.userProcess = this.vm.activeContext;
+            this.userProcess = this.vm.activeProcess;
             this.userDisplay = this.vm.primHandler.displayBlt;
         }
         var todo = [this.globals, this.userProcess];
@@ -630,7 +630,7 @@ Object.subclass('users.bert.St78.vm.Image',
         data.setUint16(pos, this.oldSpaceCount); pos += 2;
         data.setUint32(pos, this.oldSpaceBytes); pos += 4;
         // current process and display
-        data.setUint16(pos, this.vm.activeContext.oop); pos += 2;
+        data.setUint16(pos, this.vm.activeProcess.oop); pos += 2;
         data.setUint16(pos,this.vm.primHandler.displayBlt.oop); pos += 2;
         if (pos !== headerSize) throw "wrong header size";
         // objects
@@ -1375,14 +1375,14 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
     wakeProcess: function(proc) {
         // Install a new active process and load sp, ready to restore other state
-        this.activeContext = proc;
-        this.activeContextPointers = this.activeContext.pointers;
-        this.sp = (this.activeContextPointers.length - this.activeContextPointers[NoteTaker.PI_PROCESS_TOP]) - 1;
+        this.activeProcess = proc;
+        this.activeProcessPointers = this.activeProcess.pointers;
+        this.sp = (this.activeProcessPointers.length - this.activeProcessPointers[NoteTaker.PI_PROCESS_TOP]) - 1;
     },
     sleepProcess: function() {
         // Preserve state of sp in variable 'top' (after saving PC and BP)
-        this.activeContextPointers[NoteTaker.PI_PROCESS_TOP] = (this.activeContextPointers.length - this.sp) - 1;
-        return this.activeContext;
+        this.activeProcessPointers[NoteTaker.PI_PROCESS_TOP] = (this.activeProcessPointers.length - this.sp) - 1;
+        return this.activeProcess;
     },
     patchByteCode: function(oop, index, replacementByte, maybeByte2, maybeByte3, maybeByte4) {
         var method = this.image.objectFromOop(oop);
@@ -1407,7 +1407,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             // load temporary variable
             case 0x10: case 0x11: case 0x12: case 0x13: case 0x14: case 0x15: case 0x16: case 0x17:
             case 0x18: case 0x19: case 0x1A: case 0x1B: case 0x1C: case 0x1D: case 0x1E: case 0x1F:
-                this.push(this.activeContextPointers[this.currentFrameTempOrArg(b - 0x10)]); break;
+                this.push(this.activeProcessPointers[this.currentFrameTempOrArg(b - 0x10)]); break;
 
             // loadLiteral
             case 0x20: case 0x21: case 0x22: case 0x23: case 0x24: case 0x25: case 0x26: case 0x27:
@@ -1448,7 +1448,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 				this.doRemoteReturn(); // block return
 				break;
 			case 0x85:	// PUSHCURRENT
-				this.push(this.activeContext);
+				this.push(this.activeProcess);
 				break;
 			case 0x86:	// SUPER
 				this.doSuper = true;
@@ -1461,7 +1461,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 				break;
 			case 0x89:	// X LDTEMP
                 var addr = this.currentFrameTempOrArg(this.nextByte());
-				this.push(this.activeContextPointers[addr]); break
+				this.push(this.activeProcessPointers[addr]); break
 				break;
 			case 0x8A:	// X LDLIT
 				this.push(this.methodLiteral(this.nextByte()));
@@ -1529,7 +1529,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 				this.receiver.pointers[addrByte] = value; break;
 			case 0x1:	// store temp
 				var addr = this.currentFrameTempOrArg(addrByte-0x10);
-				this.activeContextPointers[addr] = value; break;
+				this.activeProcessPointers[addr] = value; break;
 			case 0x2:	// store lit
 			case 0x3:
 				this.nono(); break;
@@ -1545,7 +1545,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 						this.receiver.pointers[extendedAddr] = value; break;	
 					case 0x89:	// STO* X LDTEMP
 						var addr = this.currentFrameTempOrArg(extendedAddr);
-				        this.activeContextPointers[addr] = value; break;
+				        this.activeProcessPointers[addr] = value; break;
 					case 0x8b:	// STO* X LDLITI
                         var oref = this.methodLiteral(extendedAddr);
                         oref.pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE] = value; break
@@ -1622,7 +1622,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         //console.log("rcvr " + newRcvr + ", lookupClass= " + lookupClass);
         if (this.doSuper) {
             this.doSuper = false;
-            lookupClass = this.activeContextPointers[this.currentFrame + NoteTaker.FI_MCLASS].superclass();
+            lookupClass = this.activeProcessPointers[this.currentFrame + NoteTaker.FI_MCLASS].superclass();
         }
         var entry = this.findSelectorInClass(selector, argCountOrUndefined, lookupClass);
         if (this.debugSelectors && this.debugSelectors.indexOf(selector.bytesAsString()) >= 0) debugger;
@@ -1694,7 +1694,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.pc = newMethod.methodStartPC();
         for (var i = 0; i < newMethod.methodNumTemps(); i++)
             this.push(this.nilObj); //  make room for temps and init them
-        this.receiver = overrideReceiver ? newRcvr : this.activeContextPointers[this.currentFrame + NoteTaker.FI_RECEIVER];
+        this.receiver = overrideReceiver ? newRcvr : this.activeProcessPointers[this.currentFrame + NoteTaker.FI_RECEIVER];
         if (this.receiver !== newRcvr)
             throw "receivers don't match";
         this.checkForInterrupts();
@@ -1702,7 +1702,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     doRemoteReturn: function() {
         // reverse of primitiveValue()
         var reply = this.pop();
-        var returnFrame = (this.activeContextPointers.length - this.pop());
+        var returnFrame = (this.activeProcessPointers.length - this.pop());
         var returnPC = this.pop() - NoteTaker.PC_BIAS;
         var rCode = this.pop(); // might want to check that we're in the same process
         /////// Whoosh //////
@@ -1733,11 +1733,11 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     doQuickSend: function(obj, index) {
         // pop receiver, push self or my inst var at index
         if (index === 255)
-            return this.activeContextPointers[this.sp] = obj;
+            return this.activeProcessPointers[this.sp] = obj;
         if (index >= obj.pointers.size) {
             throw "quick push out of range?"
         }
-        this.activeContextPointers[this.sp] = obj.pointers[index];
+        this.activeProcessPointers[this.sp] = obj.pointers[index];
     },
     tryPrimitive: function(primIndex, argCount, newMethod, newMethodClass) {
         var success = this.primHandler.doPrimitive(primIndex, argCount, newMethod, newMethodClass);
@@ -1812,36 +1812,36 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
     loadFromFrame: function(aFrame) {
         // cache values from current frame in slots
-        this.method = this.activeContextPointers[aFrame + NoteTaker.FI_METHOD];
+        this.method = this.activeProcessPointers[aFrame + NoteTaker.FI_METHOD];
         this.methodBytes = this.method.bytes;
-        this.methodNumArgs = this.activeContextPointers[aFrame + NoteTaker.FI_NUMARGS];
-        this.receiver = this.activeContextPointers[aFrame + NoteTaker.FI_RECEIVER];
+        this.methodNumArgs = this.activeProcessPointers[aFrame + NoteTaker.FI_NUMARGS];
+        this.receiver = this.activeProcessPointers[aFrame + NoteTaker.FI_RECEIVER];
         return aFrame;
     },
 },
 'stack access', {
     pop: function() {
-        var value = this.activeContextPointers[this.sp];  
-        this.activeContextPointers[this.sp++] = this.nilObj;
+        var value = this.activeProcessPointers[this.sp];  
+        this.activeProcessPointers[this.sp++] = this.nilObj;
         return value;
     },
     popN: function(nToPop) {
         for (var i = 0; i < nToPop; i++)
-            this.activeContextPointers[this.sp++] = this.nilObj;
+            this.activeProcessPointers[this.sp++] = this.nilObj;
     },
     push: function(oop) {
-        this.activeContextPointers[--this.sp] = oop;
+        this.activeProcessPointers[--this.sp] = oop;
     },
     popNandPush: function(nToPop, oop) {
         for (var i = 1; i < nToPop; i++)
-            this.activeContextPointers[this.sp++] = this.nilObj;
-        this.activeContextPointers[this.sp] = oop;
+            this.activeProcessPointers[this.sp++] = this.nilObj;
+        this.activeProcessPointers[this.sp] = oop;
     },
     top: function() {
-        return this.activeContextPointers[this.sp];
+        return this.activeProcessPointers[this.sp];
     },
     stackValue: function(depthIntoStack) {
-        return this.activeContext.pointers[this.sp + depthIntoStack];
+        return this.activeProcess.pointers[this.sp + depthIntoStack];
     },
     stackInteger: function(depthIntoStack) {
         return this.checkSmallInt(this.stackValue(depthIntoStack));
@@ -1942,7 +1942,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     printStack: function(ctx, limit) {
         // both args are optional
         if (typeof ctx == "number") {limit = ctx; ctx = null;}
-        if (!ctx) ctx = this.activeContext;
+        if (!ctx) ctx = this.activeProcess;
         if (!limit) limit = 100;
         var stack = '',
             process = ctx.pointers,
@@ -1999,9 +1999,9 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.breakOnFrameChanged = true;
         this.breakOnFrameReturned = null;
     },
-    printActiveContext: function(printAll, debugFrame) {
+    printActiveProcess: function(printAll, debugFrame) {
         // temps and stack in current context
-        var ctx = this.activeContextPointers,
+        var ctx = this.activeProcessPointers,
             bp = this.currentFrame,
             sp = this.sp,
             numArgs = ctx[bp + NoteTaker.FI_NUMARGS],
@@ -2514,7 +2514,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
     primitiveRemoteCopy: function(argCount) {
         // Make a block-like outrigger to rcvr, a process
         var rcvr = this.vm.stackValue(0);
-	    if (rcvr !== this.vm.activeContext) return false;
+	    if (rcvr !== this.vm.activeProcess) return false;
 		var pc = this.vm.pc,
     		bp = this.vm.currentFrame,
 		    sp = this.vm.sp,
@@ -2536,7 +2536,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (rCode.stClass === this.processClass) return this.resume(rCode);
         if (rCode.stClass !== this.remoteCodeClass) return false;
 
-        var contextLength = this.vm.activeContextPointers.length;
+        var contextLength = this.vm.activeProcessPointers.length;
 
         // store the current sp here to mark the rCode as activated
 		rCode.pointers[NoteTaker.PI_RCODE_STACKOFFSET] = contextLength - this.vm.sp;
@@ -2564,7 +2564,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
 {
     resume: function(processToRun) {
         // Called by <Process> eval - sleep the current process and wake processToRun
-        // FIXME: this needs to be refactored with RCeval, RCreturn, and VM.loadActiveContext
+        // FIXME: this needs to be refactored with RCeval, RCreturn, and VM.loadActiveProcess
         // All should use common pushPCBP, popPCBP, and sleep/wake (for storing SP in top)
 
         // Push this frame and sleep this process
