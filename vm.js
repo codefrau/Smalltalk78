@@ -934,22 +934,6 @@ Object.subclass('users.bert.St78.vm.Object',
     wordsSize: function() {
         return this.words ? this.words.length : 0;
     },
-    bytesAsString: function(maxLength) {
-        if (!this.bytes) return '';
-        var bytes = this.bytes; // can be Uint8Array
-        var n = bytes.length;
-        if (maxLength && maxLength < n) n = maxLength;
-        var chars = [];
-        for (var i = 0; i < n; i++)  {
-            var char = bytes[i];
-            chars.push(char == 95 ? '←' : char >= 32 ? String.fromCharCode(char)
-                : '␀≤␂▹␄␅≡◦␈\x09◢␋␌\x0A≠↪␐⇑≥ⓢ◣¬∢⌾▱␙␚⇒␜␝␞␟'[char]);
-        }
-        var string = chars.join('');
-        if (n < bytes.length)
-            string += '…';
-        return string;
-    },
     bytesAsRawString: function() {
         if (!this.bytes) return '';
         var bytes = this.bytes; // can be Uint8Array
@@ -1100,6 +1084,22 @@ Object.subclass('users.bert.St78.vm.Object',
     }
 },
 'debugging', {
+    bytesAsString: function(maxLength) {
+        if (!this.bytes) return '';
+        var bytes = this.bytes; // can be Uint8Array
+        var n = bytes.length;
+        if (maxLength && maxLength < n) n = maxLength;
+        var chars = [];
+        for (var i = 0; i < n; i++)  {
+            var char = bytes[i];
+            chars.push(char == 94 ? '↑' : char == 95 ? '←' : char >= 32 ? String.fromCharCode(char)
+                : '␀≤␂▹␄␅≡◦␈\x09\x0a␋␌\x0a≠↪◥⇑≥ⓢ◣¬∢⌾▱➲␚⇒␜␝◢␟'[char]);
+        }
+        var string = chars.join('');
+        if (n < bytes.length)
+            string += '…';
+        return string;
+    },
     toString: function() {
         return Strings.format('stObj(%s)',
             this.stClass.constructor == users.bert.St78.vm.Object ? this.stInstName() : this.stClass);
