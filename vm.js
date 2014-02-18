@@ -1474,7 +1474,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 				break;
 			case 0x8D:
 			case 0x8E: this.nono(); break; 			// illegal 0x87..0x8F
-			case 0x8F: this.breakNow(); break;
+			case 0x8F: this.breakNow("exit to debugger"); break;
 
             // Short jumps
             case 0x90: case 0x91: case 0x92: case 0x93: case 0x94: case 0x95: case 0x96: case 0x97:
@@ -1581,7 +1581,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                 this.breakOnLiteralSeen[seen] += 1;
             } else {
                 this.breakOnLiteralSeen[seen] = 1;
-                this.breakNow();
+                this.breakNow("Seen literal " + seen);
             }
         }
         return literal;
@@ -1674,7 +1674,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     executeNewMethod: function(newRcvr, newMethod, newMethodClass, argumentCount, primitiveIndex, overrideReceiver) {
         this.sendCount++;
         if (this.logSends) console.log(this.sendCount + ' ' + this.printMethod(newMethod));
-        if (this.breakOnMethod === newMethod) this.breakNow();
+        if (this.breakOnMethod === newMethod) this.breakNow("executing method " + this.printMethod(newMethod));
         if (this.breakOnFrameChanged) {
             this.breakOnFrameChanged = false;
             this.breakNow();
@@ -1984,7 +1984,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.breakOnLiteral = this.image.globalRefNamed(name);
         return this.breakOnLiteral;
     },
-    breakNow: function() {
+    breakNow: function(msg) {
+        if (msg) console.log("Break: " + msg);
         this.breakOutOfInterpreter = 'break';
     },
     breakOnReturn: function() {
@@ -2584,7 +2585,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var primIndex = method.methodPrimitiveIndex();
             argCount = method.methodNumArgs();
         this.vm.popN(3);
-        if (this.vm.breakOnDoit) this.vm.breakNow();
+        if (this.vm.breakOnDoit) this.vm.breakNow("primitiveRunMethod called, likely a doit");
         this.vm.executeNewMethod(newRcvr, method, mClass, argCount, primIndex, true);
         return true;
     },
