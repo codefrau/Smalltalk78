@@ -2090,6 +2090,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.stringClass = this.vm.image.objectFromOop(NoteTaker.OOP_CLSTRING);
         this.compiledMethodClass = this.vm.image.objectFromOop(NoteTaker.OOP_CLCOMPILEDMETHOD);
         this.uniqueStringClass = this.vm.image.objectFromOop(NoteTaker.OOP_CLUNIQUESTRING);
+        this.vectorClass = this.vm.image.objectFromOop(NoteTaker.OOP_CLVECTOR);
         this.bitBltClass = this.vm.image.globalNamed('BitBlt');
         this.idleCounter = 0;
     },
@@ -2169,7 +2170,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 59: return true; //UserView.primCursorLoc←
             case 61: return this.primitiveKeyboardPeek(argCount);
             case 62: return this.primitiveKeyboardNext(argCount);
-            case 66: return this.readStringFromLively(argCount);  //  co-opted from user primPort: 
+            case 66: return this.primitiveFileString(argCount);  //  co-opted from user primPort: 
             case 68: return this.primitiveMouseButtons(argCount);
         }
         throw "primitive " + index + " not implemented yet";
@@ -2783,37 +2784,44 @@ Object.subclass('users.bert.St78.vm.Primitives',
         };
         this.display.ctx.putImageData(this.displayPixels, 0, 0, this.cursorX, this.cursorY, 16, 16);
     },
-    readStringFromLively: function(nargs) {
+    primitiveFileString: function(argCount) {
         // The Notetaker panel object includes an object named 'fileStrings'
         // Files dropped onto this world get bound to that object
         // They can be read using this primitive, co-opted from user primPort:
         
-        // check that arg is a string
-        var fName = this.stackNonInteger(nargs);
-        if (!this.success || (fName.stClass !== this.stringClass)) return null;
-        // check that it matches a property of $morph('Notetaker').fileStrings
-        var livelyPanel = $morph('Notetaker');
-        var livelyDirectory = livelyPanel && livelyPanel.fileStrings;
-        if (livelyDirectory && nargs == 2) {
-            // if nargs == 2, then check for a string argument and store it out to Lively
-            var stString = this.stackNonInteger(1)
-            if (!this.success || (stString.stClass !== this.stringClass)) return null;
-            livelyDirectory[fName.bytesAsString()] = stString.bytesAsRawString();
-            this.popNandPushIfOK(nargs+1, stString);
-            return true
+        var fName = this.stackNonInteger(argCount).bytesAsRawString();
+        if (!this.success) return false;
+        if (!this.vm.fileStrings) this.vm.fileStrings = {}; // normally set to Notetaker's fileStrings from outside
+        var livelyDirectory = this.vm.fileStrings;
+        if (!fName.length) {
+            // if called without a filename, return a directory index as vector
+            var fNames = Object.keys(livelyDirectory),
+                stVector = this.vm.image.instantiateClass(this.vectorClass, fNames.length, this.vm.nilObject);
+            for (var i = 0; i < fNames.length; i++) 
+                stVector.pointers[i] = this.makeStString(fNames[i]);
+            this.popNandPushIfOK(argCount+1, stVector);
+            return true;
         }
-        // If nargs == 1, then check that the fileString exists and return it
-        var livelyData = livelyDirectory && livelyDirectory[fName.bytesAsString()];
-        if (!livelyData) return null;
+        if (argCount == 2) {
+            // if argCount == 2, then check for a string argument and store it
+            var stString = this.stackNonInteger(1);
+            if (!this.success || (stString.stClass !== this.stringClass)) return false;
+            livelyDirectory[fName] = stString.bytesAsRawString();
+            this.popNandPushIfOK(argCount+1, stString);
+            return true;
+        }
+        // If argCount == 1, then check that the fileString exists and return it
+        var livelyData = livelyDirectory[fName];
+        if (!livelyData) return false;
         // Return a string object with the byte array copied into it
-        var newString = this.vm.image.instantiateClass(this.stringClass, livelyData.length, 0)
+        var newString = this.vm.image.instantiateClass(this.stringClass, livelyData.length, 0);
         if (typeof livelyData == "string") {
-                for (var i=0; i<livelyData.length; i++) newString.bytes[i] = livelyData.charCodeAt(i);
-            } else {
-                for (var i=0; i<livelyData.length; i++) newString.bytes[i] = livelyData[i];
-            }
-        this.popNandPushIfOK(nargs+1, newString);
-        return true
+            for (var i=0; i<livelyData.length; i++) newString.bytes[i] = livelyData.charCodeAt(i);
+        } else {
+            for (var i=0; i<livelyData.length; i++) newString.bytes[i] = livelyData[i];
+        }
+        this.popNandPushIfOK(argCount+1, newString);
+        return true;
     },
 	millisecondClockValue: function() {
         //Return the value of the millisecond clock as an integer.
