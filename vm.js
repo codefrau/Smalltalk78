@@ -2714,6 +2714,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
     displayFlush: function(rect) {
         if (!this.damage) return;
+        if (this.damage.dirtyRects.length)
+            this.vm.breakOutOfInterpreter = true;   // show on screen
         while (this.damage.dirtyRects.length)
             this.displayUpdate(this.damage.dirtyRects.shift());
     },
