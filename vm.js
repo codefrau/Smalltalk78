@@ -1523,6 +1523,22 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                 this.send(this.methodLiteral(b - 0xD0)); break;
         }
     },
+    freeze: function() {
+        // Stop the interpreter. Answer a function that can be
+        // called to continue interpreting.
+        var continueFunc;
+        this.frozen = true;
+        this.breakOutOfInterpreter = function(thenDo) {
+            if (!thenDo) throw "need function to restart interpreter";
+            continueFunc = thenDo;
+            return "freeze";
+        }.bind(this);
+        return function unfreeze() {
+            this.frozen = false;
+            if (!continueFunc) throw "continue function not set yet";
+            continueFunc();
+        }.bind(this);
+    },
     doStore: function (value, addrByte) {
 		switch (addrByte >> 4) {
 			case 0x0:	// store inst
@@ -1557,17 +1573,23 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 				nono();
 		}
 	},
-    interpret: function(forMilliseconds) {
+    interpret: function(forMilliseconds, thenDo) {
         // run until idle, but at most for a couple milliseconds
-        // answer milliseconds to sleep
-        // or 'break' if reached breakpoint
+        // answer milliseconds to sleep or 'break' if reached breakpoint
+        // call thenDo with that result when done
+        if (this.frozen) return;
         this.primHandler.cursorUpdate();
         this.breakOutOfInterpreter = false;
         this.breakOutTick = this.lastTick + (forMilliseconds || 500);
         while (!this.breakOutOfInterpreter)
             this.interpretOne();
-        if (this.breakOutOfInterpreter == 'break') return 'break';
-        return Math.min(this.primHandler.idleMS(), 200);
+        // this is to allow 'freezing' the interpreter and restarting it asynchronously. See freeze()
+        if (typeof this.breakOutOfInterpreter == "function")
+            return this.breakOutOfInterpreter(thenDo);
+        // normally, we answer regularly
+        var result = this.breakOutOfInterpreter == 'break' ? 'break' : Math.min(this.primHandler.idleMS(), 200);
+        if (thenDo) thenDo(result);
+        return result;
     },
     nextByte: function() {
         return this.methodBytes[this.pc++] & 0xFF;
