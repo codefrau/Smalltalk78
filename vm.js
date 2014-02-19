@@ -2812,41 +2812,64 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
     primitiveFileString: function(argCount) {
         // The Notetaker panel object includes an object named 'fileStrings'
-        // Files dropped onto this world get bound to that object
+        // Files dropped onto this world get bound to that object, which is
+        // passed as vm.fileStrings
         // They can be read using this primitive, co-opted from user primPort:
+        // If the filename starts with http we do a web get/put
         
         var fName = this.stackNonInteger(argCount).bytesAsRawString();
         if (!this.success) return false;
-        if (!this.vm.fileStrings) this.vm.fileStrings = {}; // normally set to Notetaker's fileStrings from outside
-        var livelyDirectory = this.vm.fileStrings;
-        if (!fName.length) {
-            // if called without a filename, return a directory index as vector
-            var fNames = Object.keys(livelyDirectory),
-                stVector = this.vm.image.instantiateClass(this.vectorClass, fNames.length, this.vm.nilObject);
-            for (var i = 0; i < fNames.length; i++) 
-                stVector.pointers[i] = this.makeStString(fNames[i]);
-            this.popNandPushIfOK(argCount+1, stVector);
-            return true;
-        }
+        var stStringToStore, stringToStore,
+            stringToReturn, stStringToReturn;
         if (argCount == 2) {
-            // if argCount == 2, then check for a string argument and store it
-            var stString = this.stackNonInteger(1);
-            if (!this.success || (stString.stClass !== this.stringClass)) return false;
-            livelyDirectory[fName] = stString.bytesAsRawString();
-            this.popNandPushIfOK(argCount+1, stString);
-            return true;
+            // check for a string argument to store
+            stStringToStore = this.stackNonInteger(1);
+            if (!this.success || (stStringToStore.stClass !== this.stringClass)) return false;
+            stringToStore = stStringToStore.bytesAsRawString();
+         }
+        // handle http first
+        if (/http(s)?:/.test(fName)) {
+            var resource = new WebResource(fName); 
+            if (stringToStore) {
+                alertOK("storing " + fName);
+                resource.put(stringToStore);
+            } else {
+                alertOK("fetching " + fName);
+                stringToReturn = resource.get().content;
+            }
+        } else { // otherwise, use VM's fileStrings
+            if (!this.vm.fileStrings) this.vm.fileStrings = {}; 
+            var livelyDirectory = this.vm.fileStrings;
+            if (stringToStore)
+                livelyDirectory[fName] = stringToStore;
+            else {
+                if (fName.length) {
+                    stringToReturn = livelyDirectory[fName];
+                } else {
+                    // if called without a filename, return a directory index as vector
+                    var fNames = Object.keys(livelyDirectory),
+                        stVector = this.vm.image.instantiateClass(this.vectorClass, fNames.length, this.vm.nilObject);
+                    for (var i = 0; i < fNames.length; i++) 
+                        stVector.pointers[i] = this.makeStString(fNames[i]);
+                    this.popNandPushIfOK(argCount+1, stVector);
+                    return true;
+                }
+            }
         }
-        // If argCount == 1, then check that the fileString exists and return it
-        var livelyData = livelyDirectory[fName];
-        if (!livelyData) return false;
         // Return a string object with the byte array copied into it
-        var newString = this.vm.image.instantiateClass(this.stringClass, livelyData.length, 0);
-        if (typeof livelyData == "string") {
-            for (var i=0; i<livelyData.length; i++) newString.bytes[i] = livelyData.charCodeAt(i);
-        } else {
-            for (var i=0; i<livelyData.length; i++) newString.bytes[i] = livelyData[i];
+        if (!stStringToReturn) {
+            if (stringToReturn) {
+                stStringToReturn = this.vm.image.instantiateClass(this.stringClass, stringToReturn.length, 0);
+                if (typeof stringToReturn == "string") {
+                    for (var i=0; i<stringToReturn.length; i++) stStringToReturn.bytes[i] = stringToReturn.charCodeAt(i);
+                } else {
+                    for (var i=0; i<stringToReturn.length; i++) stStringToReturn.bytes[i] = stringToReturn[i];
+                }
+            } else {
+                stStringToReturn = stStringToStore;
+            }
         }
-        this.popNandPushIfOK(argCount+1, newString);
+        this.popNandPushIfOK(argCount+1, stStringToReturn);
         return true;
     },
 	millisecondClockValue: function() {
