@@ -2003,7 +2003,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
     breakOn: function(classAndMethodString) {
         // classAndMethodString is 'Class>>method'
-        this.breakOnMethod = classAndMethodString && this.findMethod(classAndMethodString);
+        return this.breakOnMethod = classAndMethodString && this.findMethod(classAndMethodString);
     },
     breakOnGlobal: function(name) {
         this.breakOnLiteral = this.image.globalRefNamed(name);
