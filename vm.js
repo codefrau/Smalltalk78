@@ -2648,8 +2648,10 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
     primitiveBeDisplayAndCursor: function(argCount) {
         var rcvr = this.vm.top();
-        if (rcvr.stClass !== this.bitBltClass)
+        if (rcvr.stClass !== this.bitBltClass) {
+            this.displayFlush();
             return this.popNandPushIfOK(argCount+1, this.makePointWithXandY(this.display.width, this.display.height));
+        }
         this.setDisplayAndCursor(rcvr);
         this.vm.popN(argCount); // return self
         return true;
