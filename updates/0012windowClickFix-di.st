@@ -1,0 +1,1 @@
+Window understands: 'firsttime	[frame has: user mp  		[self reset.		self enter.		user waitnobug]	false]' classified: 'As yet unclassified'
