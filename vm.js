@@ -2826,12 +2826,18 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var fName = this.stackNonInteger(argCount).bytesAsRawString();
         if (!this.success) return false;
         var stStringToStore, stringToStore,
-            stringToReturn, stStringToReturn;
+            stringToReturn, stStringToReturn,
+            remove = false;
+        debugger;
         if (argCount == 2) {
             // check for a string argument to store
             stStringToStore = this.stackNonInteger(1);
-            if (!this.success || (stStringToStore.stClass !== this.stringClass)) return false;
-            stringToStore = stStringToStore.bytesAsRawString();
+            if (!this.success) return false;
+            if (stStringToStore == this.vm.nilObj) remove = true;
+            else {
+                if (stStringToStore.stClass !== this.stringClass) return false;
+                stringToStore = stStringToStore.bytesAsRawString();
+            }
          }
         // handle http first
         if (/http(s)?:/.test(fName)) {
@@ -2844,7 +2850,10 @@ Object.subclass('users.bert.St78.vm.Primitives',
                 stringToReturn = resource.get().content;
             }
         } else { // otherwise, use our fileStrings
-            if (stringToStore) {
+            if (remove) {
+                delete this.fileStrings[fName];
+                delete window.localStorage['notetaker:' + fName];
+            } else if (stringToStore) {
                 this.fileStrings[fName] = stringToStore;
                 window.localStorage['notetaker:' + fName] = stringToStore;
             } else {
