@@ -1256,12 +1256,12 @@ Object.extend(users.bert.St78.vm.Object, {
 
 Object.subclass('users.bert.St78.vm.Interpreter',
 'initialization', {
-    initialize: function(image, display) {
+    initialize: function(image, display, files) {
         console.log('st78: initializing interpreter');
         this.image = image;
         this.image.vm = this;
         this.initConstants();
-        this.primHandler = new users.bert.St78.vm.Primitives(this, display);
+        this.primHandler = new users.bert.St78.vm.Primitives(this, display, files);
         this.loadImageState();
         this.initVMState();
         this.loadInitialContext(display);
@@ -2096,10 +2096,16 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 
 Object.subclass('users.bert.St78.vm.Primitives',
 'initialization', {
-    initialize: function(vm, display) {
+    initialize: function(vm, display, files) {
         this.vm = vm;
         this.display = display;         // display interface
         this.display.vm = this.vm;
+        this.fileStrings = files || {};
+        for (var i = 0; i < localStorage.length; i++) {
+            var key = localStorage.key(i);
+            if (/^notetaker:/.test(key))
+                this.fileStrings[key.replace(/^notetaker:/, '')] = localStorage[key];
+        };
         this.displayPixels = null;      // HTML canvas pixel data matching this.display.ctx
         this.displayBlt = null;         // the current Smalltalk display/cursor object, also stored in image header
         this.displayBits = null;        // accessor for words in Smalltalk display
@@ -2813,12 +2819,10 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.display.ctx.putImageData(this.displayPixels, 0, 0, this.cursorX, this.cursorY, 16, 16);
     },
     primitiveFileString: function(argCount) {
-        // The Notetaker panel object includes an object named 'fileStrings'
-        // Files dropped onto this world get bound to that object, which is
-        // passed as vm.fileStrings
+        // the fileStrings object contains strings stored from the image
+        // (which are also persisted in localStorage) and files dropped onto this world.
         // They can be read using this primitive, co-opted from user primPort:
         // If the filename starts with http we do a web get/put
-        
         var fName = this.stackNonInteger(argCount).bytesAsRawString();
         if (!this.success) return false;
         var stStringToStore, stringToStore,
@@ -2839,17 +2843,16 @@ Object.subclass('users.bert.St78.vm.Primitives',
                 alertOK("fetching " + fName);
                 stringToReturn = resource.get().content;
             }
-        } else { // otherwise, use VM's fileStrings
-            if (!this.vm.fileStrings) this.vm.fileStrings = {}; 
-            var livelyDirectory = this.vm.fileStrings;
-            if (stringToStore)
-                livelyDirectory[fName] = stringToStore;
-            else {
+        } else { // otherwise, use our fileStrings
+            if (stringToStore) {
+                this.fileStrings[fName] = stringToStore;
+                window.localStorage['notetaker:' + fName] = stringToStore;
+            } else {
                 if (fName.length) {
-                    stringToReturn = livelyDirectory[fName];
+                    stringToReturn = this.fileStrings[fName];
                 } else {
                     // if called without a filename, return a directory index as vector
-                    var fNames = Object.keys(livelyDirectory),
+                    var fNames = Object.keys(this.fileStrings),
                         stVector = this.vm.image.instantiateClass(this.vectorClass, fNames.length, this.vm.nilObject);
                     for (var i = 0; i < fNames.length; i++) 
                         stVector.pointers[i] = this.makeStString(fNames[i]);
