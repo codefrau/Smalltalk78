@@ -2204,6 +2204,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 62: return this.primitiveKeyboardNext(argCount);
             case 66: return this.primitiveFileString(argCount);  //  co-opted from user primPort: 
             case 68: return this.primitiveMouseButtons(argCount);
+            case 200: return this.popNandPushFloatIfOK(1,Math.sqrt(this.stackFloat(0))); // primitiveSqrt
         }
         throw "primitive " + index + " not implemented yet";
         return false;
