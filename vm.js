@@ -1523,19 +1523,19 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                 this.send(this.methodLiteral(b - 0xD0)); break;
         }
     },
-    freeze: function() {
+    freeze: function(externalContinueFunc) {
         // Stop the interpreter. Answer a function that can be
         // called to continue interpreting.
-        var continueFunc;
+        var continueFunc = externalContinueFunc; // only needed if called from outside the interpreter
         this.frozen = true;
         this.breakOutOfInterpreter = function(thenDo) {
             if (!thenDo) throw "need function to restart interpreter";
             continueFunc = thenDo;
-            return "freeze";
+            return "frozen";
         }.bind(this);
         return function unfreeze() {
             this.frozen = false;
-            if (!continueFunc) throw "continue function not set yet";
+            if (!continueFunc) throw "no continue function";
             continueFunc();
         }.bind(this);
     },
@@ -1577,7 +1577,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         // run until idle, but at most for a couple milliseconds
         // answer milliseconds to sleep or 'break' if reached breakpoint
         // call thenDo with that result when done
-        if (this.frozen) return;
+        if (this.frozen) return 'frozen';
         this.primHandler.cursorUpdate();
         this.breakOutOfInterpreter = false;
         this.breakOutTick = this.lastTick + (forMilliseconds || 500);
