@@ -2433,9 +2433,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
         }
         if (array.bytes) { // bytes...
             var byteToPut = this.checkSmallInt(objToPut);
-            if (!this.success) return objToPut;
-            if (byteToPut < 0) {this.success = false; return objToPut;}
-            return array.bytes[index-1] = byteToPut & 0xFF;
+            if (this.success) array.bytes[index-1] = byteToPut & 0xFF;   // Just the lowest 8 bits of whatever is passed. Yes, really.
+            return objToPut;
         }
         throw "indexing problem"
     },
