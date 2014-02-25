@@ -1820,7 +1820,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     pushFrame: function(method, methodClass, argCount) {
         var newFrame = this.sp - NoteTaker.FI_RECEIVER;
         if (newFrame <= NoteTaker.PI_PROCESS_STACK)
-            throw "stack overflow" // implement stack growing here
+            throw "stack overflow" // implement stack growing here. Remember to invalide atCache.
         this.push(methodClass);
         this.push(method);
         this.push(argCount);
@@ -2119,6 +2119,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.processClass = vm.image.objectFromOop(NoteTaker.OOP_CLPROCESS);
         this.pointClass = this.vm.image.objectFromOop(NoteTaker.OOP_CLPOINT);
         this.floatClass = this.vm.image.objectFromOop(NoteTaker.OOP_CLFLOAT);
+        this.naturalClass = this.vm.image.objectFromOop(NoteTaker.OOP_CLNATURAL);
+        this.largeIntegerClass = this.vm.image.objectFromOop(NoteTaker.OOP_CLLARGEINTEGER);
         this.stringClass = this.vm.image.objectFromOop(NoteTaker.OOP_CLSTRING);
         this.compiledMethodClass = this.vm.image.objectFromOop(NoteTaker.OOP_CLCOMPILEDMETHOD);
         this.uniqueStringClass = this.vm.image.objectFromOop(NoteTaker.OOP_CLUNIQUESTRING);
@@ -2132,8 +2134,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
         // returns true if it succeeds
         this.success = true;
         switch (lobits) {
-            case 0x0: return this.popNandPushIfOK(2, this.objectAt(true,true,false)); // at:
-            case 0x1: return this.popNandPushIfOK(3, this.objectAtPut(true,true,false)); // at:put:
+            case 0x0: return this.popNandPushIfOK(2, this.objectAt()); // at:
+            case 0x1: return this.popNandPushIfOK(3, this.objectAtPut()); // at:put:
             //case 0x2: return false; // next
             //case 0x3: return false; // nextPut:
             case 0x4: return this.popNandPushIfOK(1, this.objectSize()); // length
@@ -2171,13 +2173,10 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 13: return this.popNandPushIfOK(2,this.doBitXor());  // SmallInt.bitXor
             case 14: return this.popNandPushIfOK(2,this.doBitAnd());  // SmallInt.bitAnd
             case 15: return this.popNandPushIfOK(2,this.doBitOr());  // SmallInt.bitOr
-            case 18: return false; // next;
-            case 19: return false; // next <-
-            case 20: return false;
-            case 21: return false; // primitiveAddLargeIntegers
-            case 22: return false; // primitiveSubtractLargeIntegers
-            case 23: return false; // primitiveLessThanLargeIntegers
-            case 24: return false; // primitiveGreaterThanLargeIntegers
+            case 18: return false; // Stream.next
+            case 19: return false; // Stream.next←
+            case 20: return false; // ???
+            case 24: return this.popNandPushIfOK(1,this.vm.getClass(this.vm.top())); // class
             case 25: return this.primitiveRemoteCopy(argCount); // Process.remoteCopy
             case 26: return this.primitiveValue(argCount); // RemoteCode.value
             case 27: return this.primitiveNew(argCount); // argCount = 0 fixed size
@@ -2188,6 +2187,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 35: {var f = this.stackFloat(0); return this.popNandPushFloatIfOK(1, f - (f|0));} // primitiveFractionPart
             case 36: return this.popNandPushIntIfOK(1, this.vm.getHash(this.stackNonInteger(0))); // Object.hash
             case 39: return this.primitiveValueGets(argCount); // RemoteCode.value_
+            //case 38: primBecome 
             case 40: return this.primitiveCopyBits(argCount);  // BitBlt.callBLT
             case 41: return this.primitiveBeDisplayAndCursor(argCount); // BitBlt install for display
             case 45: return this.primitiveSaveImage(argCount);
@@ -2196,15 +2196,25 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 48: return this.primitivePerform(argCount); // Object>>perform:
             case 49: return this.popNandPushIntIfOK(1,999); // Object>>refct
             case 50: return false; // TextScanner>>scanword:
+            //case 51: String.alignForDisplay
+            //case 52: Object.growTo
             case 53: this.vm.popN(argCount); return true; // altoDoAnything
+            //case 54: purge
             case 55: return this.primitiveRunMethod(argCount);
+            //case 56: primEqual
+            //case 57: user.core
             case 58: return this.primitiveMousePoint(argCount);
             case 59: return true; //UserView.primCursorLoc←
             case 61: return this.primitiveKeyboardPeek(argCount);
             case 62: return this.primitiveKeyboardNext(argCount);
             case 66: return this.primitiveFileString(argCount);  //  co-opted from user primPort: 
             case 68: return this.primitiveMouseButtons(argCount);
+            case 71: return false; // primitiveTime
             case 200: return this.popNandPushFloatIfOK(1,Math.sqrt(this.stackFloat(0))); // primitiveSqrt
+            case 210: return this.popNandPushIfOK(2, this.makeLargeInt(this.stackLargeInt(0) + this.stackLargeInt(1))); // primitiveAddLargeIntegers
+            case 211: return this.popNandPushIfOK(2, this.makeLargeInt(this.stackLargeInt(0) - this.stackLargeInt(1))); // primitiveSubtractLargeIntegers
+            case 212: return this.pop2andPushBoolOK(2, this.stackLargeInt(0) < this.stackLargeInt(1)); // primitiveLessThanLargeIntegers
+            case 213: return this.pop2andPushBoolOK(2, this.stackLargeInt(0) > this.stackLargeInt(1)); // primitiveGreaterThanLargeIntegers
         }
         throw "primitive " + index + " not implemented yet";
         return false;
@@ -2239,26 +2249,22 @@ Object.subclass('users.bert.St78.vm.Primitives',
     stackInteger: function(nDeep) {
         return this.checkSmallInt(this.vm.stackValue(nDeep));
     },
-    stackPos16BitInt: function(nDeep) {
+    stackLargeInt: function(nDeep) {
         var stackVal = this.vm.stackValue(nDeep);
-        if (this.vm.isSmallInt(stackVal)) {
-            if (stackVal >= 0)
-                return stackVal;
-            this.success = false;
-            return 0;
-        }
-        return 0;  //FIXME - I think in st78 all calls to stackPos16BitInt can simply call stackInteger
+        if (this.vm.isSmallInt(stackVal))
+            return stackVal;
+        if (stackVal.stClass === this.largeIntegerClass) {
+            var large = stackVal.largeIntegerValue();
+            if (large >= -0x80000000 && large <= 0x7FFFFFFF)
+                return large;
+        } 
+        this.success = false;
+        return 0;
     },
     popNandPushIntIfOK: function(nToPop, returnValue) {
         if (!this.success) return false; 
         if (this.vm.canBeSmallInt(returnValue)) return this.popNandPushIfOK(nToPop, returnValue);
         return false; 
-    },
-    pos16BitIntFor: function(pos16Val) {
-        // Return the 16-bit quantity as a positive 16-bit integer
-        if (pos16Val >= 0)
-            if (this.vm.canBeSmallInt(pos16Val)) return pos16Val;
-        debugger; throw "large ints not implemented yet"
     },
     stackIntOrFloat: function(nDeep) {
         var obj = this.vm.stackValue(nDeep);
@@ -2358,6 +2364,28 @@ Object.subclass('users.bert.St78.vm.Primitives',
         stString.bytes = bytes;
         return stString;
     },
+    makeLargeInt: function(integer) {
+        if (integer < -0x80000000 || integer > 0x7FFFFFFF) {
+            this.success = false;
+            return 0;
+        }
+        var negative = integer < 0,
+            bytes = [];
+        if (negative) integer = -integer;
+        while (integer) {bytes.push(integer & 0xFF); integer = integer >> 8}
+        var natural = this.vm.instantiateClass(this.naturalClass, bytes.length),
+            large = this.vm.instantiateClass(this.largeIntegerClass, 0);
+        natural.bytes = bytes;
+        large.pointers[NoteTaker.PI_LARGEINTEGER_BYTES] = natural;
+        large.pointers[NoteTaker.PI_LARGEINTEGER_NEG] = this.makeBoolean(negative);
+        return large;
+    },
+    makeLargeIfNeeded: function(integer) {
+        return this.vm.canBeSmallInt(integer) ? integer : this.makeLargeInt(integer);
+    },
+    makeBoolean: function(bool) {
+        return bool ? this.vm.trueObj : this.vm.falseObj;
+    },
     pointsTo: function(rcvr, arg) {
         if (!rcvr.pointers) return false;
         return rcvr.pointers.indexOf(arg) >= 0;
@@ -2378,19 +2406,17 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (obj.words) return obj.words.length;
         return obj.pointersSize() - obj.stClass.classInstSize();
     },
-    objectAt: function(cameFromBytecode, convertChars, includeInstVars) {
+    objectAt: function() {
         //Returns result of at: or sets success false
         var array = this.stackNonInteger(0);
-        var index = this.stackPos16BitInt(1); //note non-int returns zero
+        var index = this.stackLargeInt(1); //note non-int returns zero
         if (!this.success) return array;
         var info = this.atCache[(array.oop >> 1) & this.atCacheMask];
         if (info.array !== array)
-            info = this.makeAtCacheInfo(this.atCache, this.vm.specialSelectors[16], array, convertChars, includeInstVars);
+            info = this.makeAtCacheInfo(this.atCache, this.vm.specialSelectors[16], array);
         if (index < 1 || index > info.size) {this.success = false; return array;}
-        if (includeInstVars)  // pointers
-            return array.pointers[index-1];
         if (array.words) // words
-            return this.pos16BitIntFor(array.words[index-1]);
+            return this.makeLargeIfNeeded(array.words[index-1]);
         if (array.bytes) // bytes...
             return array.bytes[index-1];
         // comes last to not report pointers of compiled methods
@@ -2400,9 +2426,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
     primitiveInstField: function(argCount) {
         // Both instField: and instField: <-
-        debugger
         var rcvr = this.stackNonInteger(0);
-        var index = this.stackPos16BitInt(argCount); //args out of order ;-)
+        var index = this.stackLargeInt(argCount); //args out of order ;-)
         if (!this.success) return false;
         var instSize = rcvr.stClass.classInstSize();
         if (index < 1 || index > instSize) {this.success = false; return false;}
@@ -2411,24 +2436,22 @@ Object.subclass('users.bert.St78.vm.Primitives',
         rcvr.pointers[index-1] = objToPut;
         return objToPut; // instField: <-
     },
-    objectAtPut: function(cameFromBytecode, convertChars, includeInstVars) {
+    objectAtPut: function() {
         //Returns result of at:put: or sets success false
         var array = this.stackNonInteger(0);
-        var index = this.stackPos16BitInt(2); //note non-int returns zero
+        var index = this.stackLargeInt(2); //note non-int returns zero
         if (!this.success) return array;
         var info = this.atPutCache[(array.oop >> 1) & this.atCacheMask];
         if (info.array !== array)
-            info = this.makeAtCacheInfo(this.atPutCache, this.vm.specialSelectors[17], array, convertChars, includeInstVars);
+            info = this.makeAtCacheInfo(this.atPutCache, this.vm.specialSelectors[17], array);
         if (index<1 || index>info.size) {this.success = false; return array;}
         var objToPut = this.vm.stackValue(1);
-        if (includeInstVars)  // pointers
-            return array.pointers[index-1] = objToPut;
         if (array.pointers && !array.bytes) // pointers, but not compiled methods
             return array.pointers[index-1+info.ivarOffset] = objToPut;
         // words and bytes
         if (array.words) {  // words...
-            var wordToPut = this.stackPos16BitInt(1);
-            if (this.success) array.words[index-1] = wordToPut;
+            var wordToPut = this.stackLargeInt(1);
+            if (this.success) array.words[index-1] = wordToPut & 0xFFFF;
             return objToPut;
         }
         if (array.bytes) { // bytes...
@@ -2442,7 +2465,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var rcvr = this.vm.stackValue(0);
         var size = this.indexableSize(rcvr);
         if (size === -1) {this.success = false; return -1}; //not indexable
-        return size;
+        return this.makeLargeIfNeeded(size);
     },
     initAtCache: function() {
         // The purpose of the at-cache is to allow fast (bytecode) access to at/atput code
@@ -2464,25 +2487,17 @@ Object.subclass('users.bert.St78.vm.Primitives',
             this.atPutCache[i].array = null;
         }
     },
-    makeAtCacheInfo: function(atOrPutCache, atOrPutSelector, array, convertChars, includeInstVars) {
+    makeAtCacheInfo: function(atOrPutCache, atOrPutSelector, array) {
         //Make up an info object and store it in the atCache or the atPutCache.
-        //If it's not cacheable (not a non-super send of at: or at:put:)
+        //If it's not cacheable (it's a super send)
         //then return the info in nonCachedInfo.
-        //Note that info for objectAt (includeInstVars) will have
-        //a zero ivarOffset, and a size that includes the extra instVars
-        var cacheable = !this.vm.doSuper,           //not a super send
+        var cacheable = !this.vm.doSuper,
             instSize = array.stClass.classInstSize(),
             indexableSize = this.indexableSize(array),
             info = cacheable ? atOrPutCache[(array.oop >> 1) & this.atCacheMask] : this.nonCachedInfo;
         info.array = array;
-        info.convertChars = convertChars;
-        if (includeInstVars) {
-            info.size = instSize + indexableSize;
-            info.ivarOffset = 0;
-        } else {
-            info.size = indexableSize;
-            info.ivarOffset = instSize;
-        }
+        info.size = indexableSize;
+        info.ivarOffset = instSize;
         return info;
     },
 },
@@ -2828,7 +2843,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var stStringToStore, stringToStore,
             stringToReturn, stStringToReturn,
             remove = false;
-        debugger;
         if (argCount == 2) {
             // check for a string argument to store
             stStringToStore = this.stackNonInteger(1);
@@ -2934,7 +2948,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var seconds = date.getTime() / 1000 | 0;    // milliseconds -> seconds
         seconds -= date.getTimezoneOffset() * 60;   // make local time
         seconds += ((69 * 365 + 17) * 24 * 3600);   // adjust epoch from 1970 to 1901
-        return this.pos16BitIntFor(seconds);
+        return this.makeLargeIfNeeded(seconds);
     },
 });
 Object.subclass('users.bert.St78.vm.BitBlt',
