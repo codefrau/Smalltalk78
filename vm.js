@@ -2205,6 +2205,10 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 66: return this.primitiveFileString(argCount);  //  co-opted from user primPort: 
             case 68: return this.primitiveMouseButtons(argCount);
             case 200: return this.popNandPushFloatIfOK(1,Math.sqrt(this.stackFloat(0))); // primitiveSqrt
+            case 201: return this.popNandPushFloatIfOK(1,Math.cos(this.stackFloat(0))); // primitiveCos
+            case 202: return this.popNandPushFloatIfOK(1,Math.sin(this.stackFloat(0))); // primitiveSin
+            case 203: return this.popNandPushFloatIfOK(1,Math.tan(this.stackFloat(0))); // primitiveTan
+            case 204: return this.popNandPushFloatIfOK(1,Math.atan(this.stackFloat(0))); // primitiveArctan
         }
         throw "primitive " + index + " not implemented yet";
         return false;
