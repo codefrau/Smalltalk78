@@ -2537,6 +2537,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var rcvr = this.stackNonInteger(0);
         if (!this.success || !rcvr.isClass())
             return false;
+        this.vm.image.fullGC(); // force a GC so we don't get obsolete instances
         var inst = this.vm.image.someInstanceOf(rcvr),
             instances = [];
         while (inst) {
