@@ -2909,13 +2909,16 @@ Object.subclass('users.bert.St78.vm.Primitives',
             }
         } else { // otherwise, use our fileStrings
             if (remove) {
+                alertOK("deleting " + fName);
                 delete this.fileStrings[fName];
                 delete window.localStorage['notetaker:' + fName];
             } else if (stringToStore) {
+                alertOK("storing " + fName);
                 this.fileStrings[fName] = stringToStore;
                 window.localStorage['notetaker:' + fName] = stringToStore;
             } else {
                 if (fName.length) {
+                    alertOK("reading " + fName);
                     stringToReturn = this.fileStrings[fName];
                 } else { // if called without a filename, return a directory index as vector
                     vectorToReturn = Object.keys(this.fileStrings);
