@@ -2210,6 +2210,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 66: return this.primitiveFileString(argCount);  //  co-opted from user primPort: 
             case 68: return this.primitiveMouseButtons(argCount);
             case 71: return false; // primitiveTime
+            case 100: return this.primitiveAllInstances(argCount);
             case 200: return this.popNandPushFloatIfOK(1,Math.sqrt(this.stackFloat(0))); // primitiveSqrt
             case 201: return this.popNandPushFloatIfOK(1,Math.cos(this.stackFloat(0))); // primitiveCos
             case 202: return this.popNandPushFloatIfOK(1,Math.sin(this.stackFloat(0))); // primitiveSin
@@ -2360,13 +2361,28 @@ Object.subclass('users.bert.St78.vm.Primitives',
         newPoint.pointers[NoteTaker.PI_POINT_Y] = y;
         return newPoint;
     },
-    makeStString: function(jsString) {
+    makeStString: function(jsStringOrArray) {
         var bytes = [];
-        for (var i = 0; i < jsString.length; ++i)
-            bytes.push(jsString.charCodeAt(i) & 0xFF);
+        if (typeof jsStringOrArray == "string") {
+            for (var i = 0; i < jsStringOrArray.length; i++)
+                bytes.push(jsStringOrArray.charCodeAt(i) & 0xFF);
+        } else {
+            for (var i = 0; i < jsStringOrArray.length; i++)
+                bytes.push(jsStringOrArray[i] & 0xFF);
+        }
         var stString = this.vm.instantiateClass(this.stringClass, bytes.length);
         stString.bytes = bytes;
         return stString;
+    },
+    makeStVector: function(array) {
+        var vector = this.vm.instantiateClass(this.vectorClass, array.length);
+        for (var i = 0; i < array.length; i++) {
+            var obj = array[i];
+            if (typeof obj == "string")
+                obj = this.makeStString(obj);
+            vector.pointers[i] = obj;
+        }
+        return vector;
     },
     makeLargeInt: function(integer) {
         if (integer < -0x80000000 || integer > 0x7FFFFFFF) {
@@ -2515,6 +2531,19 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var selector = this.vm.pop();
         while (args.length) this.vm.push(args.pop());
         this.vm.send(selector, argCount - 1);
+        return true;
+    },
+    primitiveAllInstances: function(argCount) {
+        var rcvr = this.stackNonInteger(0);
+        if (!this.success || !rcvr.isClass())
+            return false;
+        var inst = this.vm.image.someInstanceOf(rcvr),
+            instances = [];
+        while (inst) {
+            instances.push(inst);
+            inst = this.vm.image.nextInstanceAfter(inst);
+        };
+        this.popNandPushIfOK(argCount + 1, this.makeStVector(instances));
         return true;
     },
     primitiveMakePoint: function(argCount) {
@@ -2895,16 +2924,9 @@ Object.subclass('users.bert.St78.vm.Primitives',
         // Return a string object with the byte array copied into it, or a new vector
         if (!(stStringToReturn || stVectorToReturn)) {
             if (vectorToReturn) {
-                stVectorToReturn = this.vm.image.instantiateClass(this.vectorClass, vectorToReturn.length, this.vm.nilObject);
-                for (var i = 0; i < vectorToReturn.length; i++) 
-                    stVectorToReturn.pointers[i] = this.makeStString(vectorToReturn[i]);
+                stVectorToReturn = this.makeStVector(vectorToReturn);
             } else if (stringToReturn) {
-                stStringToReturn = this.vm.image.instantiateClass(this.stringClass, stringToReturn.length, 0);
-                if (typeof stringToReturn == "string") {
-                    for (var i=0; i<stringToReturn.length; i++) stStringToReturn.bytes[i] = stringToReturn.charCodeAt(i);
-                } else {
-                    for (var i=0; i<stringToReturn.length; i++) stStringToReturn.bytes[i] = stringToReturn[i];
-                }
+                stStringToReturn = this.makeStString(stringToReturn);
             } else {
                 stStringToReturn = stStringToStore;
             }
