@@ -2841,11 +2841,14 @@ Object.subclass('users.bert.St78.vm.Primitives',
         // the fileStrings object contains strings stored from the image
         // (which are also persisted in localStorage) and files dropped onto this world.
         // They can be read using this primitive, co-opted from user primPort:
-        // If the filename starts with http we do a web get/put
+        // If argument is not a string, a vector containing all local filenames is returned  
+        // If the filename starts with http we do a web get/put and
+        // if it ends in a slash, answer a vector of linked files
         var fName = this.stackNonInteger(argCount).bytesAsRawString();
         if (!this.success) return false;
         var stStringToStore, stringToStore,
             stringToReturn, stStringToReturn,
+            vectorToReturn, stVectorToReturn,
             remove = false;
         if (argCount == 2) {
             // check for a string argument to store
@@ -2859,13 +2862,20 @@ Object.subclass('users.bert.St78.vm.Primitives',
          }
         // handle http first
         if (/http(s)?:/.test(fName)) {
-            var resource = new WebResource(fName); 
+            var resource = new WebResource(fName);
             if (stringToStore) {
                 alertOK("storing " + fName);
                 resource.put(stringToStore);
             } else {
                 alertOK("fetching " + fName);
                 stringToReturn = resource.get().content;
+                if (/\/$/.test(fName)) {    // ends in slash, get directory index
+                    var dirPath = resource.getURL().pathname,
+                        urls = stringToReturn.match(/href="[^"]*"/gi).collect(function(href){return href.match(/"([^"]*)"/)[1]});
+                    // got all the hrefs, find the ones in this dir and extract file names
+                    vectorToReturn = urls.select(function(url){return url.startsWith(dirPath)})
+                        .collect(function(path){return path.slice(dirPath.length)});
+                }
             }
         } else { // otherwise, use our fileStrings
             if (remove) {
@@ -2877,20 +2887,18 @@ Object.subclass('users.bert.St78.vm.Primitives',
             } else {
                 if (fName.length) {
                     stringToReturn = this.fileStrings[fName];
-                } else {
-                    // if called without a filename, return a directory index as vector
-                    var fNames = Object.keys(this.fileStrings),
-                        stVector = this.vm.image.instantiateClass(this.vectorClass, fNames.length, this.vm.nilObject);
-                    for (var i = 0; i < fNames.length; i++) 
-                        stVector.pointers[i] = this.makeStString(fNames[i]);
-                    this.popNandPushIfOK(argCount+1, stVector);
-                    return true;
+                } else { // if called without a filename, return a directory index as vector
+                    vectorToReturn = Object.keys(this.fileStrings);
                 }
             }
         }
-        // Return a string object with the byte array copied into it
-        if (!stStringToReturn) {
-            if (stringToReturn) {
+        // Return a string object with the byte array copied into it, or a new vector
+        if (!(stStringToReturn || stVectorToReturn)) {
+            if (vectorToReturn) {
+                stVectorToReturn = this.vm.image.instantiateClass(this.vectorClass, vectorToReturn.length, this.vm.nilObject);
+                for (var i = 0; i < vectorToReturn.length; i++) 
+                    stVectorToReturn.pointers[i] = this.makeStString(vectorToReturn[i]);
+            } else if (stringToReturn) {
                 stStringToReturn = this.vm.image.instantiateClass(this.stringClass, stringToReturn.length, 0);
                 if (typeof stringToReturn == "string") {
                     for (var i=0; i<stringToReturn.length; i++) stStringToReturn.bytes[i] = stringToReturn.charCodeAt(i);
@@ -2901,7 +2909,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
                 stStringToReturn = stStringToStore;
             }
         }
-        this.popNandPushIfOK(argCount+1, stStringToReturn);
+        this.popNandPushIfOK(argCount+1, stStringToReturn || stVectorToReturn);
         return true;
     },
 	millisecondClockValue: function() {
