@@ -3458,6 +3458,20 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
         }
         this.oldPC = this.scanner.pc;
     },
+    printInstVar: function(offset) {
+        if (!this.instVarNames) {
+            this.instVarNames = [];
+            if (this.vm.method === this.method) {
+                var cls = this.vm.receiver.stClass;
+                if (cls) cls.allInstVarNames().forEach(function(v){
+                    this.instVarNames.push(Strings.format("%s (%s)", this.instVarNames.length, v));
+                }.bind(this));
+            }
+        }
+        if (offset < this.instVarNames.length)
+            return this.instVarNames[offset];
+        return offset.toString();
+    },
     printLiteral: function(index) {
         var literals = this.method.pointers,
             literal = literals && literals[index];
@@ -3499,10 +3513,11 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
         this.print('pushLitRef: ' + index + ' (' + lit + ')');
     },
 	pushReceiver: function() {
-	    this.print('push: self');
+        this.print('push: self');
     },
     pushReceiverVariable: function(offset) { 
-    	this.print('pushInstVar: ' + offset);
+        var inst = this.printInstVar(offset);
+        this.print('pushInstVar: ' + inst);
     },
 	pushTemporaryVariable: function(offset) {
 	    this.print('pushArgOrTemp: ' + offset);
@@ -3515,7 +3530,8 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
         this.print((doPop ? 'pop' : 'store') + 'IntoLitRef: ' + index + ' (' + lit + ')');
     },
     storeIntoReceiverVariable: function(offset, doPop) { 
-    	this.print((doPop ? 'pop' : 'store') + 'IntoInstVar: ' + offset);
+        var inst = this.printInstVar(offset);
+        this.print((doPop ? 'pop' : 'store') + 'IntoInstVar: ' + inst);
     },
 	storeIntoTemporaryVariable: function(offset, doPop) {
 	    this.print((doPop ? 'pop' : 'store') + 'IntoArgOrTemp: ' + offset);
