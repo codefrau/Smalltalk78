@@ -708,6 +708,18 @@ Object.subclass('users.bert.St78.vm.Image',
                 return obj;
         }
     },
+    allInstancesOf: function(clsObj) {
+        if (typeof clsObj == "string")
+            clsObj = this.globalNamed(clsObj);
+        if (this.newSpaceCount > 0) this.fullGC();
+        var inst = this.someInstanceOf(clsObj),
+            instances = [];
+        while (inst) {
+            instances.push(inst);
+            inst = this.nextInstanceAfter(inst);
+        };
+        return instances;
+    },
 },
 'debugging',
 {
@@ -961,7 +973,7 @@ Object.subclass('users.bert.St78.vm.Object',
     bytesAsInteger: function() {
         // Return numeric value of my bytes
         var value = 0;
-        for (var i = this.bytes.length - 1; i >= 0; i--)
+        if (this.bytes) for (var i = this.bytes.length - 1; i >= 0; i--)
             value = value * 256 + this.bytes[i];
         return value;
     },
@@ -2537,13 +2549,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var rcvr = this.stackNonInteger(0);
         if (!this.success || !rcvr.isClass())
             return false;
-        this.vm.image.fullGC(); // force a GC so we don't get obsolete instances
-        var inst = this.vm.image.someInstanceOf(rcvr),
-            instances = [];
-        while (inst) {
-            instances.push(inst);
-            inst = this.vm.image.nextInstanceAfter(inst);
-        };
+        var instances = this.vm.image.allInstancesOf(rcvr);
         this.popNandPushIfOK(argCount + 1, this.makeStVector(instances));
         return true;
     },
