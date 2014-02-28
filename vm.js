@@ -2445,7 +2445,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (!this.success) return array;
         var info = this.atCache[(array.oop >> 1) & this.atCacheMask];
         if (info.array !== array)
-            info = this.makeAtCacheInfo(this.atCache, this.vm.specialSelectors[16], array);
+            info = this.makeAtCacheInfo(this.atCache, array);
         if (index < 1 || index > info.size) {this.success = false; return array;}
         if (array.words) // words
             return this.makeLargeIfNeeded(array.words[index-1]);
@@ -2463,7 +2463,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (!this.success) return false;
         var instSize = rcvr.stClass.classInstSize();
         if (index < 1 || index > instSize) {this.success = false; return false;}
-        if (argCount = 1) return rcvr.pointers[index-1]; // instField:
+        if (argCount < 2) return rcvr.pointers[index-1]; // instField:
         var objToPut = this.vm.stackValue(1);
         rcvr.pointers[index-1] = objToPut;
         return objToPut; // instField: <-
@@ -2475,7 +2475,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (!this.success) return array;
         var info = this.atPutCache[(array.oop >> 1) & this.atCacheMask];
         if (info.array !== array)
-            info = this.makeAtCacheInfo(this.atPutCache, this.vm.specialSelectors[17], array);
+            info = this.makeAtCacheInfo(this.atPutCache, array);
         if (index<1 || index>info.size) {this.success = false; return array;}
         var objToPut = this.vm.stackValue(1);
         if (array.pointers && !array.bytes) // pointers, but not compiled methods
@@ -2519,7 +2519,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             this.atPutCache[i].array = null;
         }
     },
-    makeAtCacheInfo: function(atOrPutCache, atOrPutSelector, array) {
+    makeAtCacheInfo: function(atOrPutCache, array) {
         //Make up an info object and store it in the atCache or the atPutCache.
         //If it's not cacheable (it's a super send)
         //then return the info in nonCachedInfo.
