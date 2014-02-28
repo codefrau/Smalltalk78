@@ -2389,7 +2389,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
     makeStVector: function(array) {
         var vector = this.vm.instantiateClass(this.vectorClass, array.length);
         for (var i = 0; i < array.length; i++)
-            vector.pointers[i] = this.makeStObj(array[i]);
+            vector.pointers[i] = this.makeStObject(array[i]);
         return vector;
     },
     makeStObject: function(obj) {
