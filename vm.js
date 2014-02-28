@@ -2388,13 +2388,21 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
     makeStVector: function(array) {
         var vector = this.vm.instantiateClass(this.vectorClass, array.length);
-        for (var i = 0; i < array.length; i++) {
-            var obj = array[i];
-            if (typeof obj == "string")
-                obj = this.makeStString(obj);
-            vector.pointers[i] = obj;
-        }
+        for (var i = 0; i < array.length; i++)
+            vector.pointers[i] = this.makeStObj(array[i]);
         return vector;
+    },
+    makeStObject: function(obj) {
+        if (obj === undefined || obj === null) return this.vm.nilObj;
+        if (obj === true) return this.vm.trueObj;
+        if (obj === false) return this.vm.falseObj;
+        if (obj.stClass) return obj;
+        if (typeof obj === "string") return this.makeStString(obj);
+        if (obj.constructor === Array) return this.makeStVector(obj);
+        if (typeof obj === "number")
+            if (obj === (obj|0)) return this.makeLargeIfNeeded(obj);
+            else return this.makeFloat(obj)
+        throw "cannot make smalltalk object";
     },
     makeLargeInt: function(integer) {
         if (integer < -0x80000000 || integer > 0x7FFFFFFF) {
@@ -2873,77 +2881,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
         };
         this.display.ctx.putImageData(this.displayPixels, 0, 0, this.cursorX, this.cursorY, 16, 16);
     },
-    primitiveFileString: function(argCount) {
-        // the fileStrings object contains strings stored from the image
-        // (which are also persisted in localStorage) and files dropped onto this world.
-        // They can be read using this primitive, co-opted from user primPort:
-        // If argument is not a string, a vector containing all local filenames is returned  
-        // If the filename starts with http we do a web get/put and
-        // if it ends in a slash, answer a vector of linked files
-        var fName = this.stackNonInteger(argCount).bytesAsRawString();
-        if (!this.success) return false;
-        var stStringToStore, stringToStore,
-            stringToReturn, stStringToReturn,
-            vectorToReturn, stVectorToReturn,
-            remove = false;
-        if (argCount == 2) {
-            // check for a string argument to store
-            stStringToStore = this.stackNonInteger(1);
-            if (!this.success) return false;
-            if (stStringToStore == this.vm.nilObj) remove = true;
-            else {
-                if (stStringToStore.stClass !== this.stringClass) return false;
-                stringToStore = stStringToStore.bytesAsRawString();
-            }
-         }
-        // handle http first
-        if (/http(s)?:/.test(fName)) {
-            var resource = new WebResource(fName);
-            if (stringToStore) {
-                alertOK("storing " + fName);
-                resource.put(stringToStore);
-            } else {
-                alertOK("fetching " + fName);
-                stringToReturn = resource.get().content;
-                if (/\/$/.test(fName)) {    // ends in slash, get directory index
-                    var dirPath = resource.getURL().pathname,
-                        urls = stringToReturn.match(/href="[^"]*"/gi).collect(function(href){return href.match(/"([^"]*)"/)[1]});
-                    // got all the hrefs, find the ones in this dir and extract file names
-                    vectorToReturn = urls.select(function(url){return url.startsWith(dirPath)})
-                        .collect(function(path){return path.slice(dirPath.length)});
-                }
-            }
-        } else { // otherwise, use our fileStrings
-            if (remove) {
-                alertOK("deleting " + fName);
-                delete this.fileStrings[fName];
-                delete window.localStorage['notetaker:' + fName];
-            } else if (stringToStore) {
-                alertOK("storing " + fName);
-                this.fileStrings[fName] = stringToStore;
-                window.localStorage['notetaker:' + fName] = stringToStore;
-            } else {
-                if (fName.length) {
-                    alertOK("reading " + fName);
-                    stringToReturn = this.fileStrings[fName];
-                } else { // if called without a filename, return a directory index as vector
-                    vectorToReturn = Object.keys(this.fileStrings);
-                }
-            }
-        }
-        // Return a string object with the byte array copied into it, or a new vector
-        if (!(stStringToReturn || stVectorToReturn)) {
-            if (vectorToReturn) {
-                stVectorToReturn = this.makeStVector(vectorToReturn);
-            } else if (stringToReturn) {
-                stStringToReturn = this.makeStString(stringToReturn);
-            } else {
-                stStringToReturn = stStringToStore;
-            }
-        }
-        this.popNandPushIfOK(argCount+1, stStringToReturn || stVectorToReturn);
-        return true;
-    },
 	millisecondClockValue: function() {
         //Return the value of the millisecond clock as an integer.
         //Note that the millisecond clock wraps around periodically.
@@ -2993,6 +2930,79 @@ Object.subclass('users.bert.St78.vm.Primitives',
         seconds -= date.getTimezoneOffset() * 60;   // make local time
         seconds += ((69 * 365 + 17) * 24 * 3600);   // adjust epoch from 1970 to 1901
         return this.makeLargeIfNeeded(seconds);
+    },
+},
+'files', {
+    primitiveFileString: function(argCount) {
+        // the fileStrings object contains strings stored from the image
+        // (which are also persisted in localStorage) and files dropped onto this world.
+        // They can be read using this primitive, co-opted from user primPort:
+        // If argument is not a string, a vector containing all local filenames is returned  
+        // If the filename starts with http we do a web get/put and
+        // if it ends in a slash, answer a vector of linked files
+        var fName = this.stackNonInteger(argCount).bytesAsRawString();
+        if (!this.success) return false;
+        var stStringToStore, stringToStore,
+            stringToReturn, stStringToReturn,
+            vectorToReturn, stVectorToReturn,
+            remove = false, result;
+        if (argCount == 2) {
+            // check for a string argument to store
+            stStringToStore = this.stackNonInteger(1);
+            if (!this.success) return false;
+            if (stStringToStore == this.vm.nilObj) remove = true;
+            else {
+                if (stStringToStore.stClass !== this.stringClass) return false;
+                stringToStore = stStringToStore.bytesAsRawString();
+            }
+        }
+        if (remove) {
+            this.fileDelete(fName);
+        } else if (stringToStore) {
+            this.filePut(fName, stringToStore);
+        } else {
+            result = this.fileGet(fName);
+        }
+        // Return a string object with the byte array copied into it, or a new vector
+        this.popNandPushIfOK(argCount+1, this.makeStObject(result));
+        return true;
+    },
+    fileGet: function(fileName) {
+        // read from this.fileStrings
+        // If the filename starts with http do a web get
+        var stringToReturn;
+        if (/http(s)?:/.test(fileName)) {
+            alertOK("fetching " + fileName);
+            stringToReturn = new WebResource(fileName).get().content;
+        } else { // otherwise, use our fileStrings
+            alertOK("reading " + fileName);
+            stringToReturn = this.fileStrings[fileName];
+        }
+        return this.crlf(stringToReturn)
+    },
+    filePut: function(fileName, stringToStore) {
+        // write to this.fileStrings and window.localStorage
+        // If the filename starts with http do a web put
+        stringToStore = this.crlf(stringToStore);
+        if (/http(s)?:/.test(fileName)) {
+            alertOK("storing " + fileName);
+            new WebResource(fileName).put(stringToStore);
+        } else { // otherwise, use our fileStrings
+            alertOK("storing " + fileName);
+            this.fileStrings[fileName] = stringToStore;
+            window.localStorage['notetaker:' + fileName] = stringToStore;
+        }
+    },
+    fileDelete: function(fileName) {
+        // Remove fileName from this.fileStrings and window.localStorage
+        alertOK("deleting " + fileName);
+        delete this.fileStrings[fileName];
+        delete window.localStorage['notetaker:' + fileName];
+    },
+    crlf: function(string) {
+        //conversion disabled for now
+        //return string.replace(/[\r\n]/g, function(c){return c == '\n' ? '\r' : '\n'});
+        return string;
     },
 });
 Object.subclass('users.bert.St78.vm.BitBlt',
