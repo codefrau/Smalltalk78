@@ -2943,8 +2943,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var fName = this.stackNonInteger(argCount).bytesAsRawString();
         if (!this.success) return false;
         var stStringToStore, stringToStore,
-            stringToReturn, stStringToReturn,
-            vectorToReturn, stVectorToReturn,
             remove = false, result;
         if (argCount == 2) {
             // check for a string argument to store
@@ -2970,23 +2968,40 @@ Object.subclass('users.bert.St78.vm.Primitives',
     fileGet: function(fileName) {
         // read from this.fileStrings
         // If the filename starts with http do a web get
-        var stringToReturn;
+        // if fileName is empty or ends in slash, answer array of files
+        var result;
         if (/http(s)?:/.test(fileName)) {
             alertOK("fetching " + fileName);
-            stringToReturn = new WebResource(fileName).get().content;
+            var resource = new WebResource(fileName); 
+            result = resource.get().content;
+            if (/\/$/.test(fileName)) {    // ends in slash, get directory index
+                var dirPath = resource.getURL().pathname,
+                    urls = result.match(/href="[^"]*"/gi).collect(function(href){return href.match(/"([^"]*)"/)[1]});
+                // got all the hrefs, find the ones in this dir and extract file names
+                result = urls.select(function(url){return url.startsWith(dirPath)})
+                    .collect(function(path){return path.slice(dirPath.length)});
+            }
         } else { // otherwise, use our fileStrings
-            alertOK("reading " + fileName);
-            stringToReturn = this.fileStrings[fileName];
+            if (fileName.length) {
+                alertOK("reading " + fileName);
+                result = this.fileStrings[fileName];
+            } else { // if called without a filename, return a directory index as vector
+                result = Object.keys(this.fileStrings);
+            }
         }
-        return this.crlf(stringToReturn)
+        return result;
     },
     filePut: function(fileName, stringToStore) {
         // write to this.fileStrings and window.localStorage
         // If the filename starts with http do a web put
-        stringToStore = this.crlf(stringToStore);
         if (/http(s)?:/.test(fileName)) {
-            alertOK("storing " + fileName);
-            new WebResource(fileName).put(stringToStore);
+            new WebResource(fileName)
+                .beAsync()
+                .createProgressBar('Uploading ' + stringToStore.length + ' bytes ...')
+                .whenDone(function(content, status) {
+                    if (status.isSuccess()) alertOK("Uploaded to " + fileName);
+                    else alert("Upload failed")})
+                .put(stringToStore);
         } else { // otherwise, use our fileStrings
             alertOK("storing " + fileName);
             this.fileStrings[fileName] = stringToStore;
@@ -2998,11 +3013,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
         alertOK("deleting " + fileName);
         delete this.fileStrings[fileName];
         delete window.localStorage['notetaker:' + fileName];
-    },
-    crlf: function(string) {
-        //conversion disabled for now
-        //return string.replace(/[\r\n]/g, function(c){return c == '\n' ? '\r' : '\n'});
-        return string;
     },
 });
 Object.subclass('users.bert.St78.vm.BitBlt',
