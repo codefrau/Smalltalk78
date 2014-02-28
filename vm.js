@@ -2397,7 +2397,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (obj === true) return this.vm.trueObj;
         if (obj === false) return this.vm.falseObj;
         if (obj.stClass) return obj;
-        if (typeof obj === "string") return this.makeStString(obj);
+        if (typeof obj === "string" || obj.constructor === Uint8Array) return this.makeStString(obj);
         if (obj.constructor === Array) return this.makeStVector(obj);
         if (typeof obj === "number")
             if (obj === (obj|0)) return this.makeLargeIfNeeded(obj);
@@ -2995,6 +2995,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         // write to this.fileStrings and window.localStorage
         // If the filename starts with http do a web put
         if (/http(s)?:/.test(fileName)) {
+            console.log('Uploding ' + stringToStore.length + ' bytes to ' + fileName);
             new WebResource(fileName)
                 .beAsync()
                 .createProgressBar('Uploading ' + stringToStore.length + ' bytes ...')
