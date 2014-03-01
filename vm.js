@@ -1548,7 +1548,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         return function unfreeze() {
             this.frozen = false;
             if (!continueFunc) throw "no continue function";
-            continueFunc();
+            continueFunc(0);    //continue without timeout
         }.bind(this);
     },
     doStore: function (value, addrByte) {
@@ -2435,6 +2435,13 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var inactivityMS = Date.now() - this.display.timeStamp;
         return inactivityMS;
     },
+    asUint8Array: function(string) {
+        if (string.constructor == Uint8Array) return string;
+        var array = new Uint8Array(string.length);
+        for (var i = 0; i < string.length; i++)
+            array[i] = string.charCodeAt(i);
+        return array;
+    },
 },
 'indexing', {
     indexableSize: function(obj) {
@@ -2943,7 +2950,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var fName = this.stackNonInteger(argCount).bytesAsRawString();
         if (!this.success) return false;
         var stStringToStore, stringToStore,
-            remove = false, result;
+            remove = false;
         if (argCount == 2) {
             // check for a string argument to store
             stStringToStore = this.stackNonInteger(1);
@@ -2959,50 +2966,75 @@ Object.subclass('users.bert.St78.vm.Primitives',
         } else if (stringToStore) {
             this.filePut(fName, stringToStore);
         } else {
-            result = this.fileGet(fName);
+            // must be async
+            debugger;
+            this.fileGet(fName, function(result) {
+                this.popNandPushIfOK(argCount+1, this.makeStObject(result));
+            }.bind(this));
+            return true;
         }
-        // Return a string object with the byte array copied into it, or a new vector
-        this.popNandPushIfOK(argCount+1, this.makeStObject(result));
+        this.popNandPushIfOK(argCount+1, this.vm.nilObj);
         return true;
     },
-    fileGet: function(fileName) {
+    fileGet: function(fileName, thenDo) {
         // read from this.fileStrings
         // If the filename starts with http do a web get
         // if fileName is empty or ends in slash, answer array of files
         var result;
         if (/http(s)?:/.test(fileName)) {
             alertOK("fetching " + fileName);
-            var resource = new WebResource(fileName); 
-            result = resource.get().content;
-            if (/\/$/.test(fileName)) {    // ends in slash, get directory index
-                var dirPath = resource.getURL().pathname,
-                    urls = result.match(/href="[^"]*"/gi).collect(function(href){return href.match(/"([^"]*)"/)[1]});
-                // got all the hrefs, find the ones in this dir and extract file names
-                result = urls.select(function(url){return url.startsWith(dirPath)})
-                    .collect(function(path){return path.slice(dirPath.length)});
+            var isDir = /\/$/.test(fileName),  // ends in slash
+                unfreeze = this.vm.freeze(),   // freeze VM until we get result
+                xhr = new XMLHttpRequest();
+            xhr.open("get", fileName, true);
+            if (!isDir) xhr.responseType = "arraybuffer";
+            xhr.onreadystatechange = function() {
+                if (this.readyState != this.DONE) return;
+                debugger;
+                if (this.status == 200) {
+                    if (isDir) {
+                        console.log("Got " + this.responseText.length + " bytes from " + fileName);
+                        var urls = this.responseText.match(/href="[^"]*"/gi).collect(function(href){return href.match(/"([^"]*)"/)[1]}),
+                            dirPath = fileName.match(/[^:]*:\/\/[^\/]*(\/.*\/)[^\/]*/)[1];
+                        // got all the hrefs, find the ones in this dir and extract file names
+                        result = urls.select(function(url){return url.startsWith(dirPath)})
+                            .collect(function(path){return path.slice(dirPath.length)});
+                    } else {
+                        console.log("Got " + this.response.byteLength + " bytes from " + fileName);
+                        result = new Uint8Array(this.response);
+                    }
+                } else {
+                    alert("Download failed (" + this.statusText + ") " + fileName);
+                }
+                unfreeze();
+                thenDo(result);
             }
+            xhr.send();
+            return;
         } else { // otherwise, use our fileStrings
             if (fileName.length) {
                 alertOK("reading " + fileName);
                 result = this.fileStrings[fileName];
+                console.log("Got " + result.length + " bytes");
             } else { // if called without a filename, return a directory index as vector
                 result = Object.keys(this.fileStrings);
             }
         }
+        if (thenDo) thenDo(result);
         return result;
     },
     filePut: function(fileName, stringToStore) {
         // write to this.fileStrings and window.localStorage
         // If the filename starts with http do a web put
         if (/http(s)?:/.test(fileName)) {
-            console.log('Uploding ' + stringToStore.length + ' bytes to ' + fileName);
+            console.log('Uploading ' + stringToStore.length + ' bytes to ' + fileName);
             new WebResource(fileName)
                 .beAsync()
                 .createProgressBar('Uploading ' + stringToStore.length + ' bytes ...')
                 .whenDone(function(content, status) {
                     if (status.isSuccess()) alertOK("Uploaded to " + fileName);
                     else alert("Upload failed")})
-                .put(stringToStore);
+                .put(this.asUint8Array(stringToStore));
         } else { // otherwise, use our fileStrings
             alertOK("storing " + fileName);
             this.fileStrings[fileName] = stringToStore;
