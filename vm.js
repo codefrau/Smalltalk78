@@ -2230,8 +2230,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 204: return this.popNandPushFloatIfOK(1,Math.atan(this.stackFloat(0))); // primitiveArctan
             case 210: return this.popNandPushIfOK(2, this.makeLargeInt(this.stackLargeInt(0) + this.stackLargeInt(1))); // primitiveAddLargeIntegers
             case 211: return this.popNandPushIfOK(2, this.makeLargeInt(this.stackLargeInt(0) - this.stackLargeInt(1))); // primitiveSubtractLargeIntegers
-            case 212: return this.pop2andPushBoolOK(2, this.stackLargeInt(0) < this.stackLargeInt(1)); // primitiveLessThanLargeIntegers
-            case 213: return this.pop2andPushBoolOK(2, this.stackLargeInt(0) > this.stackLargeInt(1)); // primitiveGreaterThanLargeIntegers
+            case 214: {var a = this.stackLargeInt(0), b = this.stackLargeInt(1); return this.popNandPushIfOK(2, a < b ? 1 : a == b ? 2 : 3)}; // primitiveCompareLargeInt
         }
         throw "primitive " + index + " not implemented yet";
         return false;
