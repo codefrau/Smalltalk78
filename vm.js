@@ -2989,11 +2989,10 @@ Object.subclass('users.bert.St78.vm.Primitives',
             if (!isDir) xhr.responseType = "arraybuffer";
             xhr.onreadystatechange = function() {
                 if (this.readyState != this.DONE) return;
-                debugger;
                 if (this.status == 200) {
                     if (isDir) {
                         console.log("Got " + this.responseText.length + " bytes from " + fileName);
-                        var urls = this.responseText.match(/href="[^"]*"/gi).collect(function(href){return href.match(/"([^"]*)"/)[1]}),
+                        var urls = this.responseText.match(/href="[^"]*"/gi).collect(function(href){return decodeURI(href.match(/"([^"]*)"/)[1])}),
                             dirPath = fileName.match(/[^:]*:\/\/[^\/]*(\/.*\/)[^\/]*/)[1];
                         // got all the hrefs, find the ones in this dir and extract file names
                         result = urls.select(function(url){return url.startsWith(dirPath)})
