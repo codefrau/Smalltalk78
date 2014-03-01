@@ -3071,20 +3071,28 @@ Object.subclass('users.bert.St78.vm.BitBlt',
     loadBits: function(bitsOop) {
         // make the bytes in bitOop accessible as a word array
         if (!bitsOop.bitBltAcccessor) {
-            // convert its bytes to a Uint8Array
-            if (!bitsOop.bytes.buffer)
-                bitsOop.bytes = new Uint8Array(bitsOop.bytes);
-            // make a dataview on the same data buffer
-            var bytesAsWords = new DataView(bitsOop.bytes.buffer);
-            bitsOop.bitBltAcccessor = {
-                getWord: function(index) {
-                    if (index >= 0 && index * 2 < bytesAsWords.byteLength)
-                        return bytesAsWords.getUint16(index * 2);
-                    else return 0;
-                },
-                setWord: function(index, value) {
-                    if (index >= 0 && index * 2 < bytesAsWords.byteLength)
-                        bytesAsWords.setUint16(index * 2, value);
+            if (!bitsOop.bytes) { // certainly an error, but we'll play along ...
+                console.warn("BitBlt with empty form " + bitsOop.oop);
+                return {
+                    getWord: function(index) { return 0 },
+                    setWord: function(index, value) { }
+                }
+            } else {
+                // convert its bytes to a Uint8Array
+                if (!bitsOop.bytes.buffer)
+                    bitsOop.bytes = new Uint8Array(bitsOop.bytes);
+                // make a dataview on the same data buffer
+                var bytesAsWords = new DataView(bitsOop.bytes.buffer);
+                bitsOop.bitBltAcccessor = {
+                    getWord: function(index) {
+                        if (index >= 0 && index * 2 < bytesAsWords.byteLength)
+                            return bytesAsWords.getUint16(index * 2);
+                        else return 0;
+                    },
+                    setWord: function(index, value) {
+                        if (index >= 0 && index * 2 < bytesAsWords.byteLength)
+                            bytesAsWords.setUint16(index * 2, value);
+                    }
                 }
             }
         }
