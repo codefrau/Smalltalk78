@@ -552,6 +552,12 @@ Object.subclass('users.bert.St78.vm.Image',
             }
             obj = obj.nextObject;
         }
+        // finally, swap the oops so they stay with the pointer, not the object
+        for (var i = 0; i < n; i++) {
+            var temp = fromArray[i].oop;
+            fromArray[i].oop = toArray[i].oop;
+            toArray[i].oop = temp;
+        }
         this.vm.flushMethodCacheAfterBecome(mutations);
         return true;
     },
@@ -2200,8 +2206,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 34: return this.popNandPushFloatIfOK(1,this.stackFloat(0)|0); // primitiveIntegerPart
             case 35: {var f = this.stackFloat(0); return this.popNandPushFloatIfOK(1, f - (f|0));} // primitiveFractionPart
             case 36: return this.popNandPushIntIfOK(1, this.vm.getHash(this.stackNonInteger(0))); // Object.hash
+            case 38: return this.primitiveBecome(argCount); // Object.become() 
             case 39: return this.primitiveValueGets(argCount); // RemoteCode.value_
-            //case 38: primBecome 
             case 40: return this.primitiveCopyBits(argCount);  // BitBlt.callBLT
             case 41: return this.primitiveBeDisplayAndCursor(argCount); // BitBlt install for display
             case 45: return this.primitiveSaveImage(argCount);
@@ -2603,12 +2609,12 @@ Object.subclass('users.bert.St78.vm.Primitives',
             this.vm.flushMethodCache();
         return this.popNandPushIfOK(2, this.vm.instantiateClass(rcvr, size));
     },
-    doArrayBecome: function(doBothWays) {
-	    var rcvr = this.stackNonInteger(0);
+    primitiveBecome: function(argCount) {
+        if (argCount !== 2) return false;
+        var rcvr = this.stackNonInteger(0);
         var arg = this.stackNonInteger(1);
-    	if (!this.success) return rcvr;
-        this.success = this.vm.image.bulkBecome(rcvr.pointers, arg.pointers, doBothWays);
-        return rcvr;
+        if (!this.success) return false;
+        return this.vm.image.bulkBecome([rcvr], [arg], true);;
     },
 },
 'blocks', {
