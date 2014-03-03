@@ -3024,7 +3024,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
             if (fileName.length) {
                 alertOK("reading " + fileName);
                 result = this.fileStrings[fileName];
-                console.log("Got " + result.length + " bytes");
+                if (result) console.log("Got " + result.length + " bytes");
+                else console.log("File not found: " + fileName);
             } else { // if called without a filename, return a directory index as vector
                 result = Object.keys(this.fileStrings);
             }
