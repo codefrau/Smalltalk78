@@ -2610,7 +2610,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return this.popNandPushIfOK(2, this.vm.instantiateClass(rcvr, size));
     },
     primitiveBecome: function(argCount) {
-        if (argCount !== 2) return false;
+        if (argCount !== 1) return false;
         var rcvr = this.stackNonInteger(0);
         var arg = this.stackNonInteger(1);
         if (!this.success) return false;
