@@ -677,7 +677,7 @@ Object.subclass('users.bert.St78.vm.Image',
                     throw "attempt to tenure unreachable object";
             } else {
                 this.appendToOldObjects([anObject]); // just tenure the object
-                console.log("Unchecked tenure: " + anObject.stInstName());
+                console.log("Tenuring " + anObject.stInstName(32));
             }
         }
         return anObject.oop;
@@ -2751,6 +2751,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return true;
 	},
 	primitiveCopyBits: function(argCount) { // no rcvr class check, to allow unknown subclasses (e.g. under Turtle)
+        this.idleCounter = 0; // reset idle if there was drawing
         var bitbltObj = this.vm.stackValue(argCount);
         if (bitbltObj.pointers[NoteTaker.PI_BITBLT_SOURCEBITS].pointers || bitbltObj.pointers[NoteTaker.PI_BITBLT_DESTBITS].pointers)
             return this.bitBltCopyPointers(bitbltObj);
