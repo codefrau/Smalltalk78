@@ -393,8 +393,9 @@ Object.subclass('users.bert.St78.vm.Image',
         var removedObjects = this.removeUnmarkedOldObjects();
         this.appendToOldObjects(newObjects);
         this.relinkRemovedObjects(removedObjects);
-        console.log(Strings.format("GC: %s allocations, %s released, %s tenured, now %s total (%s bytes)", 
-            this.newSpaceCount, newObjects.length, removedObjects.length, this.oldSpaceCount, this.oldSpaceBytes));
+        console.log(Strings.format("GC: %s allocations, %s unchecked tenures, %s released, %s tenured, now %s total (%s bytes)", 
+            this.newSpaceCount, this.tenuresSinceLastGC, removedObjects.length, newObjects.length, this.oldSpaceCount, this.oldSpaceBytes));
+        this.tenuresSinceLastGC = 0;
         this.newSpaceCount = 0;
         this.nextTempOop = -2;
         this.gcCount++;
@@ -676,6 +677,7 @@ Object.subclass('users.bert.St78.vm.Image',
                     throw "attempt to tenure unreachable object";
             } else {
                 this.appendToOldObjects([anObject]); // just tenure the object
+                console.log("Unchecked tenure: " + anObject.stInstName());
             }
         }
         return anObject.oop;
@@ -2222,7 +2224,9 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 66: return this.primitiveFileString(argCount);  //  co-opted from user primPort: 
             case 68: return this.primitiveMouseButtons(argCount);
             case 71: return false; // primitiveTime
+            // the primitives below were not in the original Notetaker
             case 100: return this.primitiveAllInstances(argCount);
+            case 101: return this.primitiveClipboardText(argCount);
             case 200: return this.popNandPushFloatIfOK(1,Math.sqrt(this.stackFloat(0))); // primitiveSqrt
             case 201: return this.popNandPushFloatIfOK(1,Math.cos(this.stackFloat(0))); // primitiveCos
             case 202: return this.popNandPushFloatIfOK(1,Math.sin(this.stackFloat(0))); // primitiveSin
@@ -2737,11 +2741,12 @@ Object.subclass('users.bert.St78.vm.Primitives',
             if (typeof(this.display.clipboardString) !== 'string') return false;
             this.vm.popNandPush(1, this.makeStString(this.display.clipboardString));
         } else if (argCount === 1) { // write to clipboard
-            var stringObj = this.vm.top();
+            var stringObj = this.stackNonInteger(1);
             if (!stringObj.bytes) return false;
             this.display.clipboardString = stringObj.bytesAsString();
             this.display.clipboardStringChanged = true;
-            this.vm.pop();
+            this.vm.popNandPush(2, stringObj);
+            this.vm.breakOutOfInterpreter = true;       // so the system can get the string 
         }
         return true;
 	},
@@ -2966,7 +2971,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
             this.filePut(fName, stringToStore);
         } else {
             // must be async
-            debugger;
             this.fileGet(fName, function(result) {
                 this.popNandPushIfOK(argCount+1, this.makeStObject(result));
             }.bind(this));
