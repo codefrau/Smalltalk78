@@ -171,6 +171,68 @@ NoteTaker = {
     Keyboard_Cmd: 64,
     Mouse_All: 1 + 2 + 4,
     Keyboard_All: 8 + 16 + 32 + 64,
+
+    // keyboard map used inside the image
+    // same as vm.image.globalNamed('NTkbMap').bytes
+    kbMap: [
+        255, 91, 255, 110, 104, 103, 114, 255, 25, 61, 32, 109, 56, 121, 116, 173,
+        13, 46, 122, 106, 255, 9, 49, 255, 95, 59, 255, 98, 99, 102, 160, 29,
+        39, 108, 120, 57, 115, 119, 51, 158, 93, 44, 111, 105, 97, 113, 50, 30,
+        47, 45, 48, 117, 55, 54, 53, 8, 92, 112, 107, 118, 100, 101, 52, 29,
+        255, 123, 255, 78, 72, 71, 82, 255, 25, 43, 32, 77, 42, 89, 84, 173,
+        13, 62, 90, 74, 255, 9, 33, 255, 94, 58, 255, 66, 67, 70, 160, 29,
+        34, 76, 88, 40, 83, 87, 35, 22, 125, 60, 79, 73, 65, 81, 90, 30,
+        63, 21, 41, 85, 38, 126, 37, 8, 124, 80, 75, 86, 68, 69, 36, 255,
+        255, 91, 255, 78, 72, 71, 82, 255, 25, 61, 32, 77, 56, 89, 84, 173,
+        13, 46, 90, 74, 255, 9, 49, 255, 95, 59, 255, 66, 67, 70, 160, 29,
+        39, 76, 88, 57, 83, 87, 51, 158, 93, 44, 79, 73, 65, 81, 90, 30,
+        47, 45, 48, 85, 55, 54, 53, 8, 92, 80, 75, 86, 68, 69, 52, 255,
+        255, 7, 255, 14, 179, 7, 18, 255, 25, 6, 32, 182, 180, 25, 6, 173,
+        13, 18, 167, 165, 255, 9, 159, 255, 17, 3, 255, 166, 3, 6, 160, 29,
+        15, 153, 151, 149, 19, 145, 143, 255, 23, 1, 15, 150, 1, 17, 167, 30,
+        27, 137, 135, 21, 131, 129, 127, 8, 14, 138, 136, 134, 132, 130, 128, 255,
+        255, 249, 255, 245, 243, 30, 239, 255, 25, 14, 32, 246, 244, 242, 240, 173,
+        13, 233, 231, 229, 255, 9, 223, 255, 246, 3, 255, 230, 228, 226, 160, 24,
+        219, 217, 215, 213, 211, 209, 207, 22, 220, 218, 226, 214, 212, 210, 231, 30,
+        203, 201, 199, 197, 195, 193, 191, 8, 204, 202, 200, 198, 196, 194, 192, 192],
+    
+    // encoding of notetaker glyphs as printable unicode chars
+    toUnicode: {
+        '\x00': "␀",
+        '\x01': "≤",
+        '\x02': "␂",
+        '\x03': "▹",
+        '\x04': "␄",
+        '\x05': "√",
+        '\x06': "≡",
+        '\x07': "◦",
+        '\x08': "␈",
+        //'\x09': "␉",    // keep TAB
+        '\x0a': "␊",
+        '\x0b': "␋",
+        '\x0c': "␌",
+        '\x0d': "\n",   // CR becomes LF
+        '\x0e': "≠",
+        '\x0f': "↪",
+        '\x10': "◥",
+        '\x11': "⇑",
+        '\x12': "≥",
+        '\x13': "ⓢ",
+        '\x14': "◣",
+        '\x15': "¬",
+        '\x16': "∢",
+        '\x17': "⌾",
+        '\x18': "▱",
+        '\x19': "➲",
+        '\x1a': "␚",
+        '\x1b': "⇒",
+        '\x1c': "␜",
+        '\x1d': "◻︎",
+        '\x1e': "◢",
+        '\x1f': "␟",
+        '_'   : "←",
+        '^'   : "↑",
+    }    
 };
 
 Object.subclass('users.bert.St78.vm.ObjectTableReader',
@@ -342,7 +404,7 @@ Object.subclass('users.bert.St78.vm.Image',
             globalValues = this.globals.pointers[NoteTaker.PI_SYMBOLTABLE_VALUES].pointers;
         for (var i = 0; i < globalNames.length; i++) {
             if (globalNames[i].isNil) continue;
-            if (name == globalNames[i].bytesAsString())
+            if (name == globalNames[i].bytesAsUnicode())
                 return globalValues[i];
         }
     },
@@ -350,7 +412,7 @@ Object.subclass('users.bert.St78.vm.Image',
         var symbolClass = this.objectFromOop(NoteTaker.OOP_CLUNIQUESTRING),
             symbol = this.someInstanceOf(symbolClass);
         while (symbol) {
-            if (name.length == symbol.bytes.length && name == symbol.bytesAsString())
+            if (name.length == symbol.bytes.length && name == symbol.bytesAsUnicode())
                 return symbol;
             symbol = this.nextInstanceAfter(symbol);
         }
@@ -1104,16 +1166,17 @@ Object.subclass('users.bert.St78.vm.Object',
     }
 },
 'debugging', {
-    bytesAsString: function(maxLength) {
+    bytesAsUnicode: function(maxLength) {
         if (!this.bytes) return '';
         var bytes = this.bytes; // can be Uint8Array
         var n = bytes.length;
         if (maxLength && maxLength < n) n = maxLength;
         var chars = [];
         for (var i = 0; i < n; i++)  {
-            var char = bytes[i];
-            chars.push(char == 94 ? '↑' : char == 95 ? '←' : char >= 32 ? String.fromCharCode(char)
-                : '␀≤␂▹␄␅≡◦␈\x09\x0a␋␌\x0a≠↪◥⇑≥ⓢ◣¬∢⌾▱➲␚⇒␜␝◢␟'[char]);
+            var nt = bytes[i],
+                char = String.fromCharCode(nt),
+                unicode = NoteTaker.toUnicode[String.fromCharCode(nt)] || char;
+            chars.push(unicode);
         }
         var string = chars.join('');
         if (n < bytes.length)
@@ -1127,7 +1190,7 @@ Object.subclass('users.bert.St78.vm.Object',
     className: function() {
         var classNameObj = this.pointers[NoteTaker.PI_CLASS_TITLE];
         if (!classNameObj.stClass) return "???";
-        return classNameObj.bytesAsString();
+        return classNameObj.bytesAsUnicode();
     },
     stInstName: function(maxLength) {
         if (!this.stClass || !this.stClass.pointers) return "???";
@@ -1136,8 +1199,8 @@ Object.subclass('users.bert.St78.vm.Object',
         if (this.oop === NoteTaker.OOP_TRUE) return "true";
         if (this.isFloat) {var str = this.float.toString(); if (!/\./.test(str)) str += '.0'; return str; }
         if (this.isClass()) return "the " + this.className() + " class";
-        if (this.stClass.oop === NoteTaker.OOP_CLSTRING) return "'" + this.bytesAsString(maxLength||16) + "'";
-        if (this.stClass.oop === NoteTaker.OOP_CLUNIQUESTRING) return "#" + this.bytesAsString(maxLength||16);
+        if (this.stClass.oop === NoteTaker.OOP_CLSTRING) return "'" + this.bytesAsUnicode(maxLength||16) + "'";
+        if (this.stClass.oop === NoteTaker.OOP_CLUNIQUESTRING) return "#" + this.bytesAsUnicode(maxLength||16);
         if (this.stClass.oop === NoteTaker.OOP_CLLARGEINTEGER) return this.largeIntegerValue() + "L";
         if (this.stClass.oop === NoteTaker.OOP_CLNATURAL) return this.bytesAsInteger() + "N";
         if (this.stClass.oop === NoteTaker.OOP_CLPOINT) return this.stInstNames().join("⌾");
@@ -1241,7 +1304,7 @@ Object.subclass('users.bert.St78.vm.Object',
                 (function(table, i){
                     tableValues[i].stInstName = function() {
                         if (this === table.symbolTableRefAtIndex(i))
-                            return 'objref ' + table.symbolTableKeyAtIndex(i).bytesAsString();
+                            return 'objref ' + table.symbolTableKeyAtIndex(i).bytesAsUnicode();
                         delete this.stInstName; // cache is invalid
                         return 'objref ' + this.oop;
                     };
@@ -1668,7 +1731,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             lookupClass = this.activeProcessPointers[this.currentFrame + NoteTaker.FI_MCLASS].superclass();
         }
         var entry = this.findSelectorInClass(selector, argCountOrUndefined, lookupClass);
-        if (this.debugSelectors && this.debugSelectors.indexOf(selector.bytesAsString()) >= 0) debugger;
+        if (this.debugSelectors && this.debugSelectors.indexOf(selector.bytesAsUnicode()) >= 0) debugger;
         this.executeNewMethod(newRcvr, entry.method, entry.methodClass, entry.argCount, entry.primIndex);
     },
     findSelectorInClass: function(selector, argCountOrUndefined, startingClass) {
@@ -1699,7 +1762,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.push(this.primHandler.makeStString('MNU: ' + className + '>>' + selName));
         this.push(rcvr);
         if (this.breakOnMessageNotUnderstood)
-            this.breakNow('MNU: ' + startingClass.className() + '>>' + selector.bytesAsString());
+            this.breakNow('MNU: ' + startingClass.className() + '>>' + selector.bytesAsUnicode());
         return this.findSelectorInClass(this.errorSel, 1, startingClass);
     },
     lookupSelectorInDict: function(mDict, messageSelector) {
@@ -1959,7 +2022,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         var found;
         this.allMethodsDo(function(classObj, methodObj, selectorObj) {
             if (methodObj === aMethod)
-                return found = classObj.className() + '>>' + selectorObj.bytesAsString();
+                return found = classObj.className() + '>>' + selectorObj.bytesAsUnicode();
         });
         return found || "?>>?";
     },
@@ -2016,7 +2079,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         // classAndMethodString is 'Class>>method'
         var found;
         this.allMethodsDo(function(classObj, methodObj, selectorObj) {
-            var thisMethod = classObj.className() + '>>' + selectorObj.bytesAsString();
+            var thisMethod = classObj.className() + '>>' + selectorObj.bytesAsUnicode();
             if (classAndMethodString == thisMethod)
                 return found = methodObj;
         });
@@ -2454,6 +2517,14 @@ Object.subclass('users.bert.St78.vm.Primitives',
             array[i] = string.charCodeAt(i);
         return array;
     },
+    fromUnicode: function(string) {
+        for (var ntcode in NoteTaker.toUnicode) {
+            var unicode = NoteTaker.toUnicode[ntcode],
+                regExp = new RegExp(unicode, 'g');
+            string = string.replace(regExp, ntcode);
+        }
+        return string;
+    },
 },
 'indexing', {
     indexableSize: function(obj) {
@@ -2748,11 +2819,11 @@ Object.subclass('users.bert.St78.vm.Primitives',
 	primitiveClipboardText: function(argCount) {
         if (argCount === 0) { // read from clipboard
             if (typeof(this.display.clipboardString) !== 'string') return false;
-            this.vm.popNandPush(1, this.makeStString(this.display.clipboardString));
+            this.vm.popNandPush(1, this.makeStString(this.fromUnicode(this.display.clipboardString)));
         } else if (argCount === 1) { // write to clipboard
             var stringObj = this.stackNonInteger(1);
             if (!stringObj.bytes) return false;
-            this.display.clipboardString = stringObj.bytesAsString();
+            this.display.clipboardString = stringObj.bytesAsUnicode();
             this.display.clipboardStringChanged = true;
             this.vm.popNandPush(2, stringObj);
             this.vm.breakOutOfInterpreter = true;       // so the system can get the string 
@@ -3597,7 +3668,7 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
 	    this.print('pushArgOrTemp: ' + offset);
     },
     send: function(selector) {
-    	this.print( 'send: #' + (selector.bytesAsString ? selector.bytesAsString() : selector));
+    	this.print( 'send: #' + (selector.bytesAsUnicode ? selector.bytesAsUnicode() : selector));
     },
     storeIntoLiteralVariable: function(index, doPop) {
         var lit = this.printLiteral(index);
