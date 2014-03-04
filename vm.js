@@ -1547,6 +1547,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         // Stop the interpreter. Answer a function that can be
         // called to continue interpreting.
         var continueFunc = externalContinueFunc; // only needed if called from outside the interpreter
+        this.primHandler.displayFlush(); // make sure display is up to date
         this.frozen = true;
         this.breakOutOfInterpreter = function(thenDo) {
             if (!thenDo) throw "need function to restart interpreter";
