@@ -1288,7 +1288,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         console.log('st78: interpreter ready');
     },
     initConstants: function() {
-        this.millisecondClockMask = NoteTaker.MAX_INT >> 1; //keeps ms logic in small int range
+        this.millisecondClockMask = 0x7FFFFFFF;  // the largest primitively handled integer value.
     },
     loadImageState: function() {
         this.specialObjects = this.image.specialOopsVector.pointers;
@@ -2234,6 +2234,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             // the primitives below were not in the original Notetaker
             case 100: return this.primitiveAllInstances(argCount);
             case 101: return this.primitiveClipboardText(argCount);
+            case 102: return this.popNandPushIfOK(1, this.makeLargeIfNeeded(this.millisecondClockValue())); // primitiveTicks
             case 200: return this.popNandPushFloatIfOK(1,Math.sqrt(this.stackFloat(0))); // primitiveSqrt
             case 201: return this.popNandPushFloatIfOK(1,Math.cos(this.stackFloat(0))); // primitiveCos
             case 202: return this.popNandPushFloatIfOK(1,Math.sin(this.stackFloat(0))); // primitiveSin
@@ -2242,6 +2243,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 210: return this.popNandPushIfOK(2, this.makeLargeInt(this.stackLargeInt(0) + this.stackLargeInt(1))); // primitiveAddLargeIntegers
             case 211: return this.popNandPushIfOK(2, this.makeLargeInt(this.stackLargeInt(0) - this.stackLargeInt(1))); // primitiveSubtractLargeIntegers
             case 214: {var a = this.stackLargeInt(0), b = this.stackLargeInt(1); return this.popNandPushIfOK(2, a < b ? 1 : a == b ? 2 : 3)}; // primitiveCompareLargeInt
+
         }
         throw "primitive " + index + " not implemented yet";
         return false;
