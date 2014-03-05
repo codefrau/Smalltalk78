@@ -165,13 +165,15 @@ NoteTaker = {
     Mouse_Blue: 1,
     Mouse_Yellow: 2,
     Mouse_Red: 4,
-    Keyboard_Shift: 8,
-    Keyboard_Ctrl: 16,
-    Keyboard_Alt: 32,
-    Keyboard_Cmd: 64,
     Mouse_All: 1 + 2 + 4,
-    Keyboard_All: 8 + 16 + 32 + 64,
-
+    /* modifiers not implemented yet
+    Keyboard_Shift: 8, // ???
+    Keyboard_Ctrl: 16, // ???
+    Keyboard_Alt: 32, // ???
+    Keyboard_Cmd: 64, // ???
+    Keyboard_All: 8 + 16 + 32 + 64,  // ???
+    */
+    
     // keyboard map used inside the image
     // same as vm.image.globalNamed('NTkbMap').bytes
     kbMap: [
@@ -1571,16 +1573,16 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             case 0xA0: case 0xA1: case 0xA2: case 0xA3:
             case 0xA4: case 0xA5: case 0xA6: case 0xA7:
                 var delta = ((b&7) - 4) * 256 + this.nextByte();
-                if (delta < 0) this.checkForInterrupts();  //check on backward jumps (loops)
                 this.pc += delta;
+                if (delta < 0) this.checkForInterrupts();  //check on backward jumps (loops)
                 break;
             // Long jumps on false
             case 0xA8: case 0xA9: case 0xAA: case 0xAB: case 0xAC: case 0xAD: case 0xAE: case 0xAF:
                 var b2 = this.nextByte();
                 if (this.pop().isFalse) {
                     var delta = ((b&7) - 4) * 256 + b2;
-                    if (delta < 0) this.checkForInterrupts();  //check on backward jumps (loops)
                     this.pc += delta;
+                    if (delta < 0) this.checkForInterrupts();  //check on backward jumps (loops)
                 }
                 break;
 
@@ -1698,6 +1700,12 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     checkForInterrupts: function() {
         //Check for interrupts at sends and backward jumps
         if (this.interruptCheckCounter-- > 0) return; //only really check every 100 times or so
+        
+        if (this.primHandler.display.interrupt) {
+            this.primHandler.display.interrupt = false;
+            this.handleUserInterrupt();
+        }
+        
         var now = this.primHandler.millisecondClockValue();
         if (now < this.lastTick) { // millisecond clock wrapped
             this.breakOutTick = now + (this.breakOutTick - this.lastTick);
@@ -1715,6 +1723,12 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     	this.lastTick = now; //used to detect wraparound of millisecond clock
         if (now >= this.breakOutTick) // have to return to web browser once in a while
             this.breakOutOfInterpreter = this.breakOutOfInterpreter || true; // do not overwrite break string
+    },
+    handleUserInterrupt: function() {
+        // send error: 'user interrupt' to current receiver
+        this.push(this.primHandler.makeStString('user interrupt'));
+        this.push(this.receiver);
+        this.send(this.image.selectorNamed('error:'), 1);
     },
     sendSpecial: function(lobits) {
         this.send(this.specialSelectors[lobits], this.specialNargs[lobits]); 
@@ -1753,17 +1767,26 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             }  
             currentClass = currentClass.pointers[NoteTaker.PI_CLASS_SUPERCLASS];
         }
-        //Could not find the method -- send #error: with selector
-        if (selector === this.errorSel) // Cannot find #error: -- unrecoverable error.
-            throw "Recursive not understood error encountered";
-        var rcvr = this.pop(),
-            className = startingClass.pointers[NoteTaker.PI_CLASS_TITLE].bytesAsRawString(),
-            selName = selector.bytesAsRawString();
-        this.push(this.primHandler.makeStString('MNU: ' + className + '>>' + selName));
-        this.push(rcvr);
-        if (this.breakOnMessageNotUnderstood)
-            this.breakNow('MNU: ' + startingClass.className() + '>>' + selector.bytesAsUnicode());
-        return this.findSelectorInClass(this.errorSel, 1, startingClass);
+        if (false) { // set to true to use Smalltalk's own error handling
+            var errorSel = this.image.selectorNamed('error'); // put in initImageState() when removing the other case
+            if (selector === errorSel) // Cannot find #error -- unrecoverable error.
+                throw "Recursive not understood error encountered";
+            if (this.breakOnMessageNotUnderstood)
+                this.breakNow('MNU: ' + startingClass.className() + '>>' + selector.bytesAsUnicode());
+            return this.findSelectorInClass(errorSel, 0, startingClass);
+        } else {
+            //Could not find the method -- send #error: with selector
+            if (selector === this.errorSel) // Cannot find #error: -- unrecoverable error.
+                throw "Recursive not understood error encountered";
+            var rcvr = this.pop(),
+                className = startingClass.pointers[NoteTaker.PI_CLASS_TITLE].bytesAsRawString(),
+                selName = selector.bytesAsRawString();
+            this.push(this.primHandler.makeStString('MNU: ' + className + '>>' + selName));
+            this.push(rcvr);
+            if (this.breakOnMessageNotUnderstood)
+                this.breakNow('MNU: ' + startingClass.className() + '>>' + selector.bytesAsUnicode());
+            return this.findSelectorInClass(this.errorSel, 1, startingClass);
+        }
     },
     lookupSelectorInDict: function(mDict, messageSelector) {
         //Returns a method or nilObject
