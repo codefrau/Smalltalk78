@@ -2821,15 +2821,20 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.vm.wakeProcess(process);
         this.vm.popPCBP();
         // write file asynchronously
+        var imageName = window.localStorage['notetakerImageName'] || 'default.st78';
         window.webkitStorageInfo.requestQuota(PERSISTENT, 5*1024*1024, function(grantedBytes) {
             window.webkitRequestFileSystem(PERSISTENT, grantedBytes, function(fs) {
-                fs.root.getFile('default.st78', {create: true}, function(fileEntry) {
-                    fileEntry.createWriter(function(fileWriter) {
-                        fileWriter.onwriteend = function(e) {alertOK("Saved " + fileEntry.toURL())};
-                        fileWriter.onerror = function(e) {alert('Write failed: ' + e.toString());};
-                        fileWriter.write(new Blob([buffer]));
-                    }, function(e){alert("Cannot create file writer " + e)});
-                }, function(e){alert("Cannot create file entry " + e)});
+                $world.prompt("Save image as", function(imageName) {
+                    if (!imageName) return alert("not saved");
+                    window.localStorage['notetakerImageName'] = imageName;
+                    fs.root.getFile(imageName, {create: true}, function(fileEntry) {
+                        fileEntry.createWriter(function(fileWriter) {
+                            fileWriter.onwriteend = function(e) {alertOK("Saved " + fileEntry.toURL())};
+                            fileWriter.onerror = function(e) {alert('Write failed: ' + e.toString());};
+                            fileWriter.write(new Blob([buffer]));
+                        }, function(e){alert("Cannot create file writer " + e)});
+                    }, function(e){alert("Cannot create file entry " + e)});
+                }, imageName);
             }, function(e){alert("Cannot create file system " + e)});
         }, function(e){alert("Quota request denied " + e)});
         return true;
