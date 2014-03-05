@@ -22,7 +22,7 @@ module('users.bert.St78.vm').requires().toRun(function() {
  */
 
 
-NoteTaker = {
+NT = {
     OOP_NIL: 0,
     OOP_FALSE: 2,
     OOP_TRUE: 4,
@@ -376,7 +376,7 @@ Object.subclass('users.bert.St78.vm.Image',
                 if (prevObj) prevObj.nextObject = oopMap[oop];
                 prevObj = oopMap[oop];
             } else {
-                (oop & NoteTaker.OOP_MASK ? this.freeOops : this.freeClassOops)[oop] = true;
+                (oop & NT.OOP_MASK ? this.freeOops : this.freeClassOops)[oop] = true;
             }
         this.firstOldObject = oopMap[0];
         this.lastOldObject = prevObj;
@@ -386,16 +386,16 @@ Object.subclass('users.bert.St78.vm.Image',
     },
 
     initKnownObjects: function(oopMap) {
-        oopMap[NoteTaker.OOP_NIL].isNil = true;
-        oopMap[NoteTaker.OOP_TRUE].isTrue = true;
-        oopMap[NoteTaker.OOP_FALSE].isFalse = true;
-        this.globals = oopMap[NoteTaker.OOP_SMALLTALK];
-        this.userProcess = oopMap[NoteTaker.OOP_THEPROCESS];
+        oopMap[NT.OOP_NIL].isNil = true;
+        oopMap[NT.OOP_TRUE].isTrue = true;
+        oopMap[NT.OOP_FALSE].isFalse = true;
+        this.globals = oopMap[NT.OOP_SMALLTALK];
+        this.userProcess = oopMap[NT.OOP_THEPROCESS];
         this.specialOopsVector = this.globalNamed('SpecialOops');
     },
     initCompiledMethods: function(oopMap, doPatches) {
         // make proper pointer objects for literals encoded in bytes
-        var cmClass = this.objectFromOop(NoteTaker.OOP_CLCOMPILEDMETHOD, oopMap),
+        var cmClass = this.objectFromOop(NT.OOP_CLCOMPILEDMETHOD, oopMap),
             cm = this.someInstanceOf(cmClass);
         while (cm) {
             cm.methodInitLits(this, oopMap, doPatches);
@@ -403,8 +403,8 @@ Object.subclass('users.bert.St78.vm.Image',
         }
     },
     globalRefNamed: function(name) {
-        var globalNames = this.globals.pointers[NoteTaker.PI_SYMBOLTABLE_OBJECTS].pointers,
-            globalValues = this.globals.pointers[NoteTaker.PI_SYMBOLTABLE_VALUES].pointers;
+        var globalNames = this.globals.pointers[NT.PI_SYMBOLTABLE_OBJECTS].pointers,
+            globalValues = this.globals.pointers[NT.PI_SYMBOLTABLE_VALUES].pointers;
         for (var i = 0; i < globalNames.length; i++) {
             if (globalNames[i].isNil) continue;
             if (name == globalNames[i].bytesAsUnicode())
@@ -412,7 +412,7 @@ Object.subclass('users.bert.St78.vm.Image',
         }
     },
     selectorNamed: function(name) {
-        var symbolClass = this.objectFromOop(NoteTaker.OOP_CLUNIQUESTRING),
+        var symbolClass = this.objectFromOop(NT.OOP_CLUNIQUESTRING),
             symbol = this.someInstanceOf(symbolClass);
         while (symbol) {
             if (name.length == symbol.bytes.length && name == symbol.bytesAsUnicode())
@@ -421,12 +421,12 @@ Object.subclass('users.bert.St78.vm.Image',
         }
     },
     globalNamed: function(name) {
-        return this.globalRefNamed(name).pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE];
+        return this.globalRefNamed(name).pointers[NT.PI_OBJECTREFERENCE_VALUE];
     },
     smallifyLargeInts: function() {
         // visit every pointer field of every object, converting smallable LargeInts to Integers
         // We do this because the normal ST-76 range is +-32K
-        var lgIntClass = this.objectFromOop(NoteTaker.OOP_CLLARGEINTEGER),
+        var lgIntClass = this.objectFromOop(NT.OOP_CLLARGEINTEGER),
             obj = this.firstOldObject;
         while (obj) {
             var body = obj.pointers;
@@ -477,7 +477,7 @@ Object.subclass('users.bert.St78.vm.Image',
     },
     freeOopFor: function(anObj) {
         if (anObj.oop > 0) {
-            (anObj.oop & NoteTaker.OOP_MASK ? this.freeOops : this.freeClassOops)[anObj.oop] = true;
+            (anObj.oop & NT.OOP_MASK ? this.freeOops : this.freeClassOops)[anObj.oop] = true;
             anObj.oop = null;
         } else throw "attempt to free invalid oop";
     },
@@ -799,11 +799,11 @@ Object.subclass('users.bert.St78.vm.Image',
     variableClasses: function() {
         // enumerate classes to find all classes flagged as indexable in their instSize
         // this.variableClasses()
-        var clClass = this.objectFromOop(NoteTaker.OOP_CLCLASS),
+        var clClass = this.objectFromOop(NT.OOP_CLCLASS),
             cl = this.someInstanceOf(clClass),
             result = [];
         while (cl) {
-            if ((cl.pointers[NoteTaker.PI_CLASS_INSTSIZE] & NoteTaker.FMT_ISVARIABLE) > 0) result.push(cl);
+            if ((cl.pointers[NT.PI_CLASS_INSTSIZE] & NT.FMT_ISVARIABLE) > 0) result.push(cl);
             cl = this.nextInstanceAfter(cl);
         };
         return result
@@ -913,20 +913,20 @@ Object.subclass('users.bert.St78.vm.Object',
     },
     initFromImage: function(oopMap) {
         var stClass = this.objectFromOop(this.data.classOop, oopMap),
-            instSpec = stClass.pointers ? stClass.pointers[NoteTaker.PI_CLASS_INSTSIZE] :
-                stClass.data.body.getUint16(NoteTaker.PI_CLASS_INSTSIZE * 2) >> 1,
+            instSpec = stClass.pointers ? stClass.pointers[NT.PI_CLASS_INSTSIZE] :
+                stClass.data.body.getUint16(NT.PI_CLASS_INSTSIZE * 2) >> 1,
             bodyBytes = this.data.body && this.data.body.byteLength;
         this.stClass = stClass;
         if (bodyBytes) {
-            if (instSpec & NoteTaker.FMT_HASPOINTERS) { // pointers
+            if (instSpec & NT.FMT_HASPOINTERS) { // pointers
                 this.pointers = [];
                 for (var i = 0; i < bodyBytes; i+=2) {
                     var oop = this.data.body.getUint16(i);
                     var obj = this.objectFromOop(oop, oopMap);
                     this.pointers.push(obj);
                 }
-            } else if (instSpec & NoteTaker.FMT_HASWORDS) { // words
-                if (this.data.classOop === NoteTaker.OOP_CLFLOAT) {
+            } else if (instSpec & NT.FMT_HASWORDS) { // words
+                if (this.data.classOop === NT.OOP_CLFLOAT) {
                     this.isFloat = true;
                     this.float = this.data.body.getFloat64(0);
                 } else {
@@ -952,10 +952,10 @@ Object.subclass('users.bert.St78.vm.Object',
         var classOop = reader.classOfOop(this.oop);
         this.stClass = oopMap[classOop];
         var instSize = reader.fieldOfObject(3, classOop) >> 1;
-        var objBytes = instSize & NoteTaker.FMT_ISVARIABLE
-            ? reader.lengthBitsAtAddr(addr) : instSize & NoteTaker.FMT_BYTELENGTH;
+        var objBytes = instSize & NT.FMT_ISVARIABLE
+            ? reader.lengthBitsAtAddr(addr) : instSize & NT.FMT_BYTELENGTH;
         if (objBytes <= 2) return; // only class
-        if (instSize & NoteTaker.FMT_HASPOINTERS) { // pointers
+        if (instSize & NT.FMT_HASPOINTERS) { // pointers
             this.pointers = [];
             for (var i = 1; i < objBytes/2; i++) {
                 var oop = reader.fieldOfObject(i, this.oop);
@@ -963,13 +963,13 @@ Object.subclass('users.bert.St78.vm.Object',
                 var obj = this.objectFromOop(oop, oopMap);
                 this.pointers.push(obj);
             }
-        } else if (instSize & NoteTaker.FMT_HASWORDS) { // words
+        } else if (instSize & NT.FMT_HASWORDS) { // words
             this.words = [];
             for (var i = 1; i < objBytes/2; i++) {
                 var word = reader.fieldOfObject(i, this.oop);
                 this.words.push(word);
             }
-            if (classOop === NoteTaker.OOP_CLFLOAT) {
+            if (classOop === NT.OOP_CLFLOAT) {
                 this.isFloat = true;
                 this.float = this.wordsAsFloat();
             }
@@ -983,14 +983,14 @@ Object.subclass('users.bert.St78.vm.Object',
     },
     initInstanceOf: function(aClass, indexableSize, nilObj) {
         this.stClass = aClass;
-        var instSpec = aClass.pointers[NoteTaker.PI_CLASS_INSTSIZE];
-        if (instSpec & NoteTaker.FMT_HASPOINTERS) {
-            var instSize = ((instSpec & NoteTaker.FMT_BYTELENGTH) >> 1) - 1; // words, sans header
+        var instSpec = aClass.pointers[NT.PI_CLASS_INSTSIZE];
+        if (instSpec & NT.FMT_HASPOINTERS) {
+            var instSize = ((instSpec & NT.FMT_BYTELENGTH) >> 1) - 1; // words, sans header
             if (instSize + indexableSize > 0)
                 this.pointers = this.fillArray(instSize + indexableSize, nilObj);
         } else
             if (indexableSize > 0)
-                if (instSpec & NoteTaker.FMT_HASWORDS)
+                if (instSpec & NT.FMT_HASWORDS)
                     this.words = this.fillArray(indexableSize, 0); //Floats require further init of float value
                 else
                     this.bytes = this.fillArray(indexableSize, 0); //Methods require further init of pointers
@@ -1052,8 +1052,8 @@ Object.subclass('users.bert.St78.vm.Object',
     },
     largeIntegerValue: function() {
         // Return numeric value of a LargeInteger
-        var value = this.pointers[NoteTaker.PI_LARGEINTEGER_BYTES].bytesAsInteger();
-        if (this.pointers[NoteTaker.PI_LARGEINTEGER_NEG].isTrue) value = - value;
+        var value = this.pointers[NT.PI_LARGEINTEGER_BYTES].bytesAsInteger();
+        if (this.pointers[NT.PI_LARGEINTEGER_NEG].isTrue) value = - value;
         return value;
     },
     dataBytes: function() {
@@ -1067,7 +1067,7 @@ Object.subclass('users.bert.St78.vm.Object',
     totalBytes: function() { // size in bytes this object will take up in image snapshot
         var dataBytes = this.dataBytes(),
             dataWords = dataBytes+1 >> 1,
-            maxSmall = NoteTaker.OOP_TAG_SMALL,    // 0x1E
+            maxSmall = NT.OOP_TAG_SMALL,    // 0x1E
             headerWords = dataBytes < maxSmall ? 2 // oop, classOopAndSizeOrLargeTag (up to 30 bytes)
                 : dataBytes <= 0xFFFF ? 3          // oop, class oop, 2 bytes size (OOP_TAG_SMALL, 0x1E)
                 : 4;                               // oop, class oop, 4 bytes size (OOP_TAG_LARGE, 0x1F)
@@ -1124,13 +1124,13 @@ Object.subclass('users.bert.St78.vm.Object',
         data.setUint16(pos, this.oop); pos += 2;
         var byteSize = this.dataBytes();
         // write class oop and size in its lower 6 bits
-        if (byteSize < NoteTaker.OOP_TAG_SMALL) { // one word for class and size
+        if (byteSize < NT.OOP_TAG_SMALL) { // one word for class and size
            data.setUint16(pos, this.stClass.oop + byteSize);  pos += 2;
         } else if (byteSize <= 0xFFFF) { // two words, marked by 0x1E
-           data.setUint16(pos, this.stClass.oop + NoteTaker.OOP_TAG_SMALL);  pos += 2;
+           data.setUint16(pos, this.stClass.oop + NT.OOP_TAG_SMALL);  pos += 2;
            data.setUint16(pos, byteSize); pos += 2;
         } else { // three words, marked by 0x1F
-           data.setUint16(pos, this.stClass.oop + NoteTaker.OOP_TAG_LARGE);  pos += 2;
+           data.setUint16(pos, this.stClass.oop + NT.OOP_TAG_LARGE);  pos += 2;
            data.setUint32(pos, byteSize); pos += 4;
         }
         // now write data
@@ -1154,17 +1154,17 @@ Object.subclass('users.bert.St78.vm.Object',
 },
 'as class', {
     isClass: function() {
-        return this.stClass.oop === NoteTaker.OOP_CLCLASS
-            || this.stClass.oop === NoteTaker.OOP_CLVLENGTHCLASS;
+        return this.stClass.oop === NT.OOP_CLCLASS
+            || this.stClass.oop === NT.OOP_CLVLENGTHCLASS;
     },
     superclass: function() {
-        return this.pointers[NoteTaker.PI_CLASS_SUPERCLASS];
+        return this.pointers[NT.PI_CLASS_SUPERCLASS];
     },
     classInstSize: function() {
         // number of vars in my instances
-        var instSpec = this.pointers[NoteTaker.PI_CLASS_INSTSIZE];
-        if (instSpec & NoteTaker.FMT_HASPOINTERS)
-            return ((instSpec & NoteTaker.FMT_BYTELENGTH) >> 1) - 1; // words, sans header
+        var instSpec = this.pointers[NT.PI_CLASS_INSTSIZE];
+        if (instSpec & NT.FMT_HASPOINTERS)
+            return ((instSpec & NT.FMT_BYTELENGTH) >> 1) - 1; // words, sans header
         return 0;
     }
 },
@@ -1178,7 +1178,7 @@ Object.subclass('users.bert.St78.vm.Object',
         for (var i = 0; i < n; i++)  {
             var nt = bytes[i],
                 char = String.fromCharCode(nt),
-                unicode = NoteTaker.toUnicode[String.fromCharCode(nt)] || char;
+                unicode = NT.toUnicode[String.fromCharCode(nt)] || char;
             chars.push(unicode);
         }
         var string = chars.join('');
@@ -1191,22 +1191,22 @@ Object.subclass('users.bert.St78.vm.Object',
             this.stClass.constructor == users.bert.St78.vm.Object ? this.stInstName() : this.stClass);
     },
     className: function() {
-        var classNameObj = this.pointers[NoteTaker.PI_CLASS_TITLE];
+        var classNameObj = this.pointers[NT.PI_CLASS_TITLE];
         if (!classNameObj.stClass) return "???";
         return classNameObj.bytesAsUnicode();
     },
     stInstName: function(maxLength) {
         if (!this.stClass || !this.stClass.pointers) return "???";
-        if (this.oop === NoteTaker.OOP_NIL) return "nil";
-        if (this.oop === NoteTaker.OOP_FALSE) return "false";
-        if (this.oop === NoteTaker.OOP_TRUE) return "true";
+        if (this.oop === NT.OOP_NIL) return "nil";
+        if (this.oop === NT.OOP_FALSE) return "false";
+        if (this.oop === NT.OOP_TRUE) return "true";
         if (this.isFloat) {var str = this.float.toString(); if (!/\./.test(str)) str += '.0'; return str; }
         if (this.isClass()) return "the " + this.className() + " class";
-        if (this.stClass.oop === NoteTaker.OOP_CLSTRING) return "'" + this.bytesAsUnicode(maxLength||16) + "'";
-        if (this.stClass.oop === NoteTaker.OOP_CLUNIQUESTRING) return "#" + this.bytesAsUnicode(maxLength||16);
-        if (this.stClass.oop === NoteTaker.OOP_CLLARGEINTEGER) return this.largeIntegerValue() + "L";
-        if (this.stClass.oop === NoteTaker.OOP_CLNATURAL) return this.bytesAsInteger() + "N";
-        if (this.stClass.oop === NoteTaker.OOP_CLPOINT) return this.stInstNames().join("⌾");
+        if (this.stClass.oop === NT.OOP_CLSTRING) return "'" + this.bytesAsUnicode(maxLength||16) + "'";
+        if (this.stClass.oop === NT.OOP_CLUNIQUESTRING) return "#" + this.bytesAsUnicode(maxLength||16);
+        if (this.stClass.oop === NT.OOP_CLLARGEINTEGER) return this.largeIntegerValue() + "L";
+        if (this.stClass.oop === NT.OOP_CLNATURAL) return this.bytesAsInteger() + "N";
+        if (this.stClass.oop === NT.OOP_CLPOINT) return this.stInstNames().join("⌾");
         var className = this.stClass.className();
         return (/^[aeiou]/i.test(className) ? 'an ' : 'a ') + className;
     },
@@ -1223,7 +1223,7 @@ Object.subclass('users.bert.St78.vm.Object',
     allInstVarNames: function() {
         var superclass = this.superclass();
         var vars = superclass.isNil ? [] : superclass.allInstVarNames();
-        var string = this.pointers[NoteTaker.PI_CLASS_MYINSTVARS].bytesAsRawString();
+        var string = this.pointers[NT.PI_CLASS_MYINSTVARS].bytesAsRawString();
         // remove comments, make comma-separated, then split
         string = string.replace(/"[^"]*"/g, ' ');   // replace comments "..." with space
         string = string.replace(/\s+/g, ',');       // replace whitespace runs with comma 
@@ -1236,7 +1236,7 @@ Object.subclass('users.bert.St78.vm.Object',
 },
 'as method', {
     isCompiledMethod: function() {
-        return this.stClass.oop === NoteTaker.OOP_CLCOMPILEDMETHOD;
+        return this.stClass.oop === NT.OOP_CLCOMPILEDMETHOD;
     },
     methodInitLits: function(image, optionalOopMap, convertOops) {
         // make literals encoded as oops available as proper pointer objects
@@ -1291,7 +1291,7 @@ Object.subclass('users.bert.St78.vm.Object',
     },
     methodStartPC: function() {
         if (this.methodIsQuick()) return 0; 
-        return (this.bytes[1] & 126) - NoteTaker.PC_BIAS; // bias = 2 because 4-byte header became 2-byte for NT
+        return (this.bytes[1] & 126) - NT.PC_BIAS; // bias = 2 because 4-byte header became 2-byte for NT
     },
     methodEndPC: function() {
         if (this.methodIsQuick()) return 0; 
@@ -1300,7 +1300,7 @@ Object.subclass('users.bert.St78.vm.Object',
 },
 'as symbol table', {
     symbolTableLabelObjRefs: function(objRef) {
-        var tableValues = this.pointers[NoteTaker.PI_SYMBOLTABLE_VALUES].pointers;
+        var tableValues = this.pointers[NT.PI_SYMBOLTABLE_VALUES].pointers;
         for (var i = 0; i < tableValues.length; i++)
             if (!tableValues[i].isNil)
                 // cache in objRef's stInstName() function
@@ -1314,10 +1314,10 @@ Object.subclass('users.bert.St78.vm.Object',
                 })(this, i);
     },
     symbolTableKeyAtIndex: function(i) {
-        return this.pointers[NoteTaker.PI_SYMBOLTABLE_OBJECTS].pointers[i];
+        return this.pointers[NT.PI_SYMBOLTABLE_OBJECTS].pointers[i];
     },
     symbolTableRefAtIndex: function(i) {
-        return this.pointers[NoteTaker.PI_SYMBOLTABLE_VALUES].pointers[i];
+        return this.pointers[NT.PI_SYMBOLTABLE_VALUES].pointers[i];
     },
 });
 
@@ -1325,11 +1325,11 @@ Object.extend(users.bert.St78.vm.Object, {
     readFromBuffer: function(reader) {
         var oop = reader.nextUint16(),
             classOopAndSize = reader.nextUint16(),
-            byteSize = classOopAndSize & NoteTaker.OOP_MASK,
+            byteSize = classOopAndSize & NT.OOP_MASK,
             classOop = classOopAndSize - byteSize;
-        if (byteSize === NoteTaker.OOP_TAG_SMALL)
+        if (byteSize === NT.OOP_TAG_SMALL)
             byteSize = reader.nextUint16();
-        else if (byteSize === NoteTaker.OOP_TAG_LARGE)
+        else if (byteSize === NT.OOP_TAG_LARGE)
             byteSize = reader.nextUint32();
         var obj = new this(oop);
         obj.data = {
@@ -1364,11 +1364,11 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.specialNargs = [
             1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 
             1, 2, 0, 1, 0, 1, 1, 1,   0, 0, 0, 0, 1, 0, 0, 0 ];
-        this.nilObj = this.image.objectFromOop(NoteTaker.OOP_NIL);
-        this.falseObj = this.image.objectFromOop(NoteTaker.OOP_FALSE);
-        this.trueObj = this.image.objectFromOop(NoteTaker.OOP_TRUE);
-        this.integerClass = this.image.objectFromOop(NoteTaker.OOP_CLINTEGER);
-        this.classClass = this.image.objectFromOop(NoteTaker.OOP_CLCLASS);
+        this.nilObj = this.image.objectFromOop(NT.OOP_NIL);
+        this.falseObj = this.image.objectFromOop(NT.OOP_FALSE);
+        this.trueObj = this.image.objectFromOop(NT.OOP_TRUE);
+        this.integerClass = this.image.objectFromOop(NT.OOP_CLINTEGER);
+        this.classClass = this.image.objectFromOop(NT.OOP_CLCLASS);
         this.errorSel = this.image.selectorNamed('error:');
     },
     notetakerPatches: function(display) {
@@ -1386,26 +1386,26 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         // from which the NT image was cloned. 
         // The one thing that would have revealed this error, the lookup of new:, was sidestepped
         // in both my original 8086 code and Helge's Java VM.  Truly amazing  ;-)
-        this.image.objectFromOop(NoteTaker.OOP_CLSTRING).stClass =
-            this.image.objectFromOop(NoteTaker.OOP_CLVLENGTHCLASS);
-        this.image.objectFromOop(NoteTaker.OOP_CLUNIQUESTRING).stClass =
-            this.image.objectFromOop(NoteTaker.OOP_CLVLENGTHCLASS);
-        this.image.objectFromOop(NoteTaker.OOP_CLVECTOR).stClass =
-            this.image.objectFromOop(NoteTaker.OOP_CLVLENGTHCLASS);
-        this.image.objectFromOop(NoteTaker.OOP_CLPROCESS).stClass =
-            this.image.objectFromOop(NoteTaker.OOP_CLVLENGTHCLASS);
-        this.image.objectFromOop(NoteTaker.OOP_CLNATURAL).stClass =
-            this.image.objectFromOop(NoteTaker.OOP_CLVLENGTHCLASS);
-        this.image.objectFromOop(NoteTaker.OOP_CLCOMPILEDMETHOD).stClass =
-            this.image.objectFromOop(NoteTaker.OOP_CLVLENGTHCLASS);
+        this.image.objectFromOop(NT.OOP_CLSTRING).stClass =
+            this.image.objectFromOop(NT.OOP_CLVLENGTHCLASS);
+        this.image.objectFromOop(NT.OOP_CLUNIQUESTRING).stClass =
+            this.image.objectFromOop(NT.OOP_CLVLENGTHCLASS);
+        this.image.objectFromOop(NT.OOP_CLVECTOR).stClass =
+            this.image.objectFromOop(NT.OOP_CLVLENGTHCLASS);
+        this.image.objectFromOop(NT.OOP_CLPROCESS).stClass =
+            this.image.objectFromOop(NT.OOP_CLVLENGTHCLASS);
+        this.image.objectFromOop(NT.OOP_CLNATURAL).stClass =
+            this.image.objectFromOop(NT.OOP_CLVLENGTHCLASS);
+        this.image.objectFromOop(NT.OOP_CLCOMPILEDMETHOD).stClass =
+            this.image.objectFromOop(NT.OOP_CLVLENGTHCLASS);
 
         if (false) { // disabled because we need that 1 bit to 
                      // tell oops from ints in saved image 
             // Patch to make all LargeIntegers in range +-32K small again:
             this.image.smallifyLargeInts();
-            NoteTaker.MAX_INT =  0x7FFF;
-            NoteTaker.MIN_INT = -0x8000;
-            NoteTaker.NON_INT = -0x9000;
+            NT.MAX_INT =  0x7FFF;
+            NT.MIN_INT = -0x8000;
+            NT.NON_INT = -0x9000;
             
             // Patches to make +-32K integers work while NoteTaker is true
             this.patchByteCode(11994, 12, 0x7E); // Integer>>lshift:
@@ -1466,11 +1466,11 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         // Install a new active process and load sp, ready to restore other state
         this.activeProcess = proc;
         this.activeProcessPointers = this.activeProcess.pointers;
-        this.sp = (this.activeProcessPointers.length - this.activeProcessPointers[NoteTaker.PI_PROCESS_TOP]) - 1;
+        this.sp = (this.activeProcessPointers.length - this.activeProcessPointers[NT.PI_PROCESS_TOP]) - 1;
     },
     sleepProcess: function() {
         // Preserve state of sp in variable 'top' (after saving PC and BP)
-        this.activeProcessPointers[NoteTaker.PI_PROCESS_TOP] = (this.activeProcessPointers.length - this.sp) - 1;
+        this.activeProcessPointers[NT.PI_PROCESS_TOP] = (this.activeProcessPointers.length - this.sp) - 1;
         return this.activeProcess;
     },
     patchByteCode: function(oop, index, replacementByte, maybeByte2, maybeByte3, maybeByte4) {
@@ -1512,7 +1512,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             case 0x58: case 0x59: case 0x5A: case 0x5B: case 0x5C: case 0x5D: case 0x5E: case 0x5F:
             case 0x60: case 0x61: case 0x62: case 0x63: case 0x64: case 0x65: case 0x66: case 0x67:
             case 0x68: case 0x69: case 0x6A: case 0x6B: case 0x6C: case 0x6D: case 0x6E: case 0x6F:
-                this.push(this.methodLiteral(b - 0x40).pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE]); break;
+                this.push(this.methodLiteral(b - 0x40).pointers[NT.PI_OBJECTREFERENCE_VALUE]); break;
 
             // Quick loads
             case 0x70: this.nono(); break;
@@ -1556,7 +1556,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 				this.push(this.methodLiteral(this.nextByte()));
 				break;
 			case 0x8B:	// X LDLITI
-				this.push(this.methodLiteral(this.nextByte()).pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE]);
+				this.push(this.methodLiteral(this.nextByte()).pointers[NT.PI_OBJECTREFERENCE_VALUE]);
 				break;
 			case 0x8C:	// X SEND
 				this.send(this.methodLiteral(this.nextByte()));
@@ -1642,7 +1642,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 			case 0x4:	// store lit indirect
 			case 0x5:
 			case 0x6:
-		        this.methodLiteral(addrByte&0x3F).pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE] = value; break;
+		        this.methodLiteral(addrByte&0x3F).pointers[NT.PI_OBJECTREFERENCE_VALUE] = value; break;
             case 0x8:
 				// handle EXTENDED stores 0x88-0x8c
 				var extendedAddr = this.nextByte();
@@ -1654,7 +1654,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 				        this.activeProcessPointers[addr] = value; break;
 					case 0x8b:	// STO* X LDLITI
                         var oref = this.methodLiteral(extendedAddr);
-                        oref.pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE] = value; break
+                        oref.pointers[NT.PI_OBJECTREFERENCE_VALUE] = value; break
 					default:		// 0x8a (X LDLIT) and 0x8c (X SEND)
 						nono();
 				};
@@ -1746,7 +1746,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         //console.log("rcvr " + newRcvr + ", lookupClass= " + lookupClass);
         if (this.doSuper) {
             this.doSuper = false;
-            lookupClass = this.activeProcessPointers[this.bp + NoteTaker.FI_MCLASS].superclass();
+            lookupClass = this.activeProcessPointers[this.bp + NT.FI_MCLASS].superclass();
         }
         var entry = this.findSelectorInClass(selector, argCountOrUndefined, lookupClass);
         if (this.debugSelectors && this.debugSelectors.indexOf(selector.bytesAsUnicode()) >= 0) debugger;
@@ -1758,7 +1758,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         var currentClass = startingClass;
         var mDict;
         while (!currentClass.isNil) {
-            mDict = currentClass.pointers[NoteTaker.PI_CLASS_MDICT];
+            mDict = currentClass.pointers[NT.PI_CLASS_MDICT];
             if (mDict.isNil) throw "cannotInterpret";
             var newMethod = this.lookupSelectorInDict(mDict, selector);
             if (!newMethod.isNil) {
@@ -1769,7 +1769,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                 cacheEntry.argCount = argCountOrUndefined === undefined ? newMethod.methodNumArgs() : argCountOrUndefined;
                 return cacheEntry;
             }  
-            currentClass = currentClass.pointers[NoteTaker.PI_CLASS_SUPERCLASS];
+            currentClass = currentClass.pointers[NT.PI_CLASS_SUPERCLASS];
         }
         if (false) { // set to true to use Smalltalk's own error handling
             var errorSel = this.image.selectorNamed('error'); // put in initImageState() when removing the other case
@@ -1783,7 +1783,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             if (selector === this.errorSel) // Cannot find #error: -- unrecoverable error.
                 throw "Recursive not understood error encountered";
             var rcvr = this.pop(),
-                className = startingClass.pointers[NoteTaker.PI_CLASS_TITLE].bytesAsRawString(),
+                className = startingClass.pointers[NT.PI_CLASS_TITLE].bytesAsRawString(),
                 selName = selector.bytesAsRawString();
             this.push(this.primHandler.makeStString('MNU: ' + className + '>>' + selName));
             this.push(rcvr);
@@ -1794,8 +1794,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
     lookupSelectorInDict: function(mDict, messageSelector) {
         //Returns a method or nilObject
-        var selectors = mDict.pointers[NoteTaker.PI_MESSAGEDICT_OBJECTS].pointers,
-            methods = mDict.pointers[NoteTaker.PI_MESSAGEDICT_METHODS].pointers,
+        var selectors = mDict.pointers[NT.PI_MESSAGEDICT_OBJECTS].pointers,
+            methods = mDict.pointers[NT.PI_MESSAGEDICT_METHODS].pointers,
             index = this.getHash(messageSelector) % selectors.length;
         for (var i = 0; i < selectors.length; i++) {
             if (selectors[index] === messageSelector)
@@ -1827,7 +1827,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.pc = newMethod.methodStartPC();
         for (var i = 0; i < newMethod.methodNumTemps(); i++)
             this.push(this.nilObj); //  make room for temps and init them
-        this.receiver = overrideReceiver ? newRcvr : this.activeProcessPointers[this.bp + NoteTaker.FI_RECEIVER];
+        this.receiver = overrideReceiver ? newRcvr : this.activeProcessPointers[this.bp + NT.FI_RECEIVER];
         if (this.receiver !== newRcvr)
             throw "receivers don't match";
         if (this.sp < this.lowStackSize)
@@ -1838,7 +1838,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         // reverse of primitiveValue()
         var reply = this.pop();
         var returnFrame = (this.activeProcessPointers.length - this.pop());
-        var returnPC = this.pop() - NoteTaker.PC_BIAS;
+        var returnPC = this.pop() - NT.PC_BIAS;
         var rCode = this.pop(); // might want to check that we're in the same process
         /////// Whoosh //////
         this.bp = this.loadFromFrame(returnFrame);
@@ -1919,22 +1919,22 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 'frame', {
     currentFrameTempOrArg: function(tempIndex) {
         return tempIndex < this.methodNumArgs ? 
-            this.bp + NoteTaker.FI_LAST_ARG + (this.methodNumArgs - 1 - tempIndex) :
-            this.bp + NoteTaker.FI_FIRST_TEMP - (tempIndex - this.methodNumArgs);
+            this.bp + NT.FI_LAST_ARG + (this.methodNumArgs - 1 - tempIndex) :
+            this.bp + NT.FI_FIRST_TEMP - (tempIndex - this.methodNumArgs);
     },
     pushPCBP: function() {
         // Save the state of PC and BP on the stack
-        this.push(this.pc + NoteTaker.PC_BIAS);
+        this.push(this.pc + NT.PC_BIAS);
         this.push(this.bp - this.sp);  // delta relative to sp before the push
     },
     popPCBP: function() {
         // Load context frame from the stack
         this.bp = this.pop() + this.sp;  // + 1 because delta was computed before push
-        this.pc = this.pop() - NoteTaker.PC_BIAS;  // Bias due to NT shorter header
+        this.pc = this.pop() - NT.PC_BIAS;  // Bias due to NT shorter header
     },
     pushFrame: function(method, methodClass, argCount) {
-        var newFrame = this.sp - NoteTaker.FI_RECEIVER;
-        if (newFrame <= NoteTaker.PI_PROCESS_STACK)
+        var newFrame = this.sp - NT.FI_RECEIVER;
+        if (newFrame <= NT.PI_PROCESS_STACK)
             throw "stack overflow";
         this.push(methodClass);
         this.push(method);
@@ -1949,10 +1949,10 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
     loadFromFrame: function(aFrame) {
         // cache values from current frame in slots
-        this.method = this.activeProcessPointers[aFrame + NoteTaker.FI_METHOD];
+        this.method = this.activeProcessPointers[aFrame + NT.FI_METHOD];
         this.methodBytes = this.method.bytes;
-        this.methodNumArgs = this.activeProcessPointers[aFrame + NoteTaker.FI_NUMARGS];
-        this.receiver = this.activeProcessPointers[aFrame + NoteTaker.FI_RECEIVER];
+        this.methodNumArgs = this.activeProcessPointers[aFrame + NT.FI_NUMARGS];
+        this.receiver = this.activeProcessPointers[aFrame + NT.FI_RECEIVER];
         return aFrame;
     },
 },
@@ -2010,15 +2010,15 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             oldPointers = this.activeProcess.pointers, 
             oldLength = oldPointers.length,
             newLength = oldLength + delta;
-        if (newLength - NoteTaker.PI_PROCESS_STACK > this.maxStackSize)
+        if (newLength - NT.PI_PROCESS_STACK > this.maxStackSize)
             return false; // refuse to grow larger
-        console.log("Growing stack to " + (newLength - NoteTaker.PI_PROCESS_STACK));
+        console.log("Growing stack to " + (newLength - NT.PI_PROCESS_STACK));
         var newPointers = [];
-        for (var i = 0; i < NoteTaker.PI_PROCESS_STACK; i++)
+        for (var i = 0; i < NT.PI_PROCESS_STACK; i++)
             newPointers.push(oldPointers[i]);
         for (var i = 0; i < delta; i++)
             newPointers.push(this.nilObj);
-        for (var i = NoteTaker.PI_PROCESS_STACK; i < oldLength; i++)
+        for (var i = NT.PI_PROCESS_STACK; i < oldLength; i++)
             newPointers.push(oldPointers[i]);
         if (newPointers.length !== newLength) throw "stack growing error"
         this.sp += delta;
@@ -2036,7 +2036,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         return obj.stClass;
     },
     canBeSmallInt: function(anInt) {
-        return (anInt >= NoteTaker.MIN_INT) && (anInt <= NoteTaker.MAX_INT);
+        return (anInt >= NT.MIN_INT) && (anInt <= NT.MAX_INT);
     },
     isSmallInt: function(object) {
         return typeof object === "number";
@@ -2052,7 +2052,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         //check for lost bits by seeing if computation is reversible
         var shifted = bitsToShift<<shiftCount;
         if  ((shifted>>shiftCount) === bitsToShift) return shifted;
-        return NoteTaker.NON_INT;  //non-small result will cause failure
+        return NT.NON_INT;  //non-small result will cause failure
     },
 },
 'utils',
@@ -2061,7 +2061,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         return this.image.instantiateClass(aClass, indexableSize, this.nilObj);
     },
     getHash: function(object) {
-        return (this.image.objectToOop(object) >> 1) & NoteTaker.MAX_INT;
+        return (this.image.objectToOop(object) >> 1) & NT.MAX_INT;
     },
     arrayFill: function(array, fromIndex, toIndex, value) {
         // assign value to range from fromIndex (inclusive) to toIndex (exclusive)
@@ -2092,15 +2092,15 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
     allMethodsDo: function(callback) {
         // callback(classObj, methodObj, selectorObj) should return true to break out of iteration
-        var globals = this.image.globals.pointers[NoteTaker.PI_SYMBOLTABLE_VALUES].pointers;
+        var globals = this.image.globals.pointers[NT.PI_SYMBOLTABLE_VALUES].pointers;
         for (var i = 0; i < globals.length; i++) {
             var objRef = globals[i];
             if (!objRef.isNil) {
-                var cls = objRef.pointers[NoteTaker.PI_OBJECTREFERENCE_VALUE];
+                var cls = objRef.pointers[NT.PI_OBJECTREFERENCE_VALUE];
                 if (typeof cls === 'object' && cls.isClass()) {
-                    var mdict = cls.pointers[NoteTaker.PI_CLASS_MDICT];
-                    var selectors = mdict.pointers[NoteTaker.PI_MESSAGEDICT_OBJECTS].pointers;
-                    var methods = mdict.pointers[NoteTaker.PI_MESSAGEDICT_METHODS].pointers;
+                    var mdict = cls.pointers[NT.PI_CLASS_MDICT];
+                    var selectors = mdict.pointers[NT.PI_MESSAGEDICT_OBJECTS].pointers;
+                    var methods = mdict.pointers[NT.PI_MESSAGEDICT_METHODS].pointers;
                     for (var j = 0; j < methods.length; j++)
                         if (!methods[j].isNil)
                             if (callback.call(this, cls, methods[j], selectors[j]))
@@ -2123,16 +2123,16 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             while (sp++ < bp) { // look for remoteCode activations in stack of current frame
                 var rCode = process[sp];
                 if (rCode.stClass !== remoteCodeClass) continue;
-                if (rCode.pointers[NoteTaker.PI_RCODE_STACKOFFSET] === process.length - sp) {
-                    var homeBP = process.length - rCode.pointers[NoteTaker.PI_RCODE_FRAMEOFFSET],
-                        homeMethod = process[homeBP + NoteTaker.FI_METHOD];
+                if (rCode.pointers[NT.PI_RCODE_STACKOFFSET] === process.length - sp) {
+                    var homeBP = process.length - rCode.pointers[NT.PI_RCODE_FRAMEOFFSET],
+                        homeMethod = process[homeBP + NT.FI_METHOD];
                     stack = '[] in ' + this.printMethod(homeMethod) + '\n' + stack;
                     // continue with the frame that eval'ed this remoteCode
                     bp = process.length - process[sp - 2]; // stored BP
                 }
             }
-            var method = process[bp + NoteTaker.FI_METHOD],
-                deltaBP = process[bp + NoteTaker.FI_SAVED_BP] + 1;
+            var method = process[bp + NT.FI_METHOD],
+                deltaBP = process[bp + NT.FI_SAVED_BP] + 1;
             stack = this.printMethod(method) + '\n' + stack;
             if (deltaBP <= 1) return stack;
             bp += deltaBP;
@@ -2174,39 +2174,39 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         var ctx = this.activeProcessPointers,
             bp = this.bp,
             sp = this.sp,
-            numArgs = ctx[bp + NoteTaker.FI_NUMARGS],
-            numTemps = ctx[bp + NoteTaker.FI_METHOD].methodNumTemps();
+            numArgs = ctx[bp + NT.FI_NUMARGS],
+            numTemps = ctx[bp + NT.FI_METHOD].methodNumTemps();
         var stack = '';
         if (debugFrame) stack += Strings.format("\npc: %s sp: %s bp: %s numArgs: %s\n",
             this.pc, this.sp, this.bp, numArgs);
         for (var i = this.sp; i < ctx.length; i++) {
-            if (!debugFrame && bp + NoteTaker.FI_SAVED_BP <= i && bp + NoteTaker.FI_RECEIVER > i) continue;
+            if (!debugFrame && bp + NT.FI_SAVED_BP <= i && bp + NT.FI_RECEIVER > i) continue;
             var obj = ctx[i];
             var value = obj && obj.stInstName ? obj.stInstName(32) : obj;
             stack += Strings.format('\n[%s] %s%s', i,
-                bp + NoteTaker.FI_FIRST_TEMP - numTemps < i && i <= bp + NoteTaker.FI_FIRST_TEMP
+                bp + NT.FI_FIRST_TEMP - numTemps < i && i <= bp + NT.FI_FIRST_TEMP
                     ? ('temp' + (bp-1+numArgs-i) + '/t' + (bp+numArgs-i) + ': ') :
-                bp + NoteTaker.FI_SAVED_BP == i ? ' savedBP: ' :
-                bp + NoteTaker.FI_CALLER_PC == i ? 'callerPC: ' :
-                bp + NoteTaker.FI_NUMARGS == i ? ' numArgs: ' :
-                bp + NoteTaker.FI_METHOD == i ? '  method: ' :
-                bp + NoteTaker.FI_MCLASS == i ? '  mclass: ' :
-                bp + NoteTaker.FI_RECEIVER == i ? 'receiver: ' :
-                bp + NoteTaker.FI_RECEIVER < i && i <= bp + NoteTaker.FI_RECEIVER + numArgs 
+                bp + NT.FI_SAVED_BP == i ? ' savedBP: ' :
+                bp + NT.FI_CALLER_PC == i ? 'callerPC: ' :
+                bp + NT.FI_NUMARGS == i ? ' numArgs: ' :
+                bp + NT.FI_METHOD == i ? '  method: ' :
+                bp + NT.FI_MCLASS == i ? '  mclass: ' :
+                bp + NT.FI_RECEIVER == i ? 'receiver: ' :
+                bp + NT.FI_RECEIVER < i && i <= bp + NT.FI_RECEIVER + numArgs 
                     ? (' arg' + (bp+5+numArgs-i) + '/t' + (bp+6+numArgs-i) + ': ') :
                 sp == i ? '   sp ==> ' : 
                 '          ', value);
-            if (i >= bp + NoteTaker.FI_RECEIVER + numArgs && i+1 < ctx.length) {
+            if (i >= bp + NT.FI_RECEIVER + numArgs && i+1 < ctx.length) {
                 if (!printAll) return stack;
-                sp = bp + NoteTaker.FI_LAST_ARG + numArgs;
-                bp += ctx[bp + NoteTaker.FI_SAVED_BP] + 1;
+                sp = bp + NT.FI_LAST_ARG + numArgs;
+                bp += ctx[bp + NT.FI_SAVED_BP] + 1;
                 // look for remoteCode activation on stack
                 for (var j = sp; j < bp; j++){
                     var rCode = ctx[j];
                     if (rCode.stClass !== this.primHandler.remoteCodeClass) continue;
-                    if (rCode.pointers[NoteTaker.PI_RCODE_STACKOFFSET] === ctx.length - j) {
-                        var homeBP = ctx.length - rCode.pointers[NoteTaker.PI_RCODE_FRAMEOFFSET],
-                            homeMethod = ctx[homeBP + NoteTaker.FI_METHOD];
+                    if (rCode.pointers[NT.PI_RCODE_STACKOFFSET] === ctx.length - j) {
+                        var homeBP = ctx.length - rCode.pointers[NT.PI_RCODE_FRAMEOFFSET],
+                            homeMethod = ctx[homeBP + NT.FI_METHOD];
                         stack += '\n\n[] in ' + this.printMethod(homeMethod);
                         if (debugFrame) {
                             while (++i <= j) {
@@ -2223,9 +2223,9 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                         bp = ctx.length - ctx[j - 2]; // continue at stored BP
                     }
                 }
-                numArgs = ctx[bp + NoteTaker.FI_NUMARGS];
-                numTemps = ctx[bp + NoteTaker.FI_METHOD].methodNumTemps();
-                stack += '\n\n' + this.printMethod(ctx[bp + NoteTaker.FI_METHOD]);
+                numArgs = ctx[bp + NT.FI_NUMARGS];
+                numTemps = ctx[bp + NT.FI_METHOD].methodNumTemps();
+                stack += '\n\n' + this.printMethod(ctx[bp + NT.FI_METHOD]);
             }
         }
         return stack;
@@ -2263,16 +2263,16 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.cursorY = 0;
         this.damage = {dirtyRects: []};
         this.initAtCache();
-        this.remoteCodeClass = vm.image.objectFromOop(NoteTaker.OOP_CLREMOTECODE);
-        this.processClass = vm.image.objectFromOop(NoteTaker.OOP_CLPROCESS);
-        this.pointClass = this.vm.image.objectFromOop(NoteTaker.OOP_CLPOINT);
-        this.floatClass = this.vm.image.objectFromOop(NoteTaker.OOP_CLFLOAT);
-        this.naturalClass = this.vm.image.objectFromOop(NoteTaker.OOP_CLNATURAL);
-        this.largeIntegerClass = this.vm.image.objectFromOop(NoteTaker.OOP_CLLARGEINTEGER);
-        this.stringClass = this.vm.image.objectFromOop(NoteTaker.OOP_CLSTRING);
-        this.compiledMethodClass = this.vm.image.objectFromOop(NoteTaker.OOP_CLCOMPILEDMETHOD);
-        this.uniqueStringClass = this.vm.image.objectFromOop(NoteTaker.OOP_CLUNIQUESTRING);
-        this.vectorClass = this.vm.image.objectFromOop(NoteTaker.OOP_CLVECTOR);
+        this.remoteCodeClass = vm.image.objectFromOop(NT.OOP_CLREMOTECODE);
+        this.processClass = vm.image.objectFromOop(NT.OOP_CLPROCESS);
+        this.pointClass = this.vm.image.objectFromOop(NT.OOP_CLPOINT);
+        this.floatClass = this.vm.image.objectFromOop(NT.OOP_CLFLOAT);
+        this.naturalClass = this.vm.image.objectFromOop(NT.OOP_CLNATURAL);
+        this.largeIntegerClass = this.vm.image.objectFromOop(NT.OOP_CLLARGEINTEGER);
+        this.stringClass = this.vm.image.objectFromOop(NT.OOP_CLSTRING);
+        this.compiledMethodClass = this.vm.image.objectFromOop(NT.OOP_CLCOMPILEDMETHOD);
+        this.uniqueStringClass = this.vm.image.objectFromOop(NT.OOP_CLUNIQUESTRING);
+        this.vectorClass = this.vm.image.objectFromOop(NT.OOP_CLVECTOR);
         this.bitBltClass = this.vm.image.globalNamed('BitBlt');
         this.idleCounter = 0;
     },
@@ -2473,11 +2473,11 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return dividend / divisor;
     },
     doDiv: function(rcvr, arg) {
-        if (arg === 0) return NoteTaker.NON_INT;  // fail if divide by zero
+        if (arg === 0) return NT.NON_INT;  // fail if divide by zero
         return this.floatReceiver ? rcvr/arg : Math.floor(rcvr/arg);
     },
     doRem: function(rcvr, arg) {
-        if (arg === 0) return NoteTaker.NON_INT;  // fail if divide by zero
+        if (arg === 0) return NT.NON_INT;  // fail if divide by zero
         return rcvr - Math.floor(rcvr/arg) * arg;
     },
 },
@@ -2508,8 +2508,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
 	},
     makePointWithXandY: function(x, y) {
         var newPoint = this.vm.instantiateClass(this.pointClass, 0);
-        newPoint.pointers[NoteTaker.PI_POINT_X] = x;
-        newPoint.pointers[NoteTaker.PI_POINT_Y] = y;
+        newPoint.pointers[NT.PI_POINT_X] = x;
+        newPoint.pointers[NT.PI_POINT_Y] = y;
         return newPoint;
     },
     makeStString: function(jsStringOrArray) {
@@ -2555,8 +2555,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var natural = this.vm.instantiateClass(this.naturalClass, bytes.length),
             large = this.vm.instantiateClass(this.largeIntegerClass, 0);
         natural.bytes = bytes;
-        large.pointers[NoteTaker.PI_LARGEINTEGER_BYTES] = natural;
-        large.pointers[NoteTaker.PI_LARGEINTEGER_NEG] = this.makeBoolean(negative);
+        large.pointers[NT.PI_LARGEINTEGER_BYTES] = natural;
+        large.pointers[NT.PI_LARGEINTEGER_NEG] = this.makeBoolean(negative);
         return large;
     },
     makeLargeIfNeeded: function(integer) {
@@ -2582,8 +2582,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return array;
     },
     fromUnicode: function(string) {
-        for (var ntcode in NoteTaker.toUnicode) {
-            var unicode = NoteTaker.toUnicode[ntcode],
+        for (var ntcode in NT.toUnicode) {
+            var unicode = NT.toUnicode[ntcode],
                 regExp = new RegExp(unicode, 'g');
             string = string.replace(regExp, ntcode);
         }
@@ -2593,8 +2593,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
 'indexing', {
     indexableSize: function(obj) {
         if (this.vm.isSmallInt(obj)) return -1; // -1 means not indexable
-        var instSize = obj.stClass.pointers[NoteTaker.PI_CLASS_INSTSIZE];
-        if ((instSize & NoteTaker.FMT_ISVARIABLE) == 0) return -1;  // fail if not indexable
+        var instSize = obj.stClass.pointers[NT.PI_CLASS_INSTSIZE];
+        if ((instSize & NT.FMT_ISVARIABLE) == 0) return -1;  // fail if not indexable
 
         if (obj.bytes) return obj.bytes.length;
         if (obj.words) return obj.words.length;
@@ -2734,12 +2734,12 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (this.success && size < 0) return false;  // negative size
         if (!this.success) {
             var largeSize = this.stackNonInteger(1);
-            if (largeSize.stClass.oop !== NoteTaker.OOP_CLLARGEINTEGER) return false;
+            if (largeSize.stClass.oop !== NT.OOP_CLLARGEINTEGER) return false;
             size = largeSize.largeIntegerValue();
             if (size < 0 || size > 200000) return false; // we have our limits
             this.success = true;
         }
-        if (!((rcvr.pointers[NoteTaker.PI_CLASS_INSTSIZE] & NoteTaker.FMT_ISVARIABLE) > 0)) {
+        if (!((rcvr.pointers[NT.PI_CLASS_INSTSIZE] & NT.FMT_ISVARIABLE) > 0)) {
             console.log("Failure of new: due to instSize bit not set for class " + rcvr);
             return false
         }
@@ -2769,9 +2769,9 @@ Object.subclass('users.bert.St78.vm.Primitives',
     		rCode = this.vm.instantiateClass(this.remoteCodeClass, 0);
 		pc += jumpInstr < 0xA0 ? 1 : 2;
 		// these are used in primitiveValue
-		rCode.pointers[NoteTaker.PI_RCODE_FRAMEOFFSET] = relBP; // offset from end, used in ProcessFrame>>from:
-		rCode.pointers[NoteTaker.PI_RCODE_STARTINGPC] = pc + NoteTaker.PC_BIAS;
-		rCode.pointers[NoteTaker.PI_RCODE_PROCESS] = rcvr;
+		rCode.pointers[NT.PI_RCODE_FRAMEOFFSET] = relBP; // offset from end, used in ProcessFrame>>from:
+		rCode.pointers[NT.PI_RCODE_STARTINGPC] = pc + NT.PC_BIAS;
+		rCode.pointers[NT.PI_RCODE_PROCESS] = rcvr;
 		this.vm.popNandPush(1, rCode);
 		return true;
     },
@@ -2784,16 +2784,16 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var contextLength = this.vm.activeProcessPointers.length;
 
         // store the current sp here to mark the rCode as activated
-		rCode.pointers[NoteTaker.PI_RCODE_STACKOFFSET] = contextLength - this.vm.sp;
+		rCode.pointers[NT.PI_RCODE_STACKOFFSET] = contextLength - this.vm.sp;
 
         // Common code to sleep this frame
-        this.vm.push(this.vm.pc + NoteTaker.PC_BIAS);           // save PC and absBP for remoteReturn
+        this.vm.push(this.vm.pc + NT.PC_BIAS);           // save PC and absBP for remoteReturn
         this.vm.push(contextLength - this.vm.bp);
         
         // Wake the remote context frame
-        var frame = contextLength - rCode.pointers[NoteTaker.PI_RCODE_FRAMEOFFSET];
+        var frame = contextLength - rCode.pointers[NT.PI_RCODE_FRAMEOFFSET];
 		this.vm.bp = this.vm.loadFromFrame(frame);
-		this.vm.pc = rCode.pointers[NoteTaker.PI_RCODE_STARTINGPC] - NoteTaker.PC_BIAS;
+		this.vm.pc = rCode.pointers[NT.PI_RCODE_STARTINGPC] - NT.PC_BIAS;
         return true;
     },
     primitiveValueGets: function(argCount) {
@@ -2902,12 +2902,12 @@ Object.subclass('users.bert.St78.vm.Primitives',
 	primitiveCopyBits: function(argCount) { // no rcvr class check, to allow unknown subclasses (e.g. under Turtle)
         this.idleCounter = 0; // reset idle if there was drawing
         var bitbltObj = this.vm.stackValue(argCount);
-        if (bitbltObj.pointers[NoteTaker.PI_BITBLT_SOURCEBITS].pointers || bitbltObj.pointers[NoteTaker.PI_BITBLT_DESTBITS].pointers)
+        if (bitbltObj.pointers[NT.PI_BITBLT_SOURCEBITS].pointers || bitbltObj.pointers[NT.PI_BITBLT_DESTBITS].pointers)
             return this.bitBltCopyPointers(bitbltObj);
         var bitblt = new users.bert.St78.vm.BitBlt(this.vm);
         if (!bitblt.loadBitBlt(bitbltObj)) return false;
         bitblt.copyBits();
-        if (bitblt.destForm === this.displayBlt.pointers[NoteTaker.PI_BITBLT_DEST])
+        if (bitblt.destForm === this.displayBlt.pointers[NT.PI_BITBLT_DEST])
             this.displayDirty(bitblt.affectedRect());
         return true;
 	},
@@ -3053,11 +3053,11 @@ Object.subclass('users.bert.St78.vm.Primitives',
         // BitBlt is used by the image to copy literals into and out of
         // CompiledMethods' bytes. In our implementation, the literals are 
         // duplicated into pointers. This is taken care of here.
-        var src = bitbltObj.pointers[NoteTaker.PI_BITBLT_SOURCEBITS],
-            srcIndex = bitbltObj.pointers[NoteTaker.PI_BITBLT_SOURCEY],
-            dest = bitbltObj.pointers[NoteTaker.PI_BITBLT_DESTBITS],
-            destIndex = bitbltObj.pointers[NoteTaker.PI_BITBLT_DESTY],
-            count = bitbltObj.pointers[NoteTaker.PI_BITBLT_CLIPHEIGHT];
+        var src = bitbltObj.pointers[NT.PI_BITBLT_SOURCEBITS],
+            srcIndex = bitbltObj.pointers[NT.PI_BITBLT_SOURCEY],
+            dest = bitbltObj.pointers[NT.PI_BITBLT_DESTBITS],
+            destIndex = bitbltObj.pointers[NT.PI_BITBLT_DESTY],
+            count = bitbltObj.pointers[NT.PI_BITBLT_CLIPHEIGHT];
         // adjust for missing header word in CompiledMethod's pointers
         if (src.stClass === this.compiledMethodClass) srcIndex--;
         if (dest.stClass === this.compiledMethodClass) destIndex--;
@@ -3209,31 +3209,31 @@ Object.subclass('users.bert.St78.vm.BitBlt',
     loadBitBlt: function(bitbltObj) {
         this.success = true;
         var bitblt = bitbltObj.pointers;
-        var func = bitblt[NoteTaker.PI_BITBLT_FUNCTION];
+        var func = bitblt[NT.PI_BITBLT_FUNCTION];
         this.destRule = func & 3;           // set, or, xor, and
         this.sourceRule = (func >> 2) & 3;  // src, ~src, halftone in src, halftone
         this.noSource = this.sourceRule === 3;
         this.sourceFn = this.makeSourceFn(this.sourceRule);
         this.destFn = this.makeDestFn(this.destRule);
-        this.halftone = this.sourceRule >= 2 ? this.loadHalftone(bitblt[NoteTaker.PI_BITBLT_GRAY]) : null;
-        this.destBits = this.loadBits(bitblt[NoteTaker.PI_BITBLT_DESTBITS]);
-        this.destPitch = this.intFrom(bitblt[NoteTaker.PI_BITBLT_DESTRASTER]);
-        this.destX = this.intFrom(bitblt[NoteTaker.PI_BITBLT_DESTX]);
-        this.destY = this.intFrom(bitblt[NoteTaker.PI_BITBLT_DESTY]);
-        this.width = this.intFrom(bitblt[NoteTaker.PI_BITBLT_WIDTH]);
-        this.height = this.intFrom(bitblt[NoteTaker.PI_BITBLT_HEIGHT]);
+        this.halftone = this.sourceRule >= 2 ? this.loadHalftone(bitblt[NT.PI_BITBLT_GRAY]) : null;
+        this.destBits = this.loadBits(bitblt[NT.PI_BITBLT_DESTBITS]);
+        this.destPitch = this.intFrom(bitblt[NT.PI_BITBLT_DESTRASTER]);
+        this.destX = this.intFrom(bitblt[NT.PI_BITBLT_DESTX]);
+        this.destY = this.intFrom(bitblt[NT.PI_BITBLT_DESTY]);
+        this.width = this.intFrom(bitblt[NT.PI_BITBLT_WIDTH]);
+        this.height = this.intFrom(bitblt[NT.PI_BITBLT_HEIGHT]);
         if (!this.noSource) {
-            this.sourceBits = this.loadBits(bitblt[NoteTaker.PI_BITBLT_SOURCEBITS]);
-            this.sourcePitch = this.intFrom(bitblt[NoteTaker.PI_BITBLT_SOURCERASTER]);
-            this.sourceX = this.intFrom(bitblt[NoteTaker.PI_BITBLT_SOURCEX]);
-            this.sourceY = this.intFrom(bitblt[NoteTaker.PI_BITBLT_SOURCEY]);
-            this.sourceForm = bitblt[NoteTaker.PI_BITBLT_SOURCE];
+            this.sourceBits = this.loadBits(bitblt[NT.PI_BITBLT_SOURCEBITS]);
+            this.sourcePitch = this.intFrom(bitblt[NT.PI_BITBLT_SOURCERASTER]);
+            this.sourceX = this.intFrom(bitblt[NT.PI_BITBLT_SOURCEX]);
+            this.sourceY = this.intFrom(bitblt[NT.PI_BITBLT_SOURCEY]);
+            this.sourceForm = bitblt[NT.PI_BITBLT_SOURCE];
         }
-        this.clipX = this.intFrom(bitblt[NoteTaker.PI_BITBLT_CLIPX]);
-        this.clipY = this.intFrom(bitblt[NoteTaker.PI_BITBLT_CLIPY]);
-        this.clipW = this.intFrom(bitblt[NoteTaker.PI_BITBLT_CLIPWIDTH]);
-        this.clipH = this.intFrom(bitblt[NoteTaker.PI_BITBLT_CLIPHEIGHT]);
-        this.destForm = bitblt[NoteTaker.PI_BITBLT_DEST];
+        this.clipX = this.intFrom(bitblt[NT.PI_BITBLT_CLIPX]);
+        this.clipY = this.intFrom(bitblt[NT.PI_BITBLT_CLIPY]);
+        this.clipW = this.intFrom(bitblt[NT.PI_BITBLT_CLIPWIDTH]);
+        this.clipH = this.intFrom(bitblt[NT.PI_BITBLT_CLIPHEIGHT]);
+        this.destForm = bitblt[NT.PI_BITBLT_DEST];
         return this.success;
     },
     makeSourceFn: function(rule) {
