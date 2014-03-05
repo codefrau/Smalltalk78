@@ -1452,7 +1452,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     loadInitialContext: function(display) {
         this.wakeProcess(this.image.userProcess);  // set up activeProcess and sp
         this.popPCBP();                          // restore pc and current frame
-        this.loadFromFrame(this.currentFrame);   // load all the rest from the frame
+        this.loadFromFrame(this.bp);   // load all the rest from the frame
 
         // initial refresh
         if (this.image.userDisplay) {
@@ -1746,7 +1746,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         //console.log("rcvr " + newRcvr + ", lookupClass= " + lookupClass);
         if (this.doSuper) {
             this.doSuper = false;
-            lookupClass = this.activeProcessPointers[this.currentFrame + NoteTaker.FI_MCLASS].superclass();
+            lookupClass = this.activeProcessPointers[this.bp + NoteTaker.FI_MCLASS].superclass();
         }
         var entry = this.findSelectorInClass(selector, argCountOrUndefined, lookupClass);
         if (this.debugSelectors && this.debugSelectors.indexOf(selector.bytesAsUnicode()) >= 0) debugger;
@@ -1820,14 +1820,14 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         // sp points to new receiver, so this is where we base the new frame off
         this.pushFrame(newMethod, newMethodClass, argumentCount);
         /////// Whoosh //////
-        this.currentFrame = this.sp; //We're off and running...
+        this.bp = this.sp; //We're off and running...
         this.method = newMethod;
         this.methodBytes = newMethod.bytes;
         this.methodNumArgs = argumentCount;
         this.pc = newMethod.methodStartPC();
         for (var i = 0; i < newMethod.methodNumTemps(); i++)
             this.push(this.nilObj); //  make room for temps and init them
-        this.receiver = overrideReceiver ? newRcvr : this.activeProcessPointers[this.currentFrame + NoteTaker.FI_RECEIVER];
+        this.receiver = overrideReceiver ? newRcvr : this.activeProcessPointers[this.bp + NoteTaker.FI_RECEIVER];
         if (this.receiver !== newRcvr)
             throw "receivers don't match";
         if (this.sp < this.lowStackSize)
@@ -1841,7 +1841,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         var returnPC = this.pop() - NoteTaker.PC_BIAS;
         var rCode = this.pop(); // might want to check that we're in the same process
         /////// Whoosh //////
-        this.currentFrame = this.loadFromFrame(returnFrame);
+        this.bp = this.loadFromFrame(returnFrame);
         this.pc = returnPC;
         this.push(reply);
         if (this.breakOnFrameChanged) {
@@ -1851,14 +1851,14 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
     doReturn: function() {
         // reverse of executeNewMethod()
-        if (this.breakOnFrameReturned === this.currentFrame) {
+        if (this.breakOnFrameReturned === this.bp) {
             this.breakOnFrameReturned = null;
             this.breakNow();
         }
         var reply = this.pop();
         /////// Whoosh //////
         this.popFrame();
-        this.loadFromFrame(this.currentFrame);
+        this.loadFromFrame(this.bp);
         this.push(reply);
         if (this.breakOnFrameChanged) {
             this.breakOnFrameChanged = false;
@@ -1919,17 +1919,17 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 'frame', {
     currentFrameTempOrArg: function(tempIndex) {
         return tempIndex < this.methodNumArgs ? 
-            this.currentFrame + NoteTaker.FI_LAST_ARG + (this.methodNumArgs - 1 - tempIndex) :
-            this.currentFrame + NoteTaker.FI_FIRST_TEMP - (tempIndex - this.methodNumArgs);
+            this.bp + NoteTaker.FI_LAST_ARG + (this.methodNumArgs - 1 - tempIndex) :
+            this.bp + NoteTaker.FI_FIRST_TEMP - (tempIndex - this.methodNumArgs);
     },
     pushPCBP: function() {
         // Save the state of PC and BP on the stack
         this.push(this.pc + NoteTaker.PC_BIAS);
-        this.push(this.currentFrame - this.sp);  // delta relative to sp before the push
+        this.push(this.bp - this.sp);  // delta relative to sp before the push
     },
     popPCBP: function() {
         // Load context frame from the stack
-        this.currentFrame = this.pop() + this.sp;  // + 1 because delta was computed before push
+        this.bp = this.pop() + this.sp;  // + 1 because delta was computed before push
         this.pc = this.pop() - NoteTaker.PC_BIAS;  // Bias due to NT shorter header
     },
     pushFrame: function(method, methodClass, argCount) {
@@ -1943,7 +1943,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         if (this.sp !== newFrame) throw "bad frame size";
     },
     popFrame: function() {
-        this.popN(this.currentFrame - this.sp); // drop temps
+        this.popN(this.bp - this.sp); // drop temps
         this.popPCBP();                         // restore previous frame and pc
         this.popN(4 + this.methodNumArgs);      // drop old frame + args
     },
@@ -2022,7 +2022,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             newPointers.push(oldPointers[i]);
         if (newPointers.length !== newLength) throw "stack growing error"
         this.sp += delta;
-        this.currentFrame += delta;
+        this.bp += delta;
         this.activeProcess.pointers = newPointers;
         this.activeProcessPointers = newPointers;
         this.primHandler.clearAtCache(); // might have cached process size
@@ -2116,7 +2116,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         if (!limit) limit = 100;
         var stack = '',
             process = ctx.pointers,
-            bp = this.currentFrame,
+            bp = this.bp,
             sp = this.sp,
             remoteCodeClass = this.primHandler.remoteCodeClass;
         while (limit-- > 0) {
@@ -2163,7 +2163,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
     breakOnReturn: function() {
         this.breakOnFrameChanged = false;
-        this.breakOnFrameReturned = this.currentFrame;
+        this.breakOnFrameReturned = this.bp;
     },
     breakOnSendOrReturn: function() {
         this.breakOnFrameChanged = true;
@@ -2172,13 +2172,13 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     printActiveProcess: function(printAll, debugFrame) {
         // temps and stack in current context
         var ctx = this.activeProcessPointers,
-            bp = this.currentFrame,
+            bp = this.bp,
             sp = this.sp,
             numArgs = ctx[bp + NoteTaker.FI_NUMARGS],
             numTemps = ctx[bp + NoteTaker.FI_METHOD].methodNumTemps();
         var stack = '';
         if (debugFrame) stack += Strings.format("\npc: %s sp: %s bp: %s numArgs: %s\n",
-            this.pc, this.sp, this.currentFrame, numArgs);
+            this.pc, this.sp, this.bp, numArgs);
         for (var i = this.sp; i < ctx.length; i++) {
             if (!debugFrame && bp + NoteTaker.FI_SAVED_BP <= i && bp + NoteTaker.FI_RECEIVER > i) continue;
             var obj = ctx[i];
@@ -2761,7 +2761,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var rcvr = this.vm.stackValue(0);
 	    if (rcvr !== this.vm.activeProcess) return false;
 		var pc = this.vm.pc,
-    		bp = this.vm.currentFrame,
+    		bp = this.vm.bp,
 		    sp = this.vm.sp,
 		    relBP = rcvr.pointers.length - bp,
     		relSP = rcvr.pointers.length - sp,
@@ -2788,11 +2788,11 @@ Object.subclass('users.bert.St78.vm.Primitives',
 
         // Common code to sleep this frame
         this.vm.push(this.vm.pc + NoteTaker.PC_BIAS);           // save PC and absBP for remoteReturn
-        this.vm.push(contextLength - this.vm.currentFrame);
+        this.vm.push(contextLength - this.vm.bp);
         
         // Wake the remote context frame
         var frame = contextLength - rCode.pointers[NoteTaker.PI_RCODE_FRAMEOFFSET];
-		this.vm.currentFrame = this.vm.loadFromFrame(frame);
+		this.vm.bp = this.vm.loadFromFrame(frame);
 		this.vm.pc = rCode.pointers[NoteTaker.PI_RCODE_STARTINGPC] - NoteTaker.PC_BIAS;
         return true;
     },
@@ -2820,7 +2820,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         // Wake processToRun and load vm state   //NOTE: same as loadInitialContext
         this.vm.wakeProcess(processToRun);  // set up activeProcess and sp
         this.vm.popPCBP();            // restore pc and current frame
-        this.vm.loadFromFrame(this.vm.currentFrame);    // load all the rest from the frame
+        this.vm.loadFromFrame(this.vm.bp);    // load all the rest from the frame
         return true;
     },
     primitiveRunMethod: function(argCount) {
