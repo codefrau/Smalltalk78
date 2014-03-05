@@ -1433,7 +1433,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.interruptCheckCounterFeedBackReset = 1000;
         this.interruptChecksEveryNms = 3;
         this.lastTick = 0;
-        this.lowStackSize = 384;    // need this much to pop up a debugger
+        this.maxStackSize = 2000;   // refuse to grow to more than this
+        this.lowStackSize = 500;    // need this much to pop up a debugger
         this.lowStackSignaled = false;
         this.methodCacheSize = 1024;
         this.methodCacheMask = this.methodCacheSize - 1;
@@ -1829,12 +1830,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.receiver = overrideReceiver ? newRcvr : this.activeProcessPointers[this.currentFrame + NoteTaker.FI_RECEIVER];
         if (this.receiver !== newRcvr)
             throw "receivers don't match";
-        if (this.sp < this.lowStackSize && !this.lowStackSignaled) {
-            this.lowStackSignaled = true;
-            this.push(this.primHandler.makeStString('stack space is low'));
-            this.push(this.receiver);
-            this.send(this.image.selectorNamed('error:'), 1);
-        }
+        if (this.sp < this.lowStackSize)
+            this.handleLowStack();
         this.checkForInterrupts();
     },
     doRemoteReturn: function() {
@@ -1938,7 +1935,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     pushFrame: function(method, methodClass, argCount) {
         var newFrame = this.sp - NoteTaker.FI_RECEIVER;
         if (newFrame <= NoteTaker.PI_PROCESS_STACK)
-            throw "stack overflow" // implement stack growing here. Remember to invalide atCache.
+            throw "stack overflow";
         this.push(methodClass);
         this.push(method);
         this.push(argCount);
@@ -1996,6 +1993,39 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     pop2AndPushBoolResult: function(boolResult) {
         if (!this.success) return false;
         this.popNandPush(2, boolResult ? this.trueObj : this.falseObj);
+        return true;
+    },
+    handleLowStack: function() {
+        if (this.growStack())
+            return;
+        if (!this.lowStackSignaled) {
+            this.lowStackSignaled = true;
+            this.push(this.primHandler.makeStString('stack space is low'));
+            this.push(this.receiver);
+            this.send(this.image.selectorNamed('error:'), 1);
+        }
+    },
+    growStack: function() {
+        var delta = 500,
+            oldPointers = this.activeProcess.pointers, 
+            oldLength = oldPointers.length,
+            newLength = oldLength + delta;
+        if (newLength - NoteTaker.PI_PROCESS_STACK > this.maxStackSize)
+            return false; // refuse to grow larger
+        console.log("Growing stack to " + (newLength - NoteTaker.PI_PROCESS_STACK));
+        var newPointers = [];
+        for (var i = 0; i < NoteTaker.PI_PROCESS_STACK; i++)
+            newPointers.push(oldPointers[i]);
+        for (var i = 0; i < delta; i++)
+            newPointers.push(this.nilObj);
+        for (var i = NoteTaker.PI_PROCESS_STACK; i < oldLength; i++)
+            newPointers.push(oldPointers[i]);
+        if (newPointers.length !== newLength) throw "stack growing error"
+        this.sp += delta;
+        this.currentFrame += delta;
+        this.activeProcess.pointers = newPointers;
+        this.activeProcessPointers = newPointers;
+        this.primHandler.clearAtCache(); // might have cached process size
         return true;
     },
 },
