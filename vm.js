@@ -1433,6 +1433,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.interruptCheckCounterFeedBackReset = 1000;
         this.interruptChecksEveryNms = 3;
         this.lastTick = 0;
+        this.lowStackSize = 384;    // need this much to pop up a debugger
+        this.lowStackSignaled = false;
         this.methodCacheSize = 1024;
         this.methodCacheMask = this.methodCacheSize - 1;
         this.methodCacheRandomish = 0;
@@ -1827,6 +1829,12 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.receiver = overrideReceiver ? newRcvr : this.activeProcessPointers[this.currentFrame + NoteTaker.FI_RECEIVER];
         if (this.receiver !== newRcvr)
             throw "receivers don't match";
+        if (this.sp < this.lowStackSize && !this.lowStackSignaled) {
+            this.lowStackSignaled = true;
+            this.push(this.primHandler.makeStString('stack space is low'));
+            this.push(this.receiver);
+            this.send(this.image.selectorNamed('error:'), 1);
+        }
         this.checkForInterrupts();
     },
     doRemoteReturn: function() {
@@ -1859,6 +1867,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             this.breakOnFrameChanged = false;
             this.breakNow();
         }
+        if (this.sp > this.lowStackSize)
+            this.lowStackSignaled = false;
     },
     doQuickSend: function(obj, index) {
         // pop receiver, push self or my inst var at index
