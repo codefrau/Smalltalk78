@@ -2124,29 +2124,45 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         // in old images this is expensive, we have to search all classes
         if (!aMethod) aMethod = this.method;
         var found;
-        this.allMethodsDo(function(classObj, methodObj, selectorObj) {
+        this.allMethodsDetect(function(classObj, methodObj, selectorObj) {
             if (methodObj === aMethod)
                 return found = classObj.className() + '>>' + selectorObj.bytesAsUnicode();
         });
         return found || "?>>?";
     },
-    allMethodsDo: function(callback) {
+    allMethodsDetect: function(callback) {
         // callback(classObj, methodObj, selectorObj) should return true to break out of iteration
-        var globals = this.image.globals.pointers[NT.PI_SYMBOLTABLE_VALUES].pointers;
+        var globals = this.image.globals.pointers[NT.PI_SYMBOLTABLE_VALUES].pointers,
+            found = {};
         for (var i = 0; i < globals.length; i++) {
             var objRef = globals[i];
             if (!objRef.isNil) {
                 var cls = objRef.pointers[NT.PI_OBJECTREFERENCE_VALUE];
                 if (typeof cls === 'object' && cls.isClass()) {
+                    found[cls.oop] = true;
                     var mdict = cls.pointers[NT.PI_CLASS_MDICT];
                     var selectors = mdict.pointers[NT.PI_MESSAGEDICT_OBJECTS].pointers;
                     var methods = mdict.pointers[NT.PI_MESSAGEDICT_METHODS].pointers;
                     for (var j = 0; j < methods.length; j++)
-                        if (!methods[j].isNil)
+                        if (!methods[j].isNil) {
                             if (callback.call(this, cls, methods[j], selectors[j]))
                                 return;
+                        }
                 }
             }
+        }
+        // try again the expansive way
+        var cls = this.image.firstOldObject;
+        while (cls = cls.nextObject) {
+            if (!cls.isClass() || found[cls.oop]) continue; 
+            var mdict = cls.pointers[NT.PI_CLASS_MDICT];
+            var selectors = mdict.pointers[NT.PI_MESSAGEDICT_OBJECTS].pointers;
+            var methods = mdict.pointers[NT.PI_MESSAGEDICT_METHODS].pointers;
+            for (var j = 0; j < methods.length; j++)
+                if (!methods[j].isNil) {
+                    if (callback.call(this, cls, methods[j], selectors[j]))
+                        return;
+                }
         }
     },
     printStack: function(ctx, limit) {
@@ -2182,7 +2198,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     findMethod: function(classAndMethodString) {
         // classAndMethodString is 'Class>>method'
         var found;
-        this.allMethodsDo(function(classObj, methodObj, selectorObj) {
+        this.allMethodsDetect(function(classObj, methodObj, selectorObj) {
             var thisMethod = classObj.className() + '>>' + selectorObj.bytesAsUnicode();
             if (classAndMethodString == thisMethod)
                 return found = methodObj;
