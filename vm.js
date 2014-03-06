@@ -781,6 +781,43 @@ Object.subclass('users.bert.St78.vm.Image',
                 return obj;
         }
     },
+    pathTo: function(goal) {
+        var parents = {},
+            todo = [],
+            follow = function(parent, child) {
+                if (child == goal) {parents[child.oop] = parent; return true;}
+                if (child.pointers && !(child.oop in parents)) {parents[child.oop] = parent; todo.push(child);}
+                return false;
+            },
+            found = function(obj) {
+                if (follow(obj, obj.stClass)) return true;
+                for (var i = 0; i < obj.pointers.length; i++)
+                    if (follow(obj, obj.pointers[i])) return true;
+                return false;
+            };
+        // breadth-first search from root to object, recording parent pointers
+        parents[this.globals.oop] = 'root';
+        var obj, objs = [this.globals];
+        do {
+            while ((obj = objs.shift()) && !found(obj));
+            objs = todo; todo = [];
+        } while (objs.length);
+        // build path
+        var path = [];
+        obj = goal; do {path.unshift(obj); obj = parents[obj.oop]} while (obj);
+        return path.slice(1);
+    },
+    referencesTo: function(obj) {
+        if (this.newSpaceCount > 0) this.fullGC();
+        var references = [],
+            ref = this.firstOldObject;
+        while (ref) {
+            if (ref.stClass == obj || (ref.pointers && ref.pointers.include(obj)))
+                references.push(ref);
+            ref = ref.nextObject;
+        };
+        return references;
+    },
     allInstancesOf: function(clsObj) {
         if (typeof clsObj == "string")
             clsObj = this.globalNamed(clsObj);
