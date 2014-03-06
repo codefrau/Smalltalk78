@@ -2007,6 +2007,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
     growStack: function() {
         var delta = 500,
+            totalBytesBefore = this.activeProcess.totalBytes(),
             oldPointers = this.activeProcess.pointers, 
             oldLength = oldPointers.length,
             newLength = oldLength + delta;
@@ -2026,6 +2027,8 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.activeProcess.pointers = newPointers;
         this.activeProcessPointers = newPointers;
         this.primHandler.clearAtCache(); // might have cached process size
+        if (this.activeProcess.oop >= 0) // is in old space
+            this.image.oldSpaceBytes += this.activeProcess.totalBytes() - totalBytesBefore;
         return true;
     },
 },
