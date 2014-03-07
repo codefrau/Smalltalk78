@@ -2930,10 +2930,10 @@ Object.subclass('users.bert.St78.vm.Primitives',
                 }, function(e){alert("Quota request denied " + e.message)});
             } else {
                 // otherwise we have to use local storage ...
-                var bytes = new Uint8Array(buffer),
+                var words = new Uint16Array(buffer),    // JS Strings are UTF16
                     chars = [];
-                for (var i = 0; i < bytes.length; i++)
-                    chars.push(String.fromCharCode(bytes[i]));
+                for (var i = 0; i < words.length; i++)
+                    chars.push(String.fromCharCode(words[i]));
                 window.localStorage['notetakerImage:' + imageName] = chars.join('');
                 alertOK("Saved localstorage:" + imageName);
             }
