@@ -2900,29 +2900,44 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return true;
     },
     primitiveSaveImage: function(argCount) {
-        if (!window.webkitStorageInfo) return alert("Need webkitStorage");
         this.vm.pushPCBP();
         var process = this.vm.sleepProcess();
         var buffer = this.vm.image.writeToBuffer();
         this.vm.wakeProcess(process);
         this.vm.popPCBP();
+        
         // write file asynchronously
-        var imageName = window.localStorage['notetakerImageName'] || 'default.st78';
-        window.webkitStorageInfo.requestQuota(PERSISTENT, 5*1024*1024, function(grantedBytes) {
-            window.webkitRequestFileSystem(PERSISTENT, grantedBytes, function(fs) {
-                $world.prompt("Save image as", function(imageName) {
-                    if (!imageName) return alert("not saved");
-                    window.localStorage['notetakerImageName'] = imageName;
-                    fs.root.getFile(imageName, {create: true}, function(fileEntry) {
-                        fileEntry.createWriter(function(fileWriter) {
-                            fileWriter.onwriteend = function(e) {alertOK("Saved " + fileEntry.toURL())};
-                            fileWriter.onerror = function(e) {alert('Write failed: ' + e.toString());};
-                            fileWriter.write(new Blob([buffer]));
-                        }, function(e){alert("Cannot create file writer " + e)});
-                    }, function(e){alert("Cannot create file entry " + e)});
-                }, imageName);
-            }, function(e){alert("Cannot create file system " + e)});
-        }, function(e){alert("Quota request denied " + e)});
+        var imageName = window.localStorage['notetakerImageName'];
+        if (!imageName || !/.*\.st78/.test(imageName)) imageName = 'default.st78';
+
+        $world.prompt("Save image as", function(imageName) {
+            if (!imageName) return alert("not saved");
+            window.localStorage['notetakerImageName'] = imageName;
+            console.log("Saving image as " + imageName);
+            // if we have filesystem storage we can save as binary blob ...
+            if (window.webkitStorageInfo) {
+                window.webkitStorageInfo.requestQuota(PERSISTENT, 5*1024*1024, function(grantedBytes) {
+                    window.webkitRequestFileSystem(PERSISTENT, grantedBytes, function(fs) {
+                        fs.root.getFile(imageName, {create: true}, function(fileEntry) {
+                            fileEntry.createWriter(function(fileWriter) {
+                                var success = true;
+                                fileWriter.onwriteend = function(e) {if (success) alertOK("Saved " + fileEntry.toURL())};
+                                fileWriter.onerror = function(e) {success = false; alert(e.target.error.name + ': ' + e.target.error.message)};
+                                fileWriter.write(new Blob([buffer]));
+                            }, function(e){alert("Cannot create file writer " + e.message)});
+                        }, function(e){alert("Cannot create file entry " + e.message)});
+                    }, function(e){alert("Cannot create file system " + e.message)});
+                }, function(e){alert("Quota request denied " + e.message)});
+            } else {
+                // otherwise we have to use local storage ...
+                var bytes = new Uint8Array(buffer),
+                    chars = [];
+                for (var i = 0; i < bytes.length; i++)
+                    chars.push(String.fromCharCode(bytes[i]));
+                window.localStorage['notetakerImage:' + imageName] = chars.join('');
+                alertOK("Saved localstorage:" + imageName);
+            }
+        }, imageName);
         return true;
     },
     primitiveExitToDebugger: function(argCount) {
