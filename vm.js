@@ -165,15 +165,11 @@ NT = {
     Mouse_Blue: 1,
     Mouse_Yellow: 2,
     Mouse_Red: 4,
-    Mouse_All: 1 + 2 + 4,
-    /* modifiers not implemented yet
-    Keyboard_Shift: 8, // ???
-    Keyboard_Ctrl: 16, // ???
-    Keyboard_Alt: 32, // ???
-    Keyboard_Cmd: 64, // ???
-    Keyboard_All: 8 + 16 + 32 + 64,  // ???
-    */
     
+    Key_Shift: 8,
+    Key_Ctrl: 16,
+    Key_Cmd: 32,  // Cmd on Mac, Alt on PC
+
     // keyboard map used inside the image
     // same as vm.image.globalNamed('NTkbMap').bytes
     kbMap: [
