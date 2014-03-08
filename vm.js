@@ -2962,7 +2962,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             console.log("Saving image as " + imageName);
             // if we have filesystem storage we can save as binary blob ...
             if (window.webkitStorageInfo) {
-                window.webkitStorageInfo.requestQuota(PERSISTENT, 5*1024*1024, function(grantedBytes) {
+                window.webkitStorageInfo.requestQuota(PERSISTENT, 50*1024*1024, function(grantedBytes) {
                     window.webkitRequestFileSystem(PERSISTENT, grantedBytes, function(fs) {
                         fs.root.getFile(imageName, {create: true}, function(fileEntry) {
                             fileEntry.createWriter(function(fileWriter) {
