@@ -454,6 +454,7 @@ Object.subclass('users.bert.St78.vm.Image',
         var removedObjects = this.removeUnmarkedOldObjects();
         this.appendToOldObjects(newObjects);
         this.relinkRemovedObjects(removedObjects);
+        this.spaceReport(newObjects, removedObjects, function(line){console.log(line)});
         console.log(Strings.format("GC: %s allocations, %s unchecked tenures, %s released, %s tenured, now %s total (%s bytes)", 
             this.newSpaceCount, this.tenuresSinceLastGC, removedObjects.length, newObjects.length, this.oldSpaceCount, this.oldSpaceBytes));
         this.tenuresSinceLastGC = 0;
@@ -814,6 +815,16 @@ Object.subclass('users.bert.St78.vm.Image',
         };
         return references;
     },
+    allObjects: function(matchFunc) {
+        var obj = this.firstOldObject,
+            objects = [];
+        while (obj) {
+            if (!matchFunc || matchFunc(obj))
+                objects.push(obj);
+            obj = obj.nextObject;
+        };
+        return objects;
+    },
     allInstancesOf: function(clsObj) {
         if (typeof clsObj == "string")
             clsObj = this.globalNamed(clsObj);
@@ -840,6 +851,45 @@ Object.subclass('users.bert.St78.vm.Image',
             cl = this.nextInstanceAfter(cl);
         };
         return result
+    },
+    spaceReport: function(objects, removedObjects, foreach) {
+        var classes = [],
+            byClass = {},
+            sign = 1;
+        [objects || this.allObjects(), removedObjects||[]].forEach(function(objs) {
+            objs.forEach(function(obj) {
+                var cls = obj.stClass,
+                    space = sign * obj.totalBytes();
+                if (!byClass[cls.oop]) {
+                    byClass[cls.oop] = {count: 0, space: 0, max: space}
+                    classes.push(cls);
+                }
+                byClass[cls.oop].count += sign;
+                byClass[cls.oop].space += space;
+                byClass[cls.oop].max = Math.max(space, byClass[cls.oop].max);
+            })
+            sign = -1;
+        });
+        classes = classes.sort(function(a,b){return byClass[b.oop].space - byClass[a.oop].space});
+        var report = "";
+        for (var i = 0; i < classes.length; i++) {
+            var cls = classes[i],
+                name = cls.className(),
+                count = byClass[cls.oop].count,
+                space = byClass[cls.oop].space,
+                line = Strings.format("%s%s %s%s, %s bytes",
+                    count>0 && removedObjects ? '+' : '', count, name, count == 1 ? '' : name.slice(-1) == 's' ? 'es' : 's', space);
+            if (!removedObjects) {
+                var max = byClass[cls.oop].max,
+                    avg = space / count | 0;
+                if (max == avg) line += Strings.format(" (each %s bytes)", max);
+                else line += Strings.format(" (avg %s bytes, max %s bytes)", avg, max);
+            }
+            if (count || space)
+                if (foreach) foreach(line);
+                else report += line + "\n";
+        }
+        return report;
     },
     labelObjRefs: function() {
         // label object refs with their keys in all symbol tables
