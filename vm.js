@@ -168,7 +168,7 @@ NT = {
     
     Key_Shift: 8,
     Key_Ctrl: 16,
-    Key_Cmd: 32,  // Cmd on Mac, Alt on PC
+    Key_Meta: 32,  // Cmd on Mac, Alt on PC
 
     // keyboard map used inside the image
     // same as vm.image.globalNamed('NTkbMap').bytes
