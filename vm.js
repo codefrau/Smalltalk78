@@ -2464,6 +2464,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 100: return this.primitiveAllInstances(argCount);
             case 101: return this.primitiveClipboardText(argCount);
             case 102: return this.popNandPushIfOK(1, this.makeLargeIfNeeded(this.millisecondClockValue())); // primitiveTicks
+            case 103: this.vm.flushMethodCache(); return true; // primitiveFlushCache
             case 200: return this.popNandPushFloatIfOK(1,Math.sqrt(this.stackFloat(0))); // primitiveSqrt
             case 201: return this.popNandPushFloatIfOK(1,Math.cos(this.stackFloat(0))); // primitiveCos
             case 202: return this.popNandPushFloatIfOK(1,Math.sin(this.stackFloat(0))); // primitiveSin
