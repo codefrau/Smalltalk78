@@ -3257,6 +3257,12 @@ Object.subclass('users.bert.St78.vm.Primitives',
                 xhr = new XMLHttpRequest();
             xhr.open("get", fileName, true);
             if (!isDir) xhr.responseType = "arraybuffer";
+            xhr.timeout = 10000;
+            xhr.ontimeout = function() {
+                alert("Download timed out " + fileName);
+                unfreeze();
+                thenDo(result);
+            };
             xhr.onreadystatechange = function() {
                 if (this.readyState != this.DONE) return;
                 if (this.status == 200) {
