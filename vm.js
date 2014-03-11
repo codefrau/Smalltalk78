@@ -3147,14 +3147,12 @@ Object.subclass('users.bert.St78.vm.Primitives',
             dstX = this.cursorX,
             dstY = this.cursorY;
         for (var y = 0; y < 16; y++) {
-            var srcWord = src.getWord(srcY);
-            if ((srcY += 8) >= 16) srcY -= 15;  // undo interleaving
-            var mask = 0x80;
+            var srcWord = src.getWord(y);
+            var mask = 0x8000;
             var dstIndex = dstPitch * dstY++ + dstX;
             for (var x = 0; x < 16; x++, dstIndex++) {
                 if (srcWord & mask) dst[dstIndex] = 0xFF000000;
                 mask = mask >> 1;
-                if (!mask) mask = 0x8000;      // undo byte swap
             }
         };
         this.display.ctx.putImageData(this.displayPixels, 0, 0, this.cursorX, this.cursorY, 16, 16);
