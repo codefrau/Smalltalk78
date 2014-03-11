@@ -170,8 +170,8 @@ NT = {
     Key_Ctrl: 16,
     Key_Meta: 32,  // Cmd on Mac, Alt on PC
 
-    // keyboard map used inside the image
-    // same as vm.image.globalNamed('NTkbMap').bytes
+    // original keyboard map used inside the image
+    // set to vm.image.globalNamed('NTkbMap').bytes on startup
     kbMap: [
         255, 91, 255, 110, 104, 103, 114, 255, 25, 61, 32, 109, 56, 121, 116, 173,
         13, 46, 122, 106, 255, 9, 49, 255, 95, 59, 255, 98, 99, 102, 160, 29,
@@ -2350,6 +2350,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.vm = vm;
         this.display = display;         // display interface
         this.display.vm = this.vm;
+        NT.kbMap = this.vm.image.globalNamed('NTkbMap').bytes;
         this.fileStrings = files || {};
         for (var i = 0; i < localStorage.length; i++) {
             var key = localStorage.key(i);
