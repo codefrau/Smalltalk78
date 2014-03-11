@@ -2473,6 +2473,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 210: return this.popNandPushIfOK(2, this.makeLargeInt(this.stackLargeInt(0) + this.stackLargeInt(1))); // primitiveAddLargeIntegers
             case 211: return this.popNandPushIfOK(2, this.makeLargeInt(this.stackLargeInt(0) - this.stackLargeInt(1))); // primitiveSubtractLargeIntegers
             case 214: {var a = this.stackLargeInt(0), b = this.stackLargeInt(1); return this.popNandPushIfOK(2, a < b ? 1 : a == b ? 2 : 3)}; // primitiveCompareLargeInt
+            case 240: return this.popNandPushFloatIfOK(argCount + 1, this.pathDistance(argCount)); // primitive Dollar1 pathLength
 
         }
         throw "primitive " + index + " not implemented yet";
@@ -3322,6 +3323,24 @@ Object.subclass('users.bert.St78.vm.Primitives',
         delete this.fileStrings[fileName];
         delete window.localStorage['notetaker:' + fileName];
     },
+},
+'d1 recognizer', {
+    pathDistance: function(argCount) {
+        var a = this.vm.stackValue(argCount);
+        var b = this.vm.stackValue(argCount - 1);
+        var d = 0.0;
+        for (var i = 0; i < a.pointers.length; i++) {
+            var ai = a.pointers[i];
+            var bi = b.pointers[i];
+            var aix = ai.pointers[0].float;
+            var aiy = ai.pointers[1].float;
+            var bix = bi.pointers[0].float;
+            var biy = bi.pointers[1].float;
+            var v = Math.sqrt((aix - bix) * (aix - bix) + (aiy - biy) * (aiy - biy));
+            d = d + v;
+        }
+        return d / a.pointers.length;
+    }
 });
 Object.subclass('users.bert.St78.vm.BitBlt',
 'initialization', {
