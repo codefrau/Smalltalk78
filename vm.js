@@ -107,6 +107,9 @@ NT = {
 	PI_LARGEINTEGER_BYTES: 0,
 	PI_LARGEINTEGER_NEG: 1,
 	
+	/*  | i . (1 to: TextScanner instvars length) transform▹ i to▹ [(i-1),(TextScanner instvars◦i)] ==>
+	((0 'function' ) (1 'color' ) (2 'destbase' ) (3 'destraster' ) (4 'destx' ) (5 'desty' ) (6 'width' ) (7 'height' ) (8 'sourcebase' ) (9 'sourceraster' ) (10 'sourcex' ) (11 'sourcey' ) (12 'clipx' ) (13 'clipy' ) (14 'clipwidth' ) (15 'clipheight' ) (16 'sourcefield' ) (17 'destfield' ) (18 'source' ) (19 'dest' ) (20 'sstrike' ) (21 'dstrike' ) (22 'printing' ) (23 'chari' ) (24 'stopx' ) (25 'xtable' ) (26 'exceptions' ) (27 'spacecount' ) (28 'spacei' ) (29 'spacex' ) (30 'charpad' ) (31 'text' ) (32 'spacesize' ) (33 'style' ) (34 'para' ) (35 'font' ) (36 'fontno' ) (37 'minascii' ) (38 'maxascii' ) (39 'glyphs' ) (40 'frame' ) (41 'looktype' ) (42 'kern' ) ) */
+
 	// CLBITBLT layout:
 	PI_BITBLT_FUNCTION: 0,
 	PI_BITBLT_GRAY: 1,
@@ -128,7 +131,17 @@ NT = {
 	PI_BITBLT_DESTFIELD: 17,
 	PI_BITBLT_SOURCE: 18,
 	PI_BITBLT_DEST: 19,
-	
+	PI_BITBLT_PRINTING: 22,
+	PI_BITBLT_CHARI: 23,
+	PI_BITBLT_STOPX: 24,
+	PI_BITBLT_XTABLE: 25,
+	PI_BITBLT_EXCEPTIONS: 26,
+	PI_BITBLT_CHARPAD: 30,
+	PI_BITBLT_TEXT: 31,
+	PI_BITBLT_MINASCII: 37,
+	PI_BITBLT_MAXASCII: 38,
+	PI_BITBLT_KERN: 42,
+
 	// CLFORM layout:
 	PI_FORM_EXTENT: 0,
 	PI_FORM_BITS: 1,
@@ -2446,7 +2459,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 47: return this.primitiveInstField(argCount); //instField: <-
             case 48: return this.primitivePerform(argCount); // Object>>perform:
             case 49: return this.popNandPushIntIfOK(1,999); // Object>>refct
-            case 50: return false; // TextScanner>>scanword:
+            case 50: return false; //this.primitiveScanWord(argCount); // TextScanner>>scanword:
             //case 51: String.alignForDisplay
             //case 52: Object.growTo
             case 53: this.vm.popN(argCount); return true; // altoDoAnything
@@ -3029,6 +3042,46 @@ Object.subclass('users.bert.St78.vm.Primitives',
             this.displayDirty(bitblt.affectedRect());
         return true;
 	},
+	primitiveScanWord: function(argCount) { // no rcvr class check as yet
+	// **still under construction - DI**
+    return false;  // In case this is not running reliably
+        this.idleCounter = 0; // reset idle if there was drawing
+        var bb = this.vm.stackValue(0),
+            bbPtrs = bb.pointers;
+        if (bbPtrs[NT.PI_BITBLT_SOURCEBITS].pointers
+            || bbPtrs[NT.PI_BITBLT_DESTBITS].pointers)
+            return false;
+        var bitblt = new users.bert.St78.vm.BitBlt(this.vm);
+        if (!bitblt.loadBitBlt(bb)) return false;
+        var lasti = this.vm.stackInteger(argCount);
+
+        var exceptions = bbPtrs[NT.PI_BITBLT_EXCEPTIONS].bytes,
+            isPrinting = bbPtrs[NT.PI_BITBLT_PRINTING] == NT.OOP_TRUE,
+            minascii = bbPtrs[NT.PI_BITBLT_MINASCII],
+            maxascii = bbPtrs[NT.PI_BITBLT_MAXASCII],
+            xtable = bbPtrs[NT.PI_BITBLT_XTABLE];
+        bbPtrs[NT.PI_BITBLT_FUNCTION] = 16;  // function
+        while (bbPtrs[NT.PI_BITBLT_CHARI] <= lasti) {
+            var ascii = bbPtrs[NT.PI_BITBLT_TEXT].bytes[bbPtrs[NT.PI_BITBLT_CHARI]-1];
+            if (exceptions[ascii] != 0) return exceptions[ascii];
+            if (ascii < minascii || ascii > maxascii) return 11;
+            bbPtrs[NT.PI_BITBLT_SOURCEX] = xtable.pointers[ascii];
+            bbPtrs[NT.PI_BITBLT_WIDTH] = xtable.pointers[ascii+1] - bbPtrs[NT.PI_BITBLT_SOURCEX];
+            if (isPrinting) {
+                bitblt.copyBits();
+                if (bitblt.destForm === this.displayBlt.pointers[NT.PI_BITBLT_DEST])
+                    this.displayDirty(bitblt.affectedRect());
+            }
+            var w = bbPtrs[NT.PI_BITBLT_WIDTH] + bbPtrs[NT.PI_BITBLT_CHARPAD];
+            if (bbPtrs[NT.PI_BITBLT_KERN] > 0) w = Math.max(2, w - bbPtrs[NT.PI_BITBLT_KERN])
+            bbPtrs[NT.PI_BITBLT_DESTX] = bbPtrs[NT.PI_BITBLT_DESTX] + w;
+            if (bbPtrs[NT.PI_BITBLT_DESTX] > bbPtrs[NT.PI_BITBLT_STOPX]) return 2;
+            bbPtrs[NT.PI_BITBLT_CHARI] = bbPtrs[NT.PI_BITBLT_CHARI] + 1;
+        }
+        bbPtrs[NT.PI_BITBLT_CHARI] = bbPtrs[NT.PI_BITBLT_CHARI] - 1;
+        return 10;
+	},
+
     primitiveKeyboardNext: function(argCount) {
         this.idleCounter = 0; // reset idle if there is input
         return this.popNandPushIfOK(argCount+1, this.checkSmallInt(this.display.keys.shift()));
