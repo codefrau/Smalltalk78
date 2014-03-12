@@ -413,13 +413,18 @@ Object.subclass('users.bert.St78.vm.Image',
         }
     },
     globalRefNamed: function(name) {
-        var globalNames = this.globals.pointers[NT.PI_SYMBOLTABLE_OBJECTS].pointers,
-            globalValues = this.globals.pointers[NT.PI_SYMBOLTABLE_VALUES].pointers;
-        for (var i = 0; i < globalNames.length; i++) {
-            if (globalNames[i].isNil) continue;
-            if (name == globalNames[i].bytesAsUnicode())
-                return globalValues[i];
+        var ref = this.globals.symbolTableRefNamed(name);
+        if (!ref) {
+            // try other symbol tables
+            var tableClass = this.globals.stClass,
+                table = this.firstOldObject;
+            while (table = table.nextObject && !ref) {
+                if (table.stClass !== tableClass) continue;
+                if (table !== this.globals)
+                    ref = table.symbolTableRefNamed(name);
+            }
         }
+        return ref;
     },
     selectorNamed: function(name) {
         var symbolClass = this.objectFromOop(NT.OOP_CLUNIQUESTRING),
@@ -1300,7 +1305,7 @@ Object.subclass('users.bert.St78.vm.Object',
         if (this.isFloat) {var str = this.float.toString(); if (!/\./.test(str)) str += '.0'; return str; }
         if (this.isClass()) return "the " + this.className() + " class";
         if (this.stClass.oop === NT.OOP_CLSTRING) return "'" + this.bytesAsUnicode(maxLength||16) + "'";
-        if (this.stClass.oop === NT.OOP_CLUNIQUESTRING) return "#" + this.bytesAsUnicode(maxLength||16);
+        if (this.stClass.oop === NT.OOP_CLUNIQUESTRING) return "↪" + this.bytesAsUnicode(maxLength||16);
         if (this.stClass.oop === NT.OOP_CLLARGEINTEGER) return this.largeIntegerValue() + "L";
         if (this.stClass.oop === NT.OOP_CLNATURAL) return this.bytesAsInteger() + "N";
         if (this.stClass.oop === NT.OOP_CLPOINT) return this.stInstNames().join("⌾");
@@ -1413,6 +1418,16 @@ Object.subclass('users.bert.St78.vm.Object',
     },
     symbolTableKeyAtIndex: function(i) {
         return this.pointers[NT.PI_SYMBOLTABLE_OBJECTS].pointers[i];
+    },
+    symbolTableRefNamed: function(name) {
+        var tableNames = this.pointers[NT.PI_SYMBOLTABLE_OBJECTS].pointers,
+            tableValues = this.pointers[NT.PI_SYMBOLTABLE_VALUES].pointers;
+        for (var i = 0; i < tableNames.length; i++) {
+            if (tableNames[i].isNil) continue;
+            if (name == tableNames[i].bytesAsUnicode())
+                return tableValues[i];
+        }
+        return null;
     },
     symbolTableRefAtIndex: function(i) {
         return this.pointers[NT.PI_SYMBOLTABLE_VALUES].pointers[i];
@@ -1791,7 +1806,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                 this.breakOnLiteralSeen[seen] += 1;
             } else {
                 this.breakOnLiteralSeen[seen] = 1;
-                this.breakNow("Seen literal " + seen);
+                this.breakNow("Seen literal " + literal.stInstName + " in " + seen);
             }
         }
         return literal;
@@ -1873,7 +1888,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             var errorSel = this.image.selectorNamed('error'); // put in initImageState() when removing the other case
             if (selector === errorSel) // Cannot find #error -- unrecoverable error.
                 throw "Recursive not understood error encountered";
-            if (this.breakOnMessageNotUnderstood)
+            if (this.breakOnMNU)
                 this.breakNow('MNU: ' + startingClass.className() + '>>' + selector.bytesAsUnicode());
             return this.findSelectorInClass(errorSel, 0, startingClass);
         } else {
@@ -1885,7 +1900,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                 selName = selector.bytesAsRawString();
             this.push(this.primHandler.makeStString('MNU: ' + className + '>>' + selName));
             this.push(rcvr);
-            if (this.breakOnMessageNotUnderstood)
+            if (this.breakOnMNU)
                 this.breakNow('MNU: ' + startingClass.className() + '>>' + selector.bytesAsUnicode());
             return this.findSelectorInClass(this.errorSel, 1, startingClass);
         }
