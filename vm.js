@@ -43,6 +43,7 @@ NT = {
     OOP_CLLARGEINTEGER: 0x160,
     OOP_CLUNIQUESTRING: 0x1a0,
     OOP_CLCOMPILEDMETHOD: 0x1e0,
+    OOP_CLRECTANGLE: 0x2a0,
     OOP_CLVLENGTHCLASS: 0x9c0,
 
     OOP_MASK: 0x1F,       // mask for class oops
@@ -1303,6 +1304,7 @@ Object.subclass('users.bert.St78.vm.Object',
         if (this.stClass.oop === NT.OOP_CLLARGEINTEGER) return this.largeIntegerValue() + "L";
         if (this.stClass.oop === NT.OOP_CLNATURAL) return this.bytesAsInteger() + "N";
         if (this.stClass.oop === NT.OOP_CLPOINT) return this.stInstNames().join("⌾");
+        if (this.stClass.oop === NT.OOP_CLRECTANGLE) return this.stInstNames().join(" rect: ");
         var className = this.stClass.className();
         return (/^[aeiou]/i.test(className) ? 'an ' : 'a ') + className;
     },
