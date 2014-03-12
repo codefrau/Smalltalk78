@@ -3342,10 +3342,11 @@ Object.subclass('users.bert.St78.vm.Primitives',
             return;
         } else { // otherwise, use our fileStrings
             if (fileName.length) {
-                alertOK("reading " + fileName);
+                if (fileName[0] != '.') alertOK("reading " + fileName);
                 result = this.fileStrings[fileName];
-                if (result) console.log("Got " + result.length + " bytes");
-                else console.log("File not found: " + fileName);
+                if (fileName[0] != '.')
+                    if (result) console.log("Got " + result.length + " bytes");
+                    else console.log("File not found: " + fileName);
             } else { // if called without a filename, return a directory index as vector
                 result = Object.keys(this.fileStrings);
             }
@@ -3366,7 +3367,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
                     else alert("Upload failed")})
                 .put(this.asUint8Array(stringToStore));
         } else { // otherwise, use our fileStrings
-            alertOK("storing " + fileName);
+            if (fileName[0] != '.') alertOK("storing " + fileName);
             this.fileStrings[fileName] = stringToStore;
             window.localStorage['notetaker:' + fileName] = stringToStore;
         }
