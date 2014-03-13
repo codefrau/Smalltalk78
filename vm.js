@@ -418,7 +418,7 @@ Object.subclass('users.bert.St78.vm.Image',
             // try other symbol tables
             var tableClass = this.globals.stClass,
                 table = this.firstOldObject;
-            while (table = table.nextObject && !ref) {
+            while ((table = table.nextObject) && !ref) {
                 if (table.stClass !== tableClass) continue;
                 if (table !== this.globals)
                     ref = table.symbolTableRefNamed(name);
