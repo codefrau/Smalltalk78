@@ -2965,7 +2965,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             return false;
         var primIndex = method.methodPrimitiveIndex();
             argCount = method.methodNumArgs();
-        this.vm.popN(3);
+        this.vm.popNandPush(3, newRcvr);
         if (this.vm.breakOnDoit) this.vm.breakNow("primitiveRunMethod called, likely a doit");
         this.vm.executeNewMethod(newRcvr, method, mClass, argCount, primIndex, true);
         return true;
