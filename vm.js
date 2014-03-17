@@ -3348,7 +3348,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
                         result = new Uint8Array(this.response);
                     }
                 } else {
-                    alert("Download failed (" + this.statusText + ") " + fileName);
+                    alert("Download failed (" + this.status + ") " + fileName);
                 }
                 unfreeze();
                 thenDo(result);
