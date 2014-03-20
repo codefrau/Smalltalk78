@@ -2508,7 +2508,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             // the primitives below were not in the original Notetaker
             case 100: return this.primitiveAllInstances(argCount);
             case 101: return this.primitiveClipboardText(argCount);
-            case 102: return this.popNandPushIfOK(1, this.makeLargeIfNeeded(this.millisecondClockValue())); // primitiveTicks
+            case 102: return this.primitiveTicks(argCount); // primitiveTicks
             case 103: this.vm.flushMethodCache(); return true; // primitiveFlushCache
             case 200: return this.popNandPushFloatIfOK(1,Math.sqrt(this.stackFloat(0))); // primitiveSqrt
             case 201: return this.popNandPushFloatIfOK(1,Math.cos(this.stackFloat(0))); // primitiveCos
@@ -3057,7 +3057,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             this.display.clipboardString = stringObj.bytesAsUnicode();
             this.display.clipboardStringChanged = true;
             this.vm.popNandPush(2, stringObj);
-            this.vm.breakOutOfInterpreter = true;       // so the system can get the string 
+            this.vm.breakOutOfInterpreter = this.vm.breakOutOfInterpreter || true;       // so the system can get the string 
         }
         return true;
 	},
@@ -3176,7 +3176,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
     displayFlush: function(rect) {
         if (!this.damage) return;
         if (this.damage.dirtyRects.length)
-            this.vm.breakOutOfInterpreter = true;   // show on screen
+            this.vm.breakOutOfInterpreter = this.vm.breakOutOfInterpreter || true;   // show on screen
         while (this.damage.dirtyRects.length)
             this.displayUpdate(this.damage.dirtyRects.shift());
     },
@@ -3242,11 +3242,14 @@ Object.subclass('users.bert.St78.vm.Primitives',
         };
         this.display.ctx.putImageData(this.displayPixels, 0, 0, this.cursorX, this.cursorY, 16, 16);
     },
-	millisecondClockValue: function() {
-        //Return the value of the millisecond clock as an integer.
+	primitiveTicks: function(argCount) {
+        //Return the value of the millisecond clock as a large integer.
         //Note that the millisecond clock wraps around periodically.
-        //The range is limited to SmallInteger maxVal / 2 to allow
-        //delays of up to that length without overflowing a SmallInteger."
+        return this.popNandPushIfOK(argCount + 1, this.makeLargeIfNeeded(this.millisecondClockValue()));
+	},
+	millisecondClockValue: function() {
+        //Return the value of the millisecond clock as a large integer.
+        //Note that the millisecond clock wraps around periodically.
         return (Date.now() - this.vm.startupTime) & this.vm.millisecondClockMask;
 	},
     bitBltCopyPointers: function(bitbltObj) {
