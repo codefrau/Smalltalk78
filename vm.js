@@ -2490,7 +2490,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 47: return this.primitiveInstField(argCount); //instField: <-
             case 48: return this.primitivePerform(argCount); // Object>>perform:
             case 49: return this.popNandPushIntIfOK(1,999); // Object>>refct
-            case 50: return false; //this.primitiveScanWord(argCount); // TextScanner>>scanword:
+            case 50: if (Config.danTest) this.primitiveScanWord(argCount); // TextScanner>>scanword:
+                        else return false; //
             //case 51: String.alignForDisplay
             //case 52: Object.growTo
             case 53: this.vm.popN(argCount); return true; // altoDoAnything
@@ -3075,7 +3076,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
 	},
 	primitiveScanWord: function(argCount) { // no rcvr class check as yet
 	// **still under construction - DI**
-    return false;  // In case this is not running reliably
+    // return false;  // In case this is not running reliably
+        debugger;  // Config.danTest = false  // Config.danTest = true
         this.idleCounter = 0; // reset idle if there was drawing
         var bb = this.vm.stackValue(0),
             bbPtrs = bb.pointers;
@@ -3090,8 +3092,10 @@ Object.subclass('users.bert.St78.vm.Primitives',
             isPrinting = bbPtrs[NT.PI_BITBLT_PRINTING] == NT.OOP_TRUE,
             minascii = bbPtrs[NT.PI_BITBLT_MINASCII],
             maxascii = bbPtrs[NT.PI_BITBLT_MAXASCII],
-            xtable = bbPtrs[NT.PI_BITBLT_XTABLE];
-        bbPtrs[NT.PI_BITBLT_FUNCTION] = 16;  // function
+            xtable = bbPtrs[NT.PI_BITBLT_XTABLE],
+            kern = bbPtrs[NT.PI_BITBLT_KERN];
+        if (kern === NT.OOP_NIL) kern = 0;
+        bbPtrs[NT.PI_BITBLT_FUNCTION] = kern==0 ? 16 : 17;  // function
         while (bbPtrs[NT.PI_BITBLT_CHARI] <= lasti) {
             var ascii = bbPtrs[NT.PI_BITBLT_TEXT].bytes[bbPtrs[NT.PI_BITBLT_CHARI]-1];
             if (exceptions[ascii] != 0) return exceptions[ascii];
@@ -3104,7 +3108,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
                     this.displayDirty(bitblt.affectedRect());
             }
             var w = bbPtrs[NT.PI_BITBLT_WIDTH] + bbPtrs[NT.PI_BITBLT_CHARPAD];
-            if (bbPtrs[NT.PI_BITBLT_KERN] > 0) w = Math.max(2, w - bbPtrs[NT.PI_BITBLT_KERN])
+            if (kern > 0) w = Math.max(2, w - kern)
             bbPtrs[NT.PI_BITBLT_DESTX] = bbPtrs[NT.PI_BITBLT_DESTX] + w;
             if (bbPtrs[NT.PI_BITBLT_DESTX] > bbPtrs[NT.PI_BITBLT_STOPX]) return 2;
             bbPtrs[NT.PI_BITBLT_CHARI] = bbPtrs[NT.PI_BITBLT_CHARI] + 1;
@@ -3855,7 +3859,6 @@ Object.subclass('users.bert.St78.vm.BitBlt',
         return {left: affectedL, top: affectedT, right: affectedR, bottom: affectedB};
     },
 });
-
 Object.subclass('users.bert.St78.vm.InstructionPrinter',
 'initialization', {
     initialize: function(method, vm) {
