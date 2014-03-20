@@ -2489,7 +2489,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 46: return this.primitiveInstField(argCount); //instField:
             case 47: return this.primitiveInstField(argCount); //instField: <-
             case 48: return this.primitivePerform(argCount); // Object>>perform:
-            case 49: return this.popNandPushIntIfOK(1,999); // Object>>refct
+            case 49: return this.popNandPushIntIfOK(1, 999); // Object>>refct
             case 50: if (Config.danTest) this.primitiveScanWord(argCount); // TextScanner>>scanword:
                         else return false; //
             //case 51: String.alignForDisplay
@@ -2511,6 +2511,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 101: return this.primitiveClipboardText(argCount);
             case 102: return this.primitiveTicks(argCount); // primitiveTicks
             case 103: this.vm.flushMethodCache(); return true; // primitiveFlushCache
+            case 104: return this.primitiveWait(argCount); // primitiveWait
             case 200: return this.popNandPushFloatIfOK(1,Math.sqrt(this.stackFloat(0))); // primitiveSqrt
             case 201: return this.popNandPushFloatIfOK(1,Math.cos(this.stackFloat(0))); // primitiveCos
             case 202: return this.popNandPushFloatIfOK(1,Math.sin(this.stackFloat(0))); // primitiveSin
@@ -2720,7 +2721,15 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return rcvr.pointers.indexOf(arg) >= 0;
     },
     idleMS: function() {
+        // answer number of milliseconds to wait before starting to interpret again
+        if (this.forceWait) {
+            var ms = this.forceWait;
+            this.forceWait = null;
+            return ms;
+        }
+        // if not idle, resume interpreter ASAP
         if (this.idleCounter < 100) return 0;
+        // otherwise, make up some number based on how recently we interacted 
         var inactivityMS = Date.now() - this.display.timeStamp;
         return inactivityMS;
     },
@@ -3048,6 +3057,16 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return true;
 	},
 
+    primitiveWait: function(argCount) {
+        if (argCount !== 1) return false;
+        var milliseconds = this.stackLargeInt(1);
+        if (!this.success) return false;
+        this.displayFlush();
+        this.forceWait = Math.max(milliseconds, 0);
+        this.vm.breakOutOfInterpreter = this.vm.breakOutOfInterpreter || true; 
+        this.vm.pop(1);
+        return true;
+	},
 	primitiveClipboardText: function(argCount) {
         if (argCount === 0) { // read from clipboard
             if (typeof(this.display.clipboardString) !== 'string') return false;
