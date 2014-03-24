@@ -3239,6 +3239,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
                 this.cursorDraw();
     },
     cursorUpdate: function(force) {
+        if (this.damage && this.damage.dirtyRects.length && !force) return;
         var x = this.display.mouseX,
             y = this.display.mouseY;
         if (x === this.cursorX && y === this.cursorY && !force) return;
