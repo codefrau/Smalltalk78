@@ -2092,6 +2092,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     popN: function(nToPop) {
         for (var i = 0; i < nToPop; i++)
             this.activeProcessPointers[this.sp++] = this.nilObj;
+        return true;
     },
     push: function(oop) {
         this.activeProcessPointers[--this.sp] = oop;
@@ -2100,6 +2101,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         for (var i = 1; i < nToPop; i++)
             this.activeProcessPointers[this.sp++] = this.nilObj;
         this.activeProcessPointers[this.sp] = oop;
+        return true;
     },
     top: function() {
         return this.activeProcessPointers[this.sp];
@@ -2491,8 +2493,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 47: return this.primitiveInstField(argCount); //instField: <-
             case 48: return this.primitivePerform(argCount); // Object>>perform:
             case 49: return this.popNandPushIntIfOK(1, 999); // Object>>refct
-            case 50: if (Config.danTest) this.primitiveScanWord(argCount); // TextScanner>>scanword:
-                        else return false; //
+            case 50: return this.primitiveScanWord(argCount); // TextScanner>>scanword:
             //case 51: String.alignForDisplay
             //case 52: Object.growTo
             case 53: this.vm.popN(argCount); return true; // altoDoAnything
@@ -3113,7 +3114,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return true;
 	},
 	primitiveCopyBits: function(argCount) { // no rcvr class check, to allow unknown subclasses (e.g. under Turtle)
-        this.idleCounter = 0; // reset idle if there was drawing
         var bitbltObj = this.vm.stackValue(argCount);
         if (bitbltObj.pointers[NT.PI_BITBLT_SOURCEBITS].pointers || bitbltObj.pointers[NT.PI_BITBLT_DESTBITS].pointers)
             return this.bitBltCopyPointers(bitbltObj);
@@ -3125,46 +3125,39 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return true;
 	},
 	primitiveScanWord: function(argCount) { // no rcvr class check as yet
-	// **still under construction - DI**
-    // return false;  // In case this is not running reliably
-        debugger;  // Config.danTest = false  // Config.danTest = true
-        this.idleCounter = 0; // reset idle if there was drawing
-        var bb = this.vm.stackValue(0),
-            bbPtrs = bb.pointers;
-        if (bbPtrs[NT.PI_BITBLT_SOURCEBITS].pointers
-            || bbPtrs[NT.PI_BITBLT_DESTBITS].pointers)
-            return false;
-        var bitblt = new users.bert.St78.vm.BitBlt(this.vm);
-        if (!bitblt.loadBitBlt(bb)) return false;
-        var lasti = this.vm.stackInteger(argCount);
-
-        var exceptions = bbPtrs[NT.PI_BITBLT_EXCEPTIONS].bytes,
-            isPrinting = bbPtrs[NT.PI_BITBLT_PRINTING] == NT.OOP_TRUE,
+        var lasti = this.vm.stackInteger(1),
+            bb = this.vm.stackValue(0),
+            bbPtrs = bb.pointers,
+            text = bbPtrs[NT.PI_BITBLT_TEXT].bytes,
+            exceptions = bbPtrs[NT.PI_BITBLT_EXCEPTIONS].bytes,
+            printing = bbPtrs[NT.PI_BITBLT_PRINTING].isTrue,
             minascii = bbPtrs[NT.PI_BITBLT_MINASCII],
             maxascii = bbPtrs[NT.PI_BITBLT_MAXASCII],
-            xtable = bbPtrs[NT.PI_BITBLT_XTABLE],
+            xtable = bbPtrs[NT.PI_BITBLT_XTABLE].pointers,
             kern = bbPtrs[NT.PI_BITBLT_KERN];
-        if (kern === NT.OOP_NIL) kern = 0;
-        bbPtrs[NT.PI_BITBLT_FUNCTION] = kern==0 ? 16 : 17;  // function
+        if (printing && bbPtrs[NT.PI_BITBLT_FUNCTION] !== 17) // new images use 17 (OR)
+            bbPtrs[NT.PI_BITBLT_FUNCTION] = 16; 
         while (bbPtrs[NT.PI_BITBLT_CHARI] <= lasti) {
-            var ascii = bbPtrs[NT.PI_BITBLT_TEXT].bytes[bbPtrs[NT.PI_BITBLT_CHARI]-1];
-            if (exceptions[ascii] != 0) return exceptions[ascii];
-            if (ascii < minascii || ascii > maxascii) return 11;
-            bbPtrs[NT.PI_BITBLT_SOURCEX] = xtable.pointers[ascii];
-            bbPtrs[NT.PI_BITBLT_WIDTH] = xtable.pointers[ascii+1] - bbPtrs[NT.PI_BITBLT_SOURCEX];
-            if (isPrinting) {
+            var ascii = text[bbPtrs[NT.PI_BITBLT_CHARI]-1];
+            if (exceptions[ascii] !== 0) return this.vm.popNandPush(argCount+1, exceptions[ascii]);
+            if (ascii < minascii || ascii > maxascii) return this.vm.popNandPush(argCount+1, 11);
+            bbPtrs[NT.PI_BITBLT_SOURCEX] = xtable[ascii];
+            bbPtrs[NT.PI_BITBLT_WIDTH] = xtable[ascii+1] - bbPtrs[NT.PI_BITBLT_SOURCEX];
+            if (printing) {
+                var bitblt = new users.bert.St78.vm.BitBlt(this.vm);
+                if (!bitblt.loadBitBlt(bb)) return false;
                 bitblt.copyBits();
                 if (bitblt.destForm === this.displayBlt.pointers[NT.PI_BITBLT_DEST])
                     this.displayDirty(bitblt.affectedRect());
             }
             var w = bbPtrs[NT.PI_BITBLT_WIDTH] + bbPtrs[NT.PI_BITBLT_CHARPAD];
-            if (kern > 0) w = Math.max(2, w - kern)
-            bbPtrs[NT.PI_BITBLT_DESTX] = bbPtrs[NT.PI_BITBLT_DESTX] + w;
-            if (bbPtrs[NT.PI_BITBLT_DESTX] > bbPtrs[NT.PI_BITBLT_STOPX]) return 2;
-            bbPtrs[NT.PI_BITBLT_CHARI] = bbPtrs[NT.PI_BITBLT_CHARI] + 1;
+            if (kern > 0) w = Math.max(2, w - kern);
+            bbPtrs[NT.PI_BITBLT_DESTX] += w;
+            if (bbPtrs[NT.PI_BITBLT_DESTX] > bbPtrs[NT.PI_BITBLT_STOPX]) return this.vm.popNandPush(argCount+1, 2);
+            bbPtrs[NT.PI_BITBLT_CHARI]++;
         }
-        bbPtrs[NT.PI_BITBLT_CHARI] = bbPtrs[NT.PI_BITBLT_CHARI] - 1;
-        return 10;
+        bbPtrs[NT.PI_BITBLT_CHARI]--;
+        return this.vm.popNandPush(argCount+1, 10);
 	},
 
     primitiveKeyboardNext: function(argCount) {
@@ -3204,6 +3197,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
     displayDirty: function(rect) {
         if (!rect) return;
+        this.idleCounter = 0; // reset idle if there was drawing
         if (!this.damage) return this.displayUpdate(rect);
         // look for rect to merge with
         rect.area = (rect.right - rect.left) * (rect.bottom - rect.top);
