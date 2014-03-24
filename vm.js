@@ -3017,18 +3017,22 @@ Object.subclass('users.bert.St78.vm.Primitives',
             console.log("Saving image as " + imageName);
             // if we have filesystem storage we can save as binary blob ...
             if (window.webkitStorageInfo) {
+                var showError = function(msg) {
+                    alert("Saving failed: " + msg);
+                    $world.inform("Saving failed: " + msg);
+                };
                 window.webkitStorageInfo.requestQuota(PERSISTENT, 50*1024*1024, function(grantedBytes) {
                     window.webkitRequestFileSystem(PERSISTENT, grantedBytes, function(fs) {
                         fs.root.getFile(imageName, {create: true}, function(fileEntry) {
                             fileEntry.createWriter(function(fileWriter) {
                                 var success = true;
                                 fileWriter.onwriteend = function(e) {if (success) alertOK("Saved " + fileEntry.toURL())};
-                                fileWriter.onerror = function(e) {success = false; alert(e.target.error.name + ': ' + e.target.error.message)};
+                                fileWriter.onerror = function(e) {success = false; showError(e.target.error.name + ': ' + e.target.error.message)};
                                 fileWriter.write(new Blob([buffer]));
-                            }, function(e){alert("Cannot create file writer " + e.message)});
-                        }, function(e){alert("Cannot create file entry " + e.message)});
-                    }, function(e){alert("Cannot create file system " + e.message)});
-                }, function(e){alert("Quota request denied " + e.message)});
+                            }, function(e){showError("Cannot create file writer " + e.message)});
+                        }, function(e){showError("Cannot create file entry " + e.message)});
+                    }, function(e){showError("Cannot create file system " + e.message)});
+                }, function(e){showError("Quota request denied " + e.message)});
             } else {
                 // otherwise we have to use local storage ...
                 var words = new Uint16Array(buffer),    // JS Strings are UTF16
