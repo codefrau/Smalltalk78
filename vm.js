@@ -2420,6 +2420,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.compiledMethodClass = this.vm.image.objectFromOop(NT.OOP_CLCOMPILEDMETHOD);
         this.uniqueStringClass = this.vm.image.objectFromOop(NT.OOP_CLUNIQUESTRING);
         this.vectorClass = this.vm.image.objectFromOop(NT.OOP_CLVECTOR);
+        this.streamClass = this.vm.image.objectFromOop(NT.OOP_CLSTREAM);
         this.bitBltClass = this.vm.image.globalNamed('BitBlt');
         this.idleCounter = 0;
     },
@@ -2429,10 +2430,10 @@ Object.subclass('users.bert.St78.vm.Primitives',
         // returns true if it succeeds
         this.success = true;
         switch (lobits) {
-            case 0x0: return this.popNandPushIfOK(2, this.objectAt()); // at:
-            case 0x1: return this.popNandPushIfOK(3, this.objectAtPut()); // at:put:
-            //case 0x2: return false; // next
-            //case 0x3: return false; // nextPut:
+            case 0x0: return this.popNandPushIfOK(2, this.objectAt(this.stackNonInteger(0), this.stackLargeInt(1))); // ◦
+            case 0x1: return this.popNandPushIfOK(3, this.objectAtPut(this.stackNonInteger(0), this.stackLargeInt(2), this.vm.stackValue(1))); // ◦ ←
+            case 0x2: return this.primitiveNext(0); // next
+            case 0x3: return this.primitiveNextPut(1); // next←
             case 0x4: return this.popNandPushIfOK(1, this.objectSize()); // length
             case 0x5: return this.pop2andPushBoolIfOK(this.vm.stackValue(0) === this.vm.stackValue(1)); // ==
             //case 0x6: return false; // is:
@@ -2468,8 +2469,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 13: return this.popNandPushIfOK(2,this.doBitXor());  // SmallInt.bitXor
             case 14: return this.popNandPushIfOK(2,this.doBitAnd());  // SmallInt.bitAnd
             case 15: return this.popNandPushIfOK(2,this.doBitOr());  // SmallInt.bitOr
-            case 18: return false; // Stream.next
-            case 19: return false; // Stream.next←
+            case 18: return this.primitiveNext(argCount); // Stream.next
+            case 19: return this.primitiveNextPut(argCount); // Stream.next←
             case 20: return false; // ???
             case 24: return this.popNandPushIfOK(1,this.vm.getClass(this.vm.top())); // class
             case 25: return this.primitiveRemoteCopy(argCount); // Process.remoteCopy
@@ -2517,8 +2518,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 202: return this.popNandPushFloatIfOK(1,Math.sin(this.stackFloat(0))); // primitiveSin
             case 203: return this.popNandPushFloatIfOK(1,Math.tan(this.stackFloat(0))); // primitiveTan
             case 204: return this.popNandPushFloatIfOK(1,Math.atan(this.stackFloat(0))); // primitiveArctan
-            case 210: return this.popNandPushIfOK(2, this.makeLargeInt(this.stackLargeInt(0) + this.stackLargeInt(1))); // primitiveAddLargeIntegers
-            case 211: return this.popNandPushIfOK(2, this.makeLargeInt(this.stackLargeInt(0) - this.stackLargeInt(1))); // primitiveSubtractLargeIntegers
+            case 210: return this.popNandPushIfOK(2, this.makeLargeIfNeeded(this.stackLargeInt(0) + this.stackLargeInt(1))); // primitiveAddLargeIntegers
+            case 211: return this.popNandPushIfOK(2, this.makeLargeIfNeeded(this.stackLargeInt(0) - this.stackLargeInt(1))); // primitiveSubtractLargeIntegers
             case 214: {var a = this.stackLargeInt(0), b = this.stackLargeInt(1); return this.popNandPushIfOK(2, a < b ? 1 : a == b ? 2 : 3)}; // primitiveCompareLargeInt
             case 240: return this.popNandPushFloatIfOK(argCount + 1, this.pathDistance(argCount)); // primitive Dollar1 pathLength
 
@@ -2556,17 +2557,19 @@ Object.subclass('users.bert.St78.vm.Primitives',
     stackInteger: function(nDeep) {
         return this.checkSmallInt(this.vm.stackValue(nDeep));
     },
-    stackLargeInt: function(nDeep) {
-        var stackVal = this.vm.stackValue(nDeep);
-        if (this.vm.isSmallInt(stackVal))
-            return stackVal;
-        if (stackVal.stClass === this.largeIntegerClass) {
-            var large = stackVal.largeIntegerValue();
+    fromLargeInt: function(obj) {
+        if (this.vm.isSmallInt(obj))
+            return obj;
+        if (obj.stClass === this.largeIntegerClass) {
+            var large = obj.largeIntegerValue();
             if (large >= -0x80000000 && large <= 0x7FFFFFFF)
                 return large;
         } 
         this.success = false;
         return 0;
+    },
+    stackLargeInt: function(nDeep) {
+        return this.fromLargeInt(this.vm.stackValue(nDeep));
     },
     popNandPushIntIfOK: function(nToPop, returnValue) {
         if (!this.success) return false; 
@@ -2759,10 +2762,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (obj.words) return obj.words.length;
         return obj.pointersSize() - obj.stClass.classInstSize();
     },
-    objectAt: function() {
+    objectAt: function(array, index) {
         //Returns result of at: or sets success false
-        var array = this.stackNonInteger(0);
-        var index = this.stackLargeInt(1); //note non-int returns zero
         if (!this.success) return array;
         var info = this.atCache[(array.oop >> 1) & this.atCacheMask];
         if (info.array !== array)
@@ -2787,21 +2788,18 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (argCount > 1) rcvr.pointers[index-1] = this.vm.stackValue(1);
         return this.popNandPushIfOK(argCount + 1, rcvr.pointers[index-1]);
     },
-    objectAtPut: function() {
+    objectAtPut: function(array, index, objToPut) {
         //Returns result of at:put: or sets success false
-        var array = this.stackNonInteger(0);
-        var index = this.stackLargeInt(2); //note non-int returns zero
         if (!this.success) return array;
         var info = this.atPutCache[(array.oop >> 1) & this.atCacheMask];
         if (info.array !== array)
             info = this.makeAtCacheInfo(this.atPutCache, array);
         if (index<1 || index>info.size) {this.success = false; return array;}
-        var objToPut = this.vm.stackValue(1);
         if (array.pointers && !array.bytes) // pointers, but not compiled methods
             return array.pointers[index-1+info.ivarOffset] = objToPut;
         // words and bytes
         if (array.words) {  // words...
-            var wordToPut = this.stackLargeInt(1);
+            var wordToPut = this.fromLargeInt(objToPut);
             if (this.success) array.words[index-1] = wordToPut & 0xFFFF;
             return objToPut;
         }
@@ -2850,6 +2848,35 @@ Object.subclass('users.bert.St78.vm.Primitives',
         info.size = indexableSize;
         info.ivarOffset = instSize;
         return info;
+    },
+    primitiveNext: function(argCount) {
+        var stream = this.vm.stackValue(0);
+        if (stream.stClass !== this.streamClass) return false;
+        var array = stream.pointers[NT.PI_STREAM_ARRAY],
+            pos = this.fromLargeInt(stream.pointers[NT.PI_STREAM_POSITION]),
+            limit = this.fromLargeInt(stream.pointers[NT.PI_STREAM_LIMIT]);
+        if (!this.success || pos < 0 || pos >= limit) return false;
+        ++pos;
+        var result = this.objectAt(array, pos);
+        if (!this.success) return false;
+        stream.pointers[NT.PI_STREAM_POSITION] = this.makeLargeIfNeeded(pos);
+        this.vm.popNandPush(argCount+1, result);
+        return true;
+    },
+    primitiveNextPut: function(argCount) {
+        var stream = this.vm.stackValue(0),
+            objToPut = this.vm.stackValue(1);
+        if (stream.stClass !== this.streamClass) return false;
+        var array = stream.pointers[NT.PI_STREAM_ARRAY],
+            pos = this.fromLargeInt(stream.pointers[NT.PI_STREAM_POSITION]),
+            limit = this.fromLargeInt(stream.pointers[NT.PI_STREAM_LIMIT]);
+        if (!this.success || pos < 0 || pos >= limit) return false;
+        ++pos;
+        var result = this.objectAtPut(array, pos, objToPut);
+        if (!this.success) return false;
+        stream.pointers[NT.PI_STREAM_POSITION] = this.makeLargeIfNeeded(pos);
+        this.vm.popNandPush(argCount+1, result);
+        return true;
     },
 },
 'basic',{
