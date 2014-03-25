@@ -3123,6 +3123,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (argCount === 0) { // read from clipboard
             if (typeof(this.display.clipboardString) !== 'string') return false;
             this.vm.popNandPush(1, this.makeStString(this.fromUnicode(this.display.clipboardString)));
+            this.display.clipboardStringChanged = false;
         } else if (argCount === 1) { // write to clipboard
             var stringObj = this.stackNonInteger(1);
             if (!stringObj.bytes) return false;
