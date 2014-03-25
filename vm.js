@@ -2468,6 +2468,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.cursorBits = null;         // accessor for words in Smalltalk cursor
         this.cursorX = 0;
         this.cursorY = 0;
+        this.cursorOffsetX = 0;
+        this.cursorOffsetY = 0;
         this.damage = {dirtyRects: []};
         this.initAtCache();
         this.remoteCodeClass = vm.image.objectFromOop(NT.OOP_CLREMOTECODE);
@@ -3221,6 +3223,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.displayBits = blt.destBits;
         this.displayPitch = blt.destPitch;
         this.cursorBits = blt.sourceBits;
+        this.cursorOffsetX = blt.destX;
+        this.cursorOffsetY = blt.destY; 
         if (fullRedraw) this.redrawFullDisplay();
         else this.cursorUpdate(true);
     },
@@ -3293,8 +3297,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
     cursorUpdate: function(force) {
         if (this.damage && this.damage.dirtyRects.length && !force) return;
-        var x = this.display.mouseX,
-            y = this.display.mouseY;
+        var x = this.display.mouseX - this.cursorOffsetX,
+            y = this.display.mouseY - this.cursorOffsetY;
         if (x === this.cursorX && y === this.cursorY && !force) return;
         var oldBounds = {left: this.cursorX, top: this.cursorY, right: this.cursorX + 16, bottom: this.cursorY + 16 };
         this.cursorX = x;
