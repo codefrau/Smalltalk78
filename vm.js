@@ -147,7 +147,11 @@ NT = {
 	PI_FORM_EXTENT: 0,
 	PI_FORM_BITS: 1,
 	// also: offset figure ground
-	
+
+    // CLCURSOR layout:
+    PI_CURSOR_BITSTR: 0,
+    PI_CURSOR_OFFSET: 1,
+
 	// runtime indices and offsets:
 	
 	// process frame layout (off BP):
@@ -1550,8 +1554,24 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 
         // Highjack user restart in ProjectWindow>>install to do thisProcess restart instead!
         this.patchByteCode(8760, 23, 0x85);     // thisProcess
-    },
 
+        this.patchCursors();
+    },
+    patchCursors: function() {
+        // Cursors/Forms were interlaced and little endian on Notetaker.
+        // This is the equivalent of Cursor>>beAltoCursor to make them sane again.
+        this.image.allInstancesOf("Cursor").forEach(function(cursor){
+            var oldbits = cursor.pointers[NT.PI_CURSOR_BITSTR].bytes,
+                newbits = [];
+            for (var i = 0; i < 8; i++) {
+                newbits.push(oldbits[i*2+1]);
+                newbits.push(oldbits[i*2]);
+                newbits.push(oldbits[(i+8)*2+1]);
+                newbits.push(oldbits[(i+8)*2]);
+            }
+            cursor.pointers[NT.PI_CURSOR_BITSTR].bytes = newbits;
+	    });
+    },
     initVMState: function() {
         this.byteCodeCount = 0;
         this.sendCount = 0;
