@@ -3159,22 +3159,30 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return true;
 	},
 	primitiveScanWord: function(argCount) { // no rcvr class check as yet
-        var lasti = this.vm.stackInteger(1),
-            bb = this.vm.stackValue(0),
-            bbPtrs = bb.pointers,
+        var lasti = this.stackLargeInt(1),
+            bb = this.stackNonInteger(0);
+        if (!this.success) return false;
+        var bbPtrs = bb.pointers,
             text = bbPtrs[NT.PI_BITBLT_TEXT].bytes,
             exceptions = bbPtrs[NT.PI_BITBLT_EXCEPTIONS].bytes,
             printing = bbPtrs[NT.PI_BITBLT_PRINTING].isTrue,
             minascii = bbPtrs[NT.PI_BITBLT_MINASCII],
             maxascii = bbPtrs[NT.PI_BITBLT_MAXASCII],
             xtable = bbPtrs[NT.PI_BITBLT_XTABLE].pointers,
-            kern = bbPtrs[NT.PI_BITBLT_KERN];
+            kern = bbPtrs[NT.PI_BITBLT_KERN],
+            chari = this.fromLargeInt(bbPtrs[NT.PI_BITBLT_CHARI]);
         if (printing && bbPtrs[NT.PI_BITBLT_FUNCTION] !== 17) // new images use 17 (OR)
             bbPtrs[NT.PI_BITBLT_FUNCTION] = 16; 
-        while (bbPtrs[NT.PI_BITBLT_CHARI] <= lasti) {
-            var ascii = text[bbPtrs[NT.PI_BITBLT_CHARI]-1];
-            if (exceptions[ascii] !== 0) return this.vm.popNandPush(argCount+1, exceptions[ascii]);
-            if (ascii < minascii || ascii > maxascii) return this.vm.popNandPush(argCount+1, 11);
+        while (chari <= lasti) {
+            var ascii = text[chari-1];
+            if (exceptions[ascii] !== 0) {
+                bbPtrs[NT.PI_BITBLT_CHARI] = this.makeLargeIfNeeded(chari);
+                return this.vm.popNandPush(argCount+1, exceptions[ascii])
+            };
+            if (ascii < minascii || ascii > maxascii) {
+                bbPtrs[NT.PI_BITBLT_CHARI] = this.makeLargeIfNeeded(chari);
+                return this.vm.popNandPush(argCount+1, 11);
+            }
             bbPtrs[NT.PI_BITBLT_SOURCEX] = xtable[ascii];
             bbPtrs[NT.PI_BITBLT_WIDTH] = xtable[ascii+1] - bbPtrs[NT.PI_BITBLT_SOURCEX];
             if (printing) {
@@ -3187,10 +3195,14 @@ Object.subclass('users.bert.St78.vm.Primitives',
             var w = bbPtrs[NT.PI_BITBLT_WIDTH] + bbPtrs[NT.PI_BITBLT_CHARPAD];
             if (kern > 0) w = Math.max(2, w - kern);
             bbPtrs[NT.PI_BITBLT_DESTX] += w;
-            if (bbPtrs[NT.PI_BITBLT_DESTX] > bbPtrs[NT.PI_BITBLT_STOPX]) return this.vm.popNandPush(argCount+1, 2);
-            bbPtrs[NT.PI_BITBLT_CHARI]++;
+            if (bbPtrs[NT.PI_BITBLT_DESTX] > bbPtrs[NT.PI_BITBLT_STOPX]) {
+                bbPtrs[NT.PI_BITBLT_CHARI] = this.makeLargeIfNeeded(chari);
+                return this.vm.popNandPush(argCount+1, 2);
+            }
+            chari++;
         }
-        bbPtrs[NT.PI_BITBLT_CHARI]--;
+        chari--;
+        bbPtrs[NT.PI_BITBLT_CHARI] = this.makeLargeIfNeeded(chari);
         return this.vm.popNandPush(argCount+1, 10);
 	},
 
