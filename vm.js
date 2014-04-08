@@ -2941,17 +2941,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
 },
 'basic',{
-    primitivePerform: function(argCount) {
-        // handle perform: <selector> (with: arg)*
-        if (this.vm.stackValue(argCount).stClass !== this.uniqueStringClass)
-            return false;
-        var args = [];
-        for (var i = 0; i < argCount; i++) args.push(this.vm.pop());
-        var selector = this.vm.pop();
-        while (args.length) this.vm.push(args.pop());
-        this.vm.send(selector, argCount - 1);
-        return true;
-    },
     primitiveAllInstances: function(argCount) {
         var rcvr = this.stackNonInteger(0);
         if (!this.success || !rcvr.isClass())
@@ -3000,7 +2989,18 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return this.vm.image.bulkBecome([rcvr], [arg], true);;
     },
 },
-'blocks', {
+'eval', {
+    primitivePerform: function(argCount) {
+        // handle perform: <selector> (with: arg)*
+        if (this.vm.stackValue(argCount).stClass !== this.uniqueStringClass)
+            return false;
+        var args = [];
+        for (var i = 0; i < argCount; i++) args.push(this.vm.pop());
+        var selector = this.vm.pop();
+        while (args.length) this.vm.push(args.pop());
+        this.vm.send(selector, argCount - 1);
+        return true;
+    },
     primitiveRemoteCopy: function(argCount) {
         // Make a block-like outrigger to rcvr, a process
         var rcvr = this.vm.stackValue(0);
@@ -3049,9 +3049,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
 		this.vm.doStore(value, this.vm.nextByte());		// TODO emulate STOREMODE
 		return true;
     },
-},
-'scheduling',
-{
     resume: function(processToRun) {
         // Called by <Process> eval - sleep the current process and wake processToRun
         // FIXME: this needs to be refactored with RCeval, RCreturn, and VM.loadActiveProcess
