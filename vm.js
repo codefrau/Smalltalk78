@@ -1647,17 +1647,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             this.notetakerPatches(display);
         }
     },
-    wakeProcess: function(proc) {
-        // Install a new active process and load sp, ready to restore other state
-        this.activeProcess = proc;
-        this.activeProcessPointers = this.activeProcess.pointers;
-        this.sp = (this.activeProcessPointers.length - this.activeProcessPointers[NT.PI_PROCESS_TOP]) - 1;
-    },
-    sleepProcess: function() {
-        // Preserve state of sp in variable 'top' (after saving PC and BP)
-        this.activeProcessPointers[NT.PI_PROCESS_TOP] = (this.activeProcessPointers.length - this.sp) - 1;
-        return this.activeProcess;
-    },
     patchByteCode: function(oop, index, replacementByte, maybeByte2, maybeByte3, maybeByte4) {
         var method = this.image.objectFromOop(oop);
         method.bytes[index] = replacementByte;
@@ -2139,6 +2128,17 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.methodNumArgs = this.activeProcessPointers[aFrame + NT.FI_NUMARGS];
         this.receiver = this.activeProcessPointers[aFrame + NT.FI_RECEIVER];
         return aFrame;
+    },
+    sleepProcess: function() {
+        // Preserve state of sp in variable 'top' (after saving PC and BP)
+        this.activeProcessPointers[NT.PI_PROCESS_TOP] = (this.activeProcessPointers.length - this.sp) - 1;
+        return this.activeProcess;
+    },
+    wakeProcess: function(proc) {
+        // Install a new active process and load sp, ready to restore other state
+        this.activeProcess = proc;
+        this.activeProcessPointers = this.activeProcess.pointers;
+        this.sp = (this.activeProcessPointers.length - this.activeProcessPointers[NT.PI_PROCESS_TOP]) - 1;
     },
 },
 'stack access', {
