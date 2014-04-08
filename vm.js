@@ -3058,7 +3058,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         // All should use common pushPCBP, popPCBP, and sleep/wake (for storing SP in top)
 
         // Push this frame and sleep this process
-        this.vm.pop(); // drop receiver
+        this.vm.pop();                // drop receiver (old process)
         this.vm.pushPCBP();           // save PC and BP for remoteReturn, then preserve in top
         this.vm.sleepProcess();
 
@@ -3066,6 +3066,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.vm.wakeProcess(processToRun);  // set up activeProcess and sp
         this.vm.popPCBP();            // restore pc and current frame
         this.vm.loadFromFrame(this.vm.bp);    // load all the rest from the frame
+        this.vm.push(processToRun);           // push method return value (new process)
         return true;
     },
     primitiveRunMethod: function(argCount) {
