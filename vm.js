@@ -1538,7 +1538,6 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.trueObj = this.image.objectFromOop(NT.OOP_TRUE);
         this.integerClass = this.image.objectFromOop(NT.OOP_CLINTEGER);
         this.classClass = this.image.objectFromOop(NT.OOP_CLCLASS);
-        this.errorSel = this.image.selectorNamed('error:');
     },
     notetakerPatches: function(display) {
         // this.method is Process>>goBaby
@@ -1945,26 +1944,22 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             }  
             currentClass = currentClass.pointers[NT.PI_CLASS_SUPERCLASS];
         }
-        if (false) { // set to true to use Smalltalk's own error handling
-            var errorSel = this.image.selectorNamed('error'); // put in initImageState() when removing the other case
-            if (selector === errorSel) // Cannot find #error -- unrecoverable error.
-                throw "Recursive not understood error encountered";
-            if (this.breakOnMNU)
-                this.breakNow('MNU: ' + startingClass.className() + '>>' + selector.bytesAsUnicode());
-            return this.findSelectorInClass(errorSel, 0, startingClass);
-        } else {
-            //Could not find the method -- send #error: with selector
-            if (selector === this.errorSel) // Cannot find #error: -- unrecoverable error.
-                throw "Recursive not understood error encountered";
-            var rcvr = this.pop(),
-                className = startingClass.pointers[NT.PI_CLASS_TITLE].bytesAsRawString(),
-                selName = selector.bytesAsRawString();
-            this.push(this.primHandler.makeStString('MNU: ' + className + '>>' + selName));
-            this.push(rcvr);
-            if (this.breakOnMNU)
-                this.breakNow('MNU: ' + startingClass.className() + '>>' + selector.bytesAsUnicode());
-            return this.findSelectorInClass(this.errorSel, 1, startingClass);
+        // Message not understood. Invoke error method instead
+        if (this.breakOnMNU)
+            this.breakNow('MNU: ' + startingClass.className() + '>>' + selector.bytesAsUnicode());
+        if (this.specialObjects[0].isCompiledMethod()) {
+            cacheEntry.method = this.specialObjects[0];      // Object>>error
+            cacheEntry.methodClass = this.nilObj.stClass;
+            cacheEntry.primIndex = 0;
+            cacheEntry.argCount = 0;
+            return cacheEntry;
         }
+        // regular error handling not possible, lookup #error: instead
+        var rcvr = this.pop(),
+            selName = selector.bytesAsRawString();
+        this.push(this.primHandler.makeStString('Message not understood: ' + selName));
+        this.push(rcvr);
+        return this.findSelectorInClass(this.image.selectorNamed('error:'), 1, startingClass);
     },
     lookupSelectorInDict: function(mDict, messageSelector) {
         //Returns a method or nilObject
