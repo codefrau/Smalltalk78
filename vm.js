@@ -1877,7 +1877,11 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     checkForInterrupts: function() {
         //Check for interrupts at sends and backward jumps
         if (this.interruptCheckCounter-- > 0) return; //only really check every 100 times or so
-        
+
+        // we've been busy
+        if (this.primHandler.idleCounter > 0)
+            this.primHandler.idleCounter--;
+
         if (this.primHandler.display.interrupt) {
             this.primHandler.display.interrupt = false;
             this.handleUserInterrupt();
