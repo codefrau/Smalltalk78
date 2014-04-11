@@ -3168,7 +3168,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             xtable = bbPtrs[NT.PI_BITBLT_XTABLE].pointers,
             kern = bbPtrs[NT.PI_BITBLT_KERN],
             chari = this.fromLargeInt(bbPtrs[NT.PI_BITBLT_CHARI]);
-        if (printing && bbPtrs[NT.PI_BITBLT_FUNCTION] !== 17) // new images use 17 (OR)
+        if (printing && bbPtrs[NT.PI_BITBLT_FUNCTION] === 28) // for original image
             bbPtrs[NT.PI_BITBLT_FUNCTION] = 16; 
         while (chari <= lasti) {
             var ascii = text[chari-1];
