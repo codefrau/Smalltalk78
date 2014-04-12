@@ -3448,7 +3448,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
                             dirPath = fileName.match(/[^:]*:\/\/[^\/]*(\/.*\/)[^\/]*/)[1];
                         // got all the hrefs, find the ones in this dir and extract file names
                         result = urls.select(function(url){return url.startsWith(dirPath)})
-                            .collect(function(path){return path.slice(dirPath.length)});
+                            .collect(function(path){return path.slice(dirPath.length)}).uniq();
                     } else {
                         console.log("Got " + this.response.byteLength + " bytes from " + fileName);
                         result = new Uint8Array(this.response);
