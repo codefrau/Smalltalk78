@@ -1618,7 +1618,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.interruptChecksEveryNms = 3;
         this.lastTick = 0;
         this.maxStackSize = 2000;   // refuse to grow to more than this
-        this.lowStackSize = 500;    // need this much to pop up a debugger
+        this.lowStackSize = 800;    // need this much to pop up a debugger
         this.lowStackSignaled = false;
         this.methodCacheSize = 1024;
         this.methodCacheMask = this.methodCacheSize - 1;
@@ -2010,7 +2010,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             this.push(this.nilObj); //  make room for temps and init them
         this.receiver = overrideReceiver ? newRcvr : this.activeProcessPointers[this.bp + NT.FI_RECEIVER];
         if (this.receiver !== newRcvr)
-            throw "receivers don't match";
+            {debugger;  throw "receivers don't match";}
         if (this.sp < this.lowStackSize)
             this.handleLowStack();
         this.checkForInterrupts();
@@ -2518,6 +2518,21 @@ Object.subclass('users.bert.St78.vm.Primitives',
         }
         return false;
     },
+    emulatePrimitive: function(argCount, newMethod, newMethodClass) {
+        // Control arrives here with rcvr being a ProcessFrame and first arg being the primitive index
+        // Below there, the stack should be the receiver and args as they are in the process.
+        // So we simply call doPrimitive to run it.
+        var pFrame = this.vm.pop();
+        var index = this.vm.pop();
+        var rcvr = this.vm.stackValue(0);
+        var arg1 = this.vm.stackValue(1);
+        var arg2 = this.vm.stackValue(2);
+         debugger;  //Need to check order of args in this case (o <-)
+        if (this.doPrimitive(index, argCount-2, newMethod, newMethodClass)) return true;
+        this.vm.push(index);
+        this.vm.push(pFrame);  // Restore process frame receiver
+        return false;   //  and fail for it
+    },
     doPrimitive: function(index, argCount, newMethod, newMethodClass) {
         this.success = true;
         this.floatReceiver = false;
@@ -2562,7 +2577,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 49: return this.popNandPushIntIfOK(1, 999); // Object>>refct
             case 50: return this.primitiveScanWord(argCount); // TextScanner>>scanword:
             //case 51: String.alignForDisplay
-            //case 52: Object.growTo
+            case 52: return this.emulatePrimitive(argCount, newMethod, newMethodClass); // do primitive if possible
             case 53: this.vm.popN(argCount); return true; // altoDoAnything
             //case 54: purge
             case 55: return this.primitiveRunMethod(argCount);
