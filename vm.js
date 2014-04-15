@@ -2793,7 +2793,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         // if not idle, resume interpreter ASAP
         if (this.idleCounter < 100) return 0;
         // otherwise, make up some number based on how recently we interacted 
-        var inactivityMS = Date.now() - this.display.timeStamp;
+        var inactivityMS = Math.max(Date.now() - this.display.timeStamp - 500, 0); // go idle 500 ms after last event
         return inactivityMS;
     },
     asUint8Array: function(string) {
@@ -3243,6 +3243,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
     displayDirty: function(rect) {
         if (!rect) return;
         this.idleCounter = 0; // reset idle if there was drawing
+        this.display.timeStamp = Date.now();
         if (!this.damage) return this.displayUpdate(rect);
         // look for rect to merge with
         rect.area = (rect.right - rect.left) * (rect.bottom - rect.top);
