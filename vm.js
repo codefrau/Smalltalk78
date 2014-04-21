@@ -1653,6 +1653,14 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         if (maybeByte3) method.bytes[index+2] = maybeByte3
         if (maybeByte4) method.bytes[index+3] = maybeByte4
     },
+    restart: function() {
+        // restart VM at top frame (useful after crash)
+        var process = this.image.objectFromOop(6);
+        this.wakeProcess(process);
+        this.popN(this.activeProcessPointers.length - 18 - this.sp);
+        this.popPCBP();
+        this.loadFromFrame(this.bp); 
+    },
 },
 'interpreting', {
     interpretOne: function() {
