@@ -476,7 +476,6 @@ Object.subclass('users.bert.St78.vm.Image',
         var newObjects = this.markReachableObjects();
         var removedObjects = this.removeUnmarkedOldObjects();
         this.appendToOldObjects(newObjects);
-        this.relinkRemovedObjects(removedObjects);
         this.spaceReport(newObjects, removedObjects, function(line){console.log(line)});
         console.log(Strings.format("GC: %s allocations, %s unchecked tenures, %s released, %s tenured, now %s total (%s bytes)", 
             this.newSpaceCount, this.tenuresSinceLastGC, removedObjects.length, newObjects.length, this.oldSpaceCount, this.oldSpaceBytes));
@@ -552,13 +551,7 @@ Object.subclass('users.bert.St78.vm.Image',
                 this.oldSpaceCount--;
                 this.oldSpaceBytes -= corpse.totalBytes();
                 this.freeOopFor(corpse);
-                removed.push(corpse);               // remember for relinking
-                corpse.nextObject = obj;            // kludge: the corpse's nextObject
-                // must point into the old space list, so that enumerating will still work,
-                // even with a GC in the middle. So we point it to the surviving obj here.
-                // However, this would lead to obj being enumerated twice (because it preceded
-                // the corpse until now), so we'll relink this later, after the new objects
-                // have been tenured
+                removed.push(corpse);
             }
         }
     },
@@ -578,12 +571,6 @@ Object.subclass('users.bert.St78.vm.Image',
             this.oldSpaceBytes += newObj.totalBytes();
         }
         this.lastOldObject = oldObj;
-    },
-    relinkRemovedObjects: function(removed) {
-        // fix up the nextObject pointers of removed objects,
-        // which were set to the preceding object in removeUnmarkedOldObjects()
-        for (var i = 0; i < removed.length; i++)
-            removed[i].nextObject = removed[i].nextObject.nextObject;
     },
 },
 'creating', {
