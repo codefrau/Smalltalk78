@@ -1599,6 +1599,11 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     initVMState: function() {
         this.byteCodeCount = 0;
         this.sendCount = 0;
+        this.quickSendCount = 0;
+        this.primitiveCount = 0;
+        this.performCount = 0;
+        this.remoteEvalCount = 0;
+        this.remoteCopyCount = 0;
         this.doSuper = false;
         this.interruptCheckCounter = 0;
         this.interruptCheckCounterFeedBackReset = 1000;
@@ -1824,11 +1829,11 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                         var oref = this.methodLiteral(extendedAddr);
                         oref.pointers[NT.PI_OBJECTREFERENCE_VALUE] = value; break
 					default:		// 0x8a (X LDLIT) and 0x8c (X SEND)
-						nono();
+						this.nono();
 				};
 				break;
             default:
-				nono();
+				this.nono();
 		}
 	},
     interpret: function(forMilliseconds, thenDo) {
@@ -2037,6 +2042,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
     doQuickSend: function(obj, index) {
         // pop receiver, push self or my inst var at index
+        this.quickSendCount++;
         if (index === 255)
             return this.activeProcessPointers[this.sp] = obj;
         if (index >= obj.pointers.size) {
@@ -2045,6 +2051,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.activeProcessPointers[this.sp] = obj.pointers[index];
     },
     tryPrimitive: function(primIndex, argCount, newMethod, newMethodClass) {
+        this.primitiveCount++;
         var success = this.primHandler.doPrimitive(primIndex, argCount, newMethod, newMethodClass);
         return success;
     },
@@ -3001,6 +3008,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
 'eval', {
     primitivePerform: function(argCount) {
         // handle perform: <selector> (with: arg)*
+        this.vm.performCount++;
         if (this.vm.stackValue(argCount).stClass !== this.uniqueStringClass)
             return false;
         var args = [];
@@ -3012,6 +3020,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
     primitiveRemoteCopy: function(argCount) {
         // Make a block-like outrigger to rcvr, a process
+        this.vm.remoteCopyCount++;
         var rcvr = this.vm.stackValue(0);
 	    if (rcvr !== this.vm.activeProcess) return false;
 		var pc = this.vm.pc,
@@ -3031,6 +3040,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
     primitiveValue: function(argCount) {
         // One entry for RemoteCode eval, value, and for Process eval which does a full process switch
+        this.vm.remoteEvalCount++;
         var rCode = this.vm.stackValue(0);
         if (rCode.stClass === this.processClass) return this.resume(rCode);
         if (rCode.stClass !== this.remoteCodeClass) return false;
