@@ -1,6 +1,6 @@
 module('users.bert.St78.vm').requires().toRun(function() {
 /*
- * Copyright (c) 2013 Bert Freudenberg
+ * Copyright (c) 2013, 2014 Bert Freudenberg and Dan Ingalls
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
