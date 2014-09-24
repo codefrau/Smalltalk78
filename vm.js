@@ -2573,7 +2573,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             //case 51: String.alignForDisplay
             case 52: return this.emulatePrimitive(argCount, newMethod, newMethodClass); // do primitive if possible
             case 53: this.vm.popN(argCount); return true; // altoDoAnything
-            //case 54: purge
+            case 54: return true; //was purge
             case 55: return this.primitiveRunMethod(argCount);
             //case 56: primEqual
             //case 57: user.core
