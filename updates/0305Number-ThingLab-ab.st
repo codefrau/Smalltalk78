@@ -1,0 +1,1 @@
+'From Smalltalk 5.4hXM on 23 July 1979 at 3:52:50 pm.'\gNumber asFollows\f5bgThingLab\f5bgasMagnitude [Magnitude new contents: self]\gb12Bcontents\gbrecopy: dict\gb\g

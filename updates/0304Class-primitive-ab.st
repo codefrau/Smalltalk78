@@ -1,0 +1,1 @@
+Class understands: 'primitive  "return true if I am considered to have no parts by ThingLab"	"modified since fieldtype no longer exists"	[self instsize=0 or (self is: VariableLengthClass)]	"[fieldtype32 or (self is: VariableLengthClass)]"' classified: 'ThingLab'
