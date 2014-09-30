@@ -1,1 +1,0 @@
-Turtle understands: 'go: t1 	[self goto: direction asRadians asDirection * t1 + location]' classified: 'moving'Turtle understands: 'goto: pt | oldLoc origin 	[oldLoc _ location.	location _ pt.	pendown 		[self drawfrom: oldLoc to: location.		batching  true  []		dest  DisplayForm  [user displayFlush]]]' classified: 'moving'Turtle derstands: 'effect:' unique.
