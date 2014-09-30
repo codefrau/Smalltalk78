@@ -1659,6 +1659,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         var b, b2;
         this.byteCodeCount++;
         b = this.nextByte();
+        if (b < 128) // Chrome only optimized up to 128 cases
         switch (b) { /* The Main Bytecode Dispatch Loop */
 
             // load receiver variable
@@ -1695,7 +1696,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             // Push constant (-1, 0, 1, 2, 10, nil, false, true)
             case 0x78: case 0x79: case 0x7A: case 0x7B: case 0x7C: case 0x7D: case 0x7E: case 0x7F:
                 this.push(this.specialObjects[b - 0x78 + 1]); break;
-
+        } else switch (b) { // Chrome only optimized up to 128 cases
             // Sundry
 			case 0x80:
 				this.doStore(this.pop(), this.nextByte()); break;  // STOPOP
