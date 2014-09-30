@@ -1,1 +1,0 @@
-'From Smalltalk 5.3f/XM on 24 July 1979 at 9:18:44 am.'\gParagraph asFollows\f5bgThingLab\f5bgcanFiloutContents [true]\gb18BcontentsCodeTo: strm	[strm append: 'Paragraph new text: '; print: text;		append: ' runs: '; print: runs; append: ' alignment: '; print: alignment]\gb22B\g

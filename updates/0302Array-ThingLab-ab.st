@@ -1,1 +1,0 @@
-'From Smalltalk 5.4hXM on 23 July 1979 at 3:51:41 pm.'\gArray asFollows\f5bgThingLab\f5bgasPath [AccessPath new names: self asVector]\gb7Brecopy: dict [self recopy]\gb13B\g
