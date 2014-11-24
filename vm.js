@@ -1177,14 +1177,14 @@ Object.subclass('users.bert.St78.vm.Object',
         // layout of NoteTaker Floats (from MSB):
         // 15 bits exponent in two's complement without bias, 1 bit sign
         // 32 bits mantissa including its highest bit (which is implicit in IEEE 754)
-        if (!this.words[1]) return 0.0; // if high-bit of mantissa is 0, then it's all zero
+        if (this.words[1] == 0) return 0.0; // if high-bit of mantissa is 0, then it's all zero
         var nt0 = this.words[0], nt1 = this.words[1], nt2 = this.words[2],
             ntExponent = nt0 >> 1, ntSign = nt0 & 1, ntMantissa = (nt1 & 0x7FFF) << 16 | nt2, // drop high bit of mantissa
-            ieeeExponent11 = (ntExponent + 1022) & 0x7FF, // IEEE: 11 bit exponent, biased
+            ieeeExponent = (ntExponent + 1022) & 0x7FF, // IEEE: 11 bit exponent, biased
             ieee = new DataView(new ArrayBuffer(8));
-        /// IEEE is 1 sign bit, 11 bits exponent, 53 bits mantissa omitting the highest bit (which is always 1, except for 0.0)
-        ieee.setInt32(0, ntSign << (32-1) | ieeeExponent11 << (31-11) | (ntMantissa & 0x7FFFF8000) >> 11); // 20 bits of ntMantissa
-        ieee.setInt32(4, (ntMantissa & 0x7FF) << (32-11)); // remaining 11 bits of ntMantissa, rest filled up with 0
+        // IEEE is 1 sign bit, 11 bits exponent, 53 bits mantissa omitting the highest bit (which is always 1, except for 0.0)
+        ieee.setInt32(0, ntSign << 31 | ieeeExponent << (31-11) | ntMantissa >> 11); // 20 bits of ntMantissa
+        ieee.setInt32(4, ntMantissa << (32-11)); // remaining 11 bits of ntMantissa, rest filled up with 0
         // why not use setInt64()? Because JavaScript does not have 64 bit ints
         return ieee.getFloat64(0);
     },
