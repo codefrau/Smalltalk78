@@ -1514,8 +1514,9 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
     loadImageState: function() {
         this.specialObjects = this.image.specialOopsVector.pointers;
-        this.specialSelectors = range(9, 40).map(
-            function(ix) {return this.specialObjects[ix]}, this);
+        this.specialSelectors = [];
+        for (var i = 9; i <= 40; i++)
+            this.specialSelectors.push(this.specialObjects[i]);
         // Note this could be computed by counting non-alpha characters in each selector...
         this.specialNargs = [
             1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 
