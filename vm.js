@@ -108,7 +108,7 @@ NT = {
 	PI_LARGEINTEGER_BYTES: 0,
 	PI_LARGEINTEGER_NEG: 1,
 	
-	/*  | i . (1 to: TextScanner instvars length) transform▹ i to▹ [(i-1),(TextScanner instvars◦i)] ==>
+	/*  | i . (1 to: TextScanner instvars length) transform⦂ i to⦂ [(i-1),(TextScanner instvars◦i)] ==>
 	((0 'function' ) (1 'color' ) (2 'destbase' ) (3 'destraster' ) (4 'destx' ) (5 'desty' ) (6 'width' ) (7 'height' ) (8 'sourcebase' ) (9 'sourceraster' ) (10 'sourcex' ) (11 'sourcey' ) (12 'clipx' ) (13 'clipy' ) (14 'clipwidth' ) (15 'clipheight' ) (16 'sourcefield' ) (17 'destfield' ) (18 'source' ) (19 'dest' ) (20 'sstrike' ) (21 'dstrike' ) (22 'printing' ) (23 'chari' ) (24 'stopx' ) (25 'xtable' ) (26 'exceptions' ) (27 'spacecount' ) (28 'spacei' ) (29 'spacex' ) (30 'charpad' ) (31 'text' ) (32 'spacesize' ) (33 'style' ) (34 'para' ) (35 'font' ) (36 'fontno' ) (37 'minascii' ) (38 'maxascii' ) (39 'glyphs' ) (40 'frame' ) (41 'looktype' ) (42 'kern' ) ) */
 
 	// CLBITBLT layout:
@@ -316,7 +316,7 @@ NT = {
         94: '⇑', // ^: return
         96: 'ⓢ', // `: 's operator
         1: '◦', // ^A: At
-        3: '▹', // ^C: open Colon
+        3: '⦂', // ^C: open Colon
         4: 'ctld', // ^D
         5: '∢', // ^E: Eye
         6: '⇒', // ^F: iF
@@ -343,7 +343,7 @@ NT = {
         '\x00': "␀",
         '\x01': "≤",
         '\x02': "␂",
-        '\x03': "▹",
+        '\x03': "⦂",
         '\x04': "␄",
         '\x05': "√",
         '\x06': "≡",
