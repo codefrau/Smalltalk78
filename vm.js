@@ -58,12 +58,12 @@ NT = {
 	PI_CLASS_CLASSVARS: 4,
 	PI_CLASS_SUPERCLASS: 5,
 	PI_CLASS_ENVIRONMENT: 6,
-	
+
 	// CLSTREAM layout:
 	PI_STREAM_ARRAY: 0,
 	PI_STREAM_POSITION: 1,
 	PI_STREAM_LIMIT: 2,
-	
+
 	// CLPROCESS layout:
 	PI_PROCESS_MINSIZE: 0,		// THEPROCESS: 128
 	PI_PROCESS_HWM: 1,			// THEPROCESS: 0
@@ -71,43 +71,43 @@ NT = {
 	PI_PROCESS_RESTARTCODE: 3,	// THEPROCESS: NIL
 	PI_PROCESS_STACK: 4,		// THEPROCESS: NIL
 	PN_PROCESS: 5,   	    	// number of fixed pointers
-	
+
 	// CLREMOTECODE layout:
 	PI_RCODE_FRAMEOFFSET: 0,
 	PI_RCODE_STARTINGPC: 1,
 	PI_RCODE_PROCESS: 2,
 	PI_RCODE_STACKOFFSET: 3,
-	
+
 	// CLHASHSET layout:
 	PI_HASHSET_OBJECTS: 0,
-	
+
 	// CLDICTIONARY layout:
 	PI_DICTIONARY_OBJECTS: 0,
 	PI_DICTIONARY_VALUES: 1,
-	
+
 	// CLSYMBOLTABLE layout:
 	PI_SYMBOLTABLE_OBJECTS: 0,
 	PI_SYMBOLTABLE_VALUES: 1,
-	
+
 	// CLMESSAGEDICT layout:
 	PI_MESSAGEDICT_OBJECTS: 0,
 	PI_MESSAGEDICT_METHODS: 1,
-	
+
 	// CLOBJECTREFERENCE layout:
 	PI_OBJECTREFERENCE_VALUE: 0,
-	
+
 	// CLCOMPILEDMETHOD layout:
 	BI_COMPILEDMETHOD_FIRSTLITERAL: 2,	// past method header
 	PC_BIAS: 2,	// due to NT's shorter header format
-	
+
 	// CLPOINT layout:
 	PI_POINT_X: 0,
 	PI_POINT_Y: 1,
-	
+
 	// CLLARGEINTEGER layout:
 	PI_LARGEINTEGER_BYTES: 0,
 	PI_LARGEINTEGER_NEG: 1,
-	
+
 	/*  | i . (1 to: TextScanner instvars length) transform⦂ i to⦂ [(i-1),(TextScanner instvars◦i)] ==>
 	((0 'function' ) (1 'color' ) (2 'destbase' ) (3 'destraster' ) (4 'destx' ) (5 'desty' ) (6 'width' ) (7 'height' ) (8 'sourcebase' ) (9 'sourceraster' ) (10 'sourcex' ) (11 'sourcey' ) (12 'clipx' ) (13 'clipy' ) (14 'clipwidth' ) (15 'clipheight' ) (16 'sourcefield' ) (17 'destfield' ) (18 'source' ) (19 'dest' ) (20 'sstrike' ) (21 'dstrike' ) (22 'printing' ) (23 'chari' ) (24 'stopx' ) (25 'xtable' ) (26 'exceptions' ) (27 'spacecount' ) (28 'spacei' ) (29 'spacex' ) (30 'charpad' ) (31 'text' ) (32 'spacesize' ) (33 'style' ) (34 'para' ) (35 'font' ) (36 'fontno' ) (37 'minascii' ) (38 'maxascii' ) (39 'glyphs' ) (40 'frame' ) (41 'looktype' ) (42 'kern' ) ) */
 
@@ -153,7 +153,7 @@ NT = {
     PI_CURSOR_OFFSET: 1,
 
 	// runtime indices and offsets:
-	
+
 	// process frame layout (off BP):
 	FI_FIRST_TEMP: -1,
 	// nominal stack frame contains six items, as follow:
@@ -163,11 +163,11 @@ NT = {
 	FI_METHOD: 3,
 	FI_MCLASS: 4,
 	FI_RECEIVER: 5,	// top stack item in previous frame
-	// 
+	//
 	FI_LAST_ARG: 6,	// stack item in previous frame
 	//
 	F_FRAMESIZE: 5,	// don't count args nor receiver...
-	
+
 	// Class instSize format (assuming untagged integer!):
 	FMT_HASPOINTERS: 0x4000,
 	FMT_HASWORDS: 0x2000,
@@ -183,7 +183,7 @@ NT = {
     Mouse_Blue: 1,
     Mouse_Yellow: 2,
     Mouse_Red: 4,
-    
+
     Key_Shift: 8,
     Key_Ctrl: 16,
     Key_Meta: 32,  // Cmd on Mac, Alt on PC
@@ -211,7 +211,7 @@ NT = {
         13, 233, 231, 229, 255, 9, 223, 255, 246, 3, 255, 230, 228, 226, 160, 24,
         219, 217, 215, 213, 211, 209, 207, 22, 220, 218, 226, 214, 212, 210, 231, 30,
         203, 201, 199, 197, 195, 193, 191, 8, 204, 202, 200, 198, 196, 194, 192, 192],
-    
+
     // symbolic NT keycodes (it uses ASCII for 32-126)
     kbSymbolic: {
         tab: 9,
@@ -229,7 +229,7 @@ NT = {
         // TextImage>>checkLooks
         ctlb: 166, // bold
         ctli: 150, // italic
-        ctlminus: 137, 
+        ctlminus: 137,
         ctlx: 151, // reset emph
         ctlB: 230, // non-bold
         ctlI: 214, // non-italic
@@ -384,7 +384,7 @@ Object.subclass('users.bert.St78.vm.ObjectTableReader',
 /*
 ot is the object table, a sequence of 4-byte entries, retrievable by this.otAt(oop), where oop is an object pointer with the bottom two bits = 0.  The entry encodes the data address, along with some other bits including a reference count that we can now ignore.  The method dataAddress(oop) will retrieve the address, also taking into account the "dataBias" which I won't explain.
 
-data is the object data space, a sequence of 2-byte words, retrievable by this.fieldOfObject(i, oop), where oop is an object pointer with the bottom two bits = 0, and i is the instance field number, with 1 being the index of the first field.  An index of 0 would retrieve the class pointer of an object, but this must be masked by 0xFFC0 because the bottom 6 bits of the class word are used for the object's size in bytes.  The method classOfOop will do this for you.  This implies that all class oops have zero in the bottom 6 bits.  This worked out nicely for OOZE's zones, but we will drop all that and go to the Squeak object format or whatever Bert is using internally.  Note that if the size field is zero, then there is a word before the class with a 16-bit length.  The method lengthBitsAt decodes this for you.  It appears that the size field is the size in bytes, including the class(and size), so a string of length 1 has size=3, and a Point would have a size = 6.  
+data is the object data space, a sequence of 2-byte words, retrievable by this.fieldOfObject(i, oop), where oop is an object pointer with the bottom two bits = 0, and i is the instance field number, with 1 being the index of the first field.  An index of 0 would retrieve the class pointer of an object, but this must be masked by 0xFFC0 because the bottom 6 bits of the class word are used for the object's size in bytes.  The method classOfOop will do this for you.  This implies that all class oops have zero in the bottom 6 bits.  This worked out nicely for OOZE's zones, but we will drop all that and go to the Squeak object format or whatever Bert is using internally.  Note that if the size field is zero, then there is a word before the class with a 16-bit length.  The method lengthBitsAt decodes this for you.  It appears that the size field is the size in bytes, including the class(and size), so a string of length 1 has size=3, and a Point would have a size = 6.
 
 The format of classes is (quoting from the system itself...
     title	"<String> for identification, printing"
@@ -425,7 +425,7 @@ The instsize is an integer (ie low bit = 1) with the following interpretation:
             oopMap[oop].readFromObjectTable(this, oopMap);
         return oopMap;
     }
-}, 
+},
 'object access', {
     otAt: function(oop) {
         // Return the OT entry for the oop
@@ -442,7 +442,7 @@ The instsize is an integer (ie low bit = 1) with the following interpretation:
         var entry = this.otAt(oop);
         return (entry&0xFFFF) * 16 + ((entry>>16)&0x1E) - this.dataBias;
     },
-    fieldOfObject: function(i, oop) { 
+    fieldOfObject: function(i, oop) {
         // i = 1 for first field after class
     	var addr = this.dataAddress(oop);
     	var a = addr+(2*i);
@@ -492,7 +492,7 @@ Object.subclass('users.bert.St78.vm.Image',
     There is no object table. Objects use direct references. We have immediate untagged ints (+/-16K).
     The snapshot image format uses 16 bit words for oops and tags the ints.
 
-    */    
+    */
     }
 },
 'initializing', {
@@ -594,7 +594,7 @@ Object.subclass('users.bert.St78.vm.Image',
         // Old space is a linked list of objects - each object has an "nextObject" reference.
         // New space objects do not have that pointer, they are garbage-collected by JavaScript.
         // But they have an allocation id so the survivors can be ordered on tenure.
-        // The "nextObject" references are created by collecting all new objects, 
+        // The "nextObject" references are created by collecting all new objects,
         // and then linking them into old space.
         // Note: after an old object is released, its "nextObject" ref must still allow traversal
         // of all remaining objects. This is so enumeration works despite GC.
@@ -603,7 +603,7 @@ Object.subclass('users.bert.St78.vm.Image',
         var removedObjects = this.removeUnmarkedOldObjects();
         this.appendToOldObjects(newObjects);
         this.spaceReport(newObjects, removedObjects, function(line){console.log(line)});
-        console.log(Strings.format("GC: %s allocations, %s unchecked tenures, %s released, %s tenured, now %s total (%s bytes)", 
+        console.log(Strings.format("GC: %s allocations, %s unchecked tenures, %s released, %s tenured, now %s total (%s bytes)",
             this.newSpaceCount, this.tenuresSinceLastGC, removedObjects.length, newObjects.length, this.oldSpaceCount, this.oldSpaceBytes));
         this.tenuresSinceLastGC = 0;
         this.newSpaceCount = 0;
@@ -640,7 +640,7 @@ Object.subclass('users.bert.St78.vm.Image',
         var newObjects = [];
         while (todo.length > 0) {
             var object = todo.pop();
-            if (object.mark) continue;    // objects are added to todo more than once 
+            if (object.mark) continue;    // objects are added to todo more than once
             if (object.oop < 0)           // it's a new object
                 newObjects.push(object);
             object.mark = true;           // mark it
@@ -672,7 +672,7 @@ Object.subclass('users.bert.St78.vm.Image',
                 next.mark = false;     // unmark for next GC
                 obj = next;
             } else { // otherwise, remove it
-                var corpse = next; 
+                var corpse = next;
                 obj.nextObject = corpse.nextObject; // drop from list
                 this.oldSpaceCount--;
                 this.oldSpaceBytes -= corpse.totalBytes();
@@ -780,7 +780,7 @@ Object.subclass('users.bert.St78.vm.Image',
                     continue;
                 }
             }
-            // same oops, or after end of base image 
+            // same oops, or after end of base image
             if (baseObj) baseObj = baseObj.nextObject;
             thisObj = thisObj.nextObject;
         }
@@ -859,14 +859,14 @@ Object.subclass('users.bert.St78.vm.Image',
             return (val & 0x3FFF) - (val & 0x4000);
         }
         if (optionalOopMap) return optionalOopMap[oop]; // only available at startup
-    
+
         // find the object with the given oop - looks only in oldSpace for now!
         var obj = this.firstOldObject;
         do {
             if (oop === obj.oop) return obj;
             obj = obj.nextObject;
         } while (obj);
-        
+
         debugger;
         throw "oop not found";
     },
@@ -1091,7 +1091,7 @@ Object.extend(users.bert.St78.vm.Image, {
             var obj = oopMap[oop];
             // mutate the class
             var mut = modifiedObjects[obj.stClass.oop];
-            if (mut) 
+            if (mut)
                 obj.stClass = mut;
             // and mutate body pointers
             var body = obj.pointers;
@@ -1367,7 +1367,7 @@ Object.subclass('users.bert.St78.vm.Object',
                     a.oop !== b.oop)                            // both objects
                         return false;
             }
-            if (!this.bytes) return true;   // unless it's a method, we're done 
+            if (!this.bytes) return true;   // unless it's a method, we're done
         }
         // compare words / bytes
         var isMethod = !!this.pointers;
@@ -1498,13 +1498,13 @@ Object.subclass('users.bert.St78.vm.Object',
         var string = this.pointers[NT.PI_CLASS_MYINSTVARS].bytesAsRawString();
         // remove comments, make comma-separated, then split
         string = string.replace(/"[^"]*"/g, ' ');   // replace comments "..." with space
-        string = string.replace(/\s+/g, ',');       // replace whitespace runs with comma 
-        string = string.replace(/^,/, '');          // remove lone comma at start 
+        string = string.replace(/\s+/g, ',');       // replace whitespace runs with comma
+        string = string.replace(/^,/, '');          // remove lone comma at start
         string = string.replace(/,$/, '');          // remove lone comma at end
         if (string.length)
             vars = vars.concat(string.split(','));  // split into words at commas
         return vars;
-    } 
+    }
 },
 'as method', {
     isCompiledMethod: function() {
@@ -1562,11 +1562,11 @@ Object.subclass('users.bert.St78.vm.Object',
         return this.pointers[zeroBasedIndex];
     },
     methodStartPC: function() {
-        if (this.methodIsQuick()) return 0; 
+        if (this.methodIsQuick()) return 0;
         return (this.bytes[1] & 126) - NT.PC_BIAS; // bias = 2 because 4-byte header became 2-byte for NT
     },
     methodEndPC: function() {
-        if (this.methodIsQuick()) return 0; 
+        if (this.methodIsQuick()) return 0;
         return this.bytes.length;
     },
 },
@@ -1645,7 +1645,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             this.specialSelectors.push(this.specialObjects[i]);
         // Note this could be computed by counting non-alpha characters in each selector...
         this.specialNargs = [
-            1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1, 
+            1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1,
             1, 2, 0, 1, 0, 1, 1, 1,   0, 0, 0, 0, 1, 0, 0, 0 ];
         this.nilObj = this.image.objectFromOop(NT.OOP_NIL);
         this.falseObj = this.image.objectFromOop(NT.OOP_FALSE);
@@ -1655,17 +1655,17 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
     notetakerPatches: function(display) {
         // this.method is Process>>goBaby
-        
+
         // set display extent to 640x480 by modifying literals
         this.method.pointers[9] = display.width || 640;
         this.method.pointers[17] = display.height || 480;
 
-        // Do not make font glyphs little-endian and interleaved 
+        // Do not make font glyphs little-endian and interleaved
         this.methodBytes[77] = 145;  // Patches over "DefaultTextStyle NoteTakerize."
 
         // Remarkably, it seems that Vector, String and Uniquestring all have their classes
         // mistakenly set to Class rather than VariableLengthClass as they were in the image
-        // from which the NT image was cloned. 
+        // from which the NT image was cloned.
         // The one thing that would have revealed this error, the lookup of new:, was sidestepped
         // in both my original 8086 code and Helge's Java VM.  Truly amazing  ;-)
         this.image.objectFromOop(NT.OOP_CLSTRING).stClass =
@@ -1681,14 +1681,14 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.image.objectFromOop(NT.OOP_CLCOMPILEDMETHOD).stClass =
             this.image.objectFromOop(NT.OOP_CLVLENGTHCLASS);
 
-        if (false) { // disabled because we need that 1 bit to 
-                     // tell oops from ints in saved image 
+        if (false) { // disabled because we need that 1 bit to
+                     // tell oops from ints in saved image
             // Patch to make all LargeIntegers in range +-32K small again:
             this.image.smallifyLargeInts();
             NT.MAX_INT =  0x7FFF;
             NT.MIN_INT = -0x8000;
             NT.NON_INT = -0x9000;
-            
+
             // Patches to make +-32K integers work while NoteTaker is true
             this.patchByteCode(11994, 12, 0x7E); // Integer>>lshift:
             this.patchByteCode(12310, 8, 0x7E); // Integer>>minVal
@@ -1700,7 +1700,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             this.patchByteCode(13516, 18, 0x7E); // LargeInteger>>lxor:
         }
 
-        // jump over Dorado code in UserView>>screenextent:tab: 
+        // jump over Dorado code in UserView>>screenextent:tab:
         this.patchByteCode(8310, 34, 0xA4, (111-34)-2); // long jmp to 111 [jumps have a bias of 2]
 
         // Highjack user restart in ProjectWindow>>install to do thisProcess restart instead!
@@ -1778,7 +1778,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.wakeProcess(process);
         this.popN(this.activeProcessPointers.length - 18 - this.sp);
         this.popPCBP();
-        this.loadFromFrame(this.bp); 
+        this.loadFromFrame(this.bp);
     },
 },
 'interpreting', {
@@ -1842,7 +1842,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 				break;
 			case 0x86:	// SUPER
 				this.doSuper = true;
-				break; 
+				break;
 			case 0x87:	// LSELF (cf. 0x71 above)
 				this.push(this.receiver);
 				break;
@@ -1949,7 +1949,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 				var extendedAddr = this.nextByte();
 				switch (addrByte) {
 					case 0x88:	// STO* X LDINST
-						this.receiver.pointers[extendedAddr] = value; break;	
+						this.receiver.pointers[extendedAddr] = value; break;
 					case 0x89:	// STO* X LDTEMP
 						var addr = this.currentFrameTempOrArg(extendedAddr);
 				        this.activeProcessPointers[addr] = value; break;
@@ -2014,7 +2014,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             this.primHandler.display.interrupt = false;
             this.handleUserInterrupt();
         }
-        
+
         var now = this.primHandler.millisecondClockValue();
         if (now < this.lastTick) { // millisecond clock wrapped
             this.breakOutTick = now + (this.breakOutTick - this.lastTick);
@@ -2040,7 +2040,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         this.send(this.image.selectorNamed('error:'), 1);
     },
     sendSpecial: function(lobits) {
-        this.send(this.specialSelectors[lobits], this.specialNargs[lobits]); 
+        this.send(this.specialSelectors[lobits], this.specialNargs[lobits]);
     },
 },
 'sending', {
@@ -2073,7 +2073,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                 cacheEntry.primIndex = newMethod.methodPrimitiveIndex();
                 cacheEntry.argCount = argCountOrUndefined === undefined ? newMethod.methodNumArgs() : argCountOrUndefined;
                 return cacheEntry;
-            }  
+            }
             currentClass = currentClass.pointers[NT.PI_CLASS_SUPERCLASS];
         }
         // Message not understood. Invoke error method instead
@@ -2221,7 +2221,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 },
 'frame', {
     currentFrameTempOrArg: function(tempIndex) {
-        return tempIndex < this.methodNumArgs ? 
+        return tempIndex < this.methodNumArgs ?
             this.bp + NT.FI_LAST_ARG + (this.methodNumArgs - 1 - tempIndex) :
             this.bp + NT.FI_FIRST_TEMP - (tempIndex - this.methodNumArgs);
     },
@@ -2272,7 +2272,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
 },
 'stack access', {
     pop: function() {
-        var value = this.activeProcessPointers[this.sp];  
+        var value = this.activeProcessPointers[this.sp];
         this.activeProcessPointers[this.sp++] = this.nilObj;
         return value;
     },
@@ -2324,7 +2324,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     growStack: function() {
         var delta = 500,
             totalBytesBefore = this.activeProcess.totalBytes(),
-            oldPointers = this.activeProcess.pointers, 
+            oldPointers = this.activeProcess.pointers,
             oldLength = oldPointers.length,
             newLength = oldLength + delta;
         if (newLength - NT.PI_PROCESS_STACK > this.maxStackSize)
@@ -2433,7 +2433,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         // try again the expansive way
         var cls = this.image.firstOldObject;
         while (cls = cls.nextObject) {
-            if (!cls.isClass() || found[cls.oop]) continue; 
+            if (!cls.isClass() || found[cls.oop]) continue;
             var mdict = cls.pointers[NT.PI_CLASS_MDICT];
             var selectors = mdict.pointers[NT.PI_MESSAGEDICT_OBJECTS].pointers;
             var methods = mdict.pointers[NT.PI_MESSAGEDICT_METHODS].pointers;
@@ -2527,9 +2527,9 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                 bp + NT.FI_METHOD == i ? '  method: ' :
                 bp + NT.FI_MCLASS == i ? '  mclass: ' :
                 bp + NT.FI_RECEIVER == i ? 'receiver: ' :
-                bp + NT.FI_RECEIVER < i && i <= bp + NT.FI_RECEIVER + numArgs 
+                bp + NT.FI_RECEIVER < i && i <= bp + NT.FI_RECEIVER + numArgs
                     ? (' arg' + (bp+5+numArgs-i) + '/t' + (bp+6+numArgs-i) + ': ') :
-                sp == i ? '   sp ==> ' : 
+                sp == i ? '   sp ==> ' :
                 '          ', value);
             if (i >= bp + NT.FI_RECEIVER + numArgs && i+1 < ctx.length) {
                 if (!printAll) return stack;
@@ -2668,7 +2668,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 6: return this.pop2andPushBoolIfOK(this.stackIntOrFloat(0) === this.stackIntOrFloat(1)); // equal
             case 7: return this.pop2andPushBoolIfOK(this.stackIntOrFloat(0) !== this.stackIntOrFloat(1)); // notequal
             case 8: return this.popNandPushNumIfOK(2,this.stackIntOrFloat(0) * this.stackIntOrFloat(1));  // multiply *
-            case 9: return this.popNandPushNumIfOK(2,this.doDiv(this.stackIntOrFloat(0),this.stackIntOrFloat(1)));  // divide /  
+            case 9: return this.popNandPushNumIfOK(2,this.doDiv(this.stackIntOrFloat(0),this.stackIntOrFloat(1)));  // divide /
             case 10: return this.popNandPushNumIfOK(2,this.doRem(this.stackIntOrFloat(0),this.stackIntOrFloat(1)));  // rem \\
             case 11: return this.primitiveMakePoint(argCount);  // @ - make a Point
             case 12: return this.popNandPushIfOK(2,this.doBitShift());  // SmallInt.bitShift
@@ -2688,7 +2688,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 34: return this.popNandPushFloatIfOK(1,this.stackFloat(0)|0); // primitiveIntegerPart
             case 35: {var f = this.stackFloat(0); return this.popNandPushFloatIfOK(1, f - (f|0));} // primitiveFractionPart
             case 36: return this.popNandPushIntIfOK(1, this.vm.getHash(this.stackNonInteger(0))); // Object.hash
-            case 38: return this.primitiveBecome(argCount); // Object.become() 
+            case 38: return this.primitiveBecome(argCount); // Object.become()
             case 39: return this.primitiveValueGets(argCount); // RemoteCode.value_
             case 40: return this.primitiveCopyBits(argCount);  // BitBlt.callBLT
             case 41: return this.primitiveBeDisplayAndCursor(argCount); // BitBlt install for display
@@ -2709,7 +2709,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 59: return true; //UserView.primCursorLoc←
             case 61: return this.primitiveKeyboardPeek(argCount);
             case 62: return this.primitiveKeyboardNext(argCount);
-            case 66: return this.primitiveFileString(argCount);  //  co-opted from user primPort: 
+            case 66: return this.primitiveFileString(argCount);  //  co-opted from user primPort:
             case 68: return this.primitiveMouseButtons(argCount);
             case 71: return false; // primitiveTime
             // the primitives below were not in the original Notetaker
@@ -2769,7 +2769,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             var large = obj.largeIntegerValue();
             if (large >= -0x80000000 && large <= 0x7FFFFFFF)
                 return large;
-        } 
+        }
         this.success = false;
         return 0;
     },
@@ -2777,9 +2777,9 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return this.fromLargeInt(this.vm.stackValue(nDeep));
     },
     popNandPushIntIfOK: function(nToPop, returnValue) {
-        if (!this.success) return false; 
+        if (!this.success) return false;
         if (this.vm.canBeSmallInt(returnValue)) return this.popNandPushIfOK(nToPop, returnValue);
-        return false; 
+        return false;
     },
     stackIntOrFloat: function(nDeep) {
         var obj = this.vm.stackValue(nDeep);
@@ -2937,7 +2937,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         }
         // if not idle, resume interpreter ASAP
         if (this.idleCounter < 100) return 0;
-        // otherwise, make up some number based on how recently we interacted 
+        // otherwise, make up some number based on how recently we interacted
         var inactivityMS = Math.max(Date.now() - this.display.timeStamp - 500, 0); // go idle 500 ms after last event
         return inactivityMS;
     },
@@ -3107,7 +3107,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (!this.success || !rcvr.isClass()) return false;
         if (argCount == 0) // fixed size
             return this.popNandPushIfOK(1, this.vm.instantiateClass(rcvr, 0));
-        // variable size 
+        // variable size
         var size = this.stackInteger(1);
         if (this.success && size < 0) return false;  // negative size
         if (!this.success) {
@@ -3181,7 +3181,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         // Common code to sleep this frame
         this.vm.push(this.vm.pc + NT.PC_BIAS);           // save PC and absBP for remoteReturn
         this.vm.push(contextLength - this.vm.bp);
-        
+
         // Wake the remote context frame
         var frame = contextLength - rCode.pointers[NT.PI_RCODE_FRAMEOFFSET];
 		this.vm.bp = this.vm.loadFromFrame(frame);
@@ -3230,7 +3230,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
 },
 'platform', {
     primitiveQuit: function(argCount) {
-        this.vm.breakOutOfInterpreter = 'break'; 
+        this.vm.breakOutOfInterpreter = 'break';
         return true;
     },
     primitiveSaveImage: function(argCount) {
@@ -3273,7 +3273,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (!this.success) return false;
         this.displayFlush();
         this.forceWait = Math.max(milliseconds, 0);
-        this.vm.breakOutOfInterpreter = this.vm.breakOutOfInterpreter || true; 
+        this.vm.breakOutOfInterpreter = this.vm.breakOutOfInterpreter || true;
         this.vm.pop(1);
         return true;
 	},
@@ -3288,7 +3288,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             this.display.clipboardString = stringObj.bytesAsUnicode();
             this.display.clipboardStringChanged = true;
             this.vm.popNandPush(2, stringObj);
-            this.vm.breakOutOfInterpreter = this.vm.breakOutOfInterpreter || true;       // so the system can get the string 
+            this.vm.breakOutOfInterpreter = this.vm.breakOutOfInterpreter || true;       // so the system can get the string
         }
         return true;
 	},
@@ -3317,7 +3317,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             kern = bbPtrs[NT.PI_BITBLT_KERN],
             chari = this.fromLargeInt(bbPtrs[NT.PI_BITBLT_CHARI]);
         if (printing && bbPtrs[NT.PI_BITBLT_FUNCTION] === 28) // for original image
-            bbPtrs[NT.PI_BITBLT_FUNCTION] = 16; 
+            bbPtrs[NT.PI_BITBLT_FUNCTION] = 16;
         while (chari <= lasti) {
             var ascii = text[chari-1];
             if (exceptions[ascii] !== 0) {
@@ -3381,7 +3381,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.displayPitch = blt.destPitch;
         this.cursorBits = blt.sourceBits;
         this.cursorOffsetX = blt.destX;
-        this.cursorOffsetY = blt.destY; 
+        this.cursorOffsetY = blt.destY;
         if (fullRedraw) this.redrawFullDisplay();
         else this.cursorUpdate(true);
     },
@@ -3450,7 +3450,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         // show cursor if it was just overwritten
         if (noCursor) return;
         if (this.cursorX + 16 > rect.left && this.cursorX < rect.right &&
-            this.cursorY + 16 > rect.top && this.cursorY < rect.bottom) 
+            this.cursorY + 16 > rect.top && this.cursorY < rect.bottom)
                 this.cursorDraw();
     },
     cursorUpdate: function(force) {
@@ -3497,7 +3497,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
 	},
     bitBltCopyPointers: function(bitbltObj) {
         // BitBlt is used by the image to copy literals into and out of
-        // CompiledMethods' bytes. In our implementation, the literals are 
+        // CompiledMethods' bytes. In our implementation, the literals are
         // duplicated into pointers. This is taken care of here.
         var src = bitbltObj.pointers[NT.PI_BITBLT_SOURCEBITS],
             srcIndex = bitbltObj.pointers[NT.PI_BITBLT_SOURCEY],
@@ -3518,7 +3518,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
                 each.obj.methodInitLits(this.vm.image);
             }
             if (each.i < 0 || each.i + count > each.obj.pointers.length)
-                throw Strings.format("bitBltCopyPointers: access out of bounds for %s@%s-%s", 
+                throw Strings.format("bitBltCopyPointers: access out of bounds for %s@%s-%s",
                     each.obj.stInstName(), each.i, each.i + count - 1);
             }, this);
         // now do the copy or store nil
@@ -3544,7 +3544,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         // the fileStrings object contains strings stored from the image
         // (which are also persisted in localStorage) and files dropped onto this world.
         // They can be read using this primitive, co-opted from user primPort:
-        // If argument is not a string, a vector containing all local filenames is returned  
+        // If argument is not a string, a vector containing all local filenames is returned
         // If the filename starts with http we do a web get/put and
         // if it ends in a slash, answer a vector of linked files
         var fName = this.stackNonInteger(argCount).bytesAsRawString();
@@ -3671,7 +3671,7 @@ Object.subclass('users.bert.St78.vm.BitBlt',
 'initialization', {
     initialize: function(vm) {
         this.vm = vm;
-    }, 
+    },
     loadBitBlt: function(bitbltObj) {
         this.success = true;
         var bitblt = bitbltObj.pointers;
@@ -3929,7 +3929,7 @@ Object.subclass('users.bert.St78.vm.BitBlt',
                     this.destBits.setWord(this.destIndex, mergeWord);
                     this.destIndex += hInc;
                 }
-            } 
+            }
             // last word with masking and all
             if (this.nWords > 1) {
                 destMask = this.mask2;
@@ -4012,7 +4012,7 @@ Object.subclass('users.bert.St78.vm.BitBlt',
     },
     clipRange: function() {
         // initialize sx,sy, dx,dy, bbW,bbH to the intersection of source, dest, and clip
-        // let's assume everything is alright ... 
+        // let's assume everything is alright ...
         // intersect with destForm bounds
         if (this.clipX < 0) {this.clipW += this.clipX; this.clipX = 0; }
         if (this.clipY < 0) {this.clipH += this.clipY; this.clipY = 0; }
@@ -4194,7 +4194,7 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
 	pushReceiver: function() {
         this.print('push: self');
     },
-    pushReceiverVariable: function(offset) { 
+    pushReceiverVariable: function(offset) {
         var inst = this.printInstVar(offset);
         this.print('pushInstVar: ' + inst);
     },
@@ -4208,7 +4208,7 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
         var lit = this.printLiteral(index);
         this.print((doPop ? 'pop' : 'store') + 'IntoLitRef: ' + index + ' (' + lit + ')');
     },
-    storeIntoReceiverVariable: function(offset, doPop) { 
+    storeIntoReceiverVariable: function(offset, doPop) {
         var inst = this.printInstVar(offset);
         this.print((doPop ? 'pop' : 'store') + 'IntoInstVar: ' + inst);
     },

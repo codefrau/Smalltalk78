@@ -231,7 +231,7 @@ function createDisplay(canvas) {
     canvas.oncontextmenu = function() { return false; };
 
     function recordKeyboardEvent(char, repeatOK) {
-        // char is the code used in the image, which is 
+        // char is the code used in the image, which is
         // ASCII from 32-126 but custom outside that range
         // we do a reverse lookup in the keyboard map to find
         var key = NT.kbMap.indexOf(char) + 1;
@@ -331,7 +331,7 @@ function createDisplay(canvas) {
             display.buttons &= ~modifier;
         }
     }
-        
+
     return display;
 }
 
@@ -371,7 +371,7 @@ Smalltalk78.run = function(imageUrl, canvas) {
     rq.responseType = "arraybuffer";
     rq.onload = function(e) {
         if (rq.status == 200) {
-            runImage(rq.response, imageUrl, canvas); 
+            runImage(rq.response, imageUrl, canvas);
         }
         else rq.onerror(rq.statusText);
     };
