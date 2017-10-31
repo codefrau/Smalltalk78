@@ -3582,6 +3582,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var result;
         if (/http(s)?:/.test(fileName)) {
             alertOK("fetching " + fileName);
+            // we switched to https but the image may still use http
+            fileName = fileName.replace(/^http:(\/\/lively-web.org\/)/, 'https:$1');
             var isDir = /\/$/.test(fileName),  // ends in slash
                 unfreeze = this.vm.freeze(),   // freeze VM until we get result
                 xhr = new XMLHttpRequest();
