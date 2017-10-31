@@ -41,4 +41,6 @@ lively.data.FileUpload.Handler.subclass('users.bert.St78.ui.St78Loader', {
     },
 });
 
+lively.data.St78Import = users.bert.St78.ui.St78Loader;
+
 }) // end of module
