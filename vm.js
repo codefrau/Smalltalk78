@@ -2988,10 +2988,47 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var rcvr = this.stackNonInteger(0);
         var index = this.stackInteger(argCount); //args out of order ;-)
         if (!this.success) return false;
+        if (index === 1 && rcvr.isFloat) {
+          // field 1 is the exponent in the 3x16bit floating point format
+          // but it is shifted left by 1 bit, low bit is the sign
+          var float = frexp(rcvr.float);
+          if (argCount > 1) {
+              var word = this.vm.stackInteger(1);
+              float.exponent = word >> 1;
+              float.sign = word & 1;
+              rcvr.float = ldexp(float.mantissa, float.exponent, float.sign);
+          }
+          return this.popNandPushIfOK(argCount + 1, (float.exponent << 1) | float.sign);
+        }
         var instSize = rcvr.stClass.classInstSize();
         if (index < 1 || index > instSize) return false;
         if (argCount > 1) rcvr.pointers[index-1] = this.vm.stackValue(1);
         return this.popNandPushIfOK(argCount + 1, rcvr.pointers[index-1]);
+
+        function frexp(value) {
+            if (value === 0) return {mantissa: 0, exponent: 0, sign: 0};
+            var sign = value < 0 ? 1 : 0;
+            if (sign) value = -value;
+            var data = new DataView(new ArrayBuffer(8));
+            data.setFloat64(0, value);
+            var bits = (data.getUint32(0) >>> 20) & 0x7FF;
+            if (bits === 0) { // denormal
+                data.setFloat64(0, value * Math.pow(2, 64));  // exp + 64
+                bits = ((data.getUint32(0) >>> 20) & 0x7FF) - 64;
+            }
+            var exponent = bits - 1022;
+            var mantissa = ldexp(value, -exponent, 0);
+            return {mantissa: mantissa, exponent: exponent, sign: sign};
+        }
+
+        function ldexp(mantissa, exponent, sign) {
+            var steps = Math.min(3, Math.ceil(Math.abs(exponent) / 1023));
+            var result = mantissa;
+            for (var i = 0; i < steps; i++)
+                result *= Math.pow(2, Math.floor((exponent + i) / steps));
+            if (sign) result = result * -1;
+            return result;
+        }
     },
     objectAtPut: function(array, index, objToPut) {
         //Returns result of at:put: or sets success false
