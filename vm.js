@@ -710,11 +710,6 @@ Object.subclass('users.bert.St78.vm.Image',
         newObject.initInstanceOf(aClass, indexableSize, nilObj);
         return newObject;
     },
-    clone: function(object) {
-        var newObject = new users.bert.St78.vm.Object(this.tempOop());
-        newObject.initAsClone(object);
-        return newObject;
-    },
 },
 'operations', {
     bulkBecome: function(fromArray, toArray, twoWay) {
@@ -2684,7 +2679,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 27: return this.primitiveNew(argCount); // argCount = 0 fixed size
             case 28: return this.primitiveNew(argCount); // argCount = 1 variable
             case 32: return this.popNandPushFloatIfOK(1,this.stackInteger(0)); // primitiveAsFloat
-            case 33: return this.popNandPushIntIfOK(1,Math.floor(this.stackFloat(0))); // primitiveAsInteger
+            case 33: return this.popNandPushIntIfOK(1,Math.trunc(this.stackFloat(0))); // primitiveAsInteger
             case 34: return this.popNandPushFloatIfOK(1,this.stackFloat(0)|0); // primitiveIntegerPart
             case 35: {var f = this.stackFloat(0); return this.popNandPushFloatIfOK(1, f - (f|0));} // primitiveFractionPart
             case 36: return this.popNandPushIntIfOK(1, this.vm.getHash(this.stackNonInteger(0))); // Object.hash
@@ -2988,15 +2983,17 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var rcvr = this.stackNonInteger(0);
         var index = this.stackInteger(argCount); //args out of order ;-)
         if (!this.success) return false;
-        if (index === 1 && rcvr.isFloat) {
+        if (index === 1 && rcvr.stClass.oop === NT.OOP_CLFLOAT) {
           // field 1 is the exponent in the 3x16bit floating point format
           // but it is shifted left by 1 bit, low bit is the sign
-          var float = frexp(rcvr.float);
+          // uninitialized Floats have all bits 1
+          var float = rcvr.isFloat ? frexp(rcvr.float) : {mantissa: 1, exponent: -1, sign: 1};
           if (argCount > 1) {
               var word = this.vm.stackInteger(1);
               float.exponent = word >> 1;
               float.sign = word & 1;
               rcvr.float = ldexp(float.mantissa, float.exponent, float.sign);
+              if (!rcvr.isFloat) rcvr.isFloat = true;
           }
           return this.popNandPushIfOK(argCount + 1, (float.exponent << 1) | float.sign);
         }
