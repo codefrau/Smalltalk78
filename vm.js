@@ -2819,13 +2819,6 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.success = false;
         return 0;
     },
-    safeFDiv: function(dividend, divisor) {
-        if (divisor === 0.0) {
-            this.success = false;
-            return 1.0;
-        }
-        return dividend / divisor;
-    },
     doDiv: function(rcvr, arg) {
         if (arg === 0) return NT.NON_INT;  // fail if divide by zero
         return this.floatReceiver ? rcvr/arg : Math.floor(rcvr/arg);
