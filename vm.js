@@ -2983,15 +2983,17 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var rcvr = this.stackNonInteger(0);
         var index = this.stackInteger(argCount); //args out of order ;-)
         if (!this.success) return false;
-        if (index === 1 && rcvr.isFloat) {
+        if (index === 1 && rcvr.stClass.oop === NT.OOP_CLFLOAT) {
           // field 1 is the exponent in the 3x16bit floating point format
           // but it is shifted left by 1 bit, low bit is the sign
-          var float = frexp(rcvr.float);
+          // uninitialized Floats have all bits 1
+          var float = rcvr.isFloat ? frexp(rcvr.float) : {mantissa: 1, exponent: -1, sign: 1};
           if (argCount > 1) {
               var word = this.vm.stackInteger(1);
               float.exponent = word >> 1;
               float.sign = word & 1;
               rcvr.float = ldexp(float.mantissa, float.exponent, float.sign);
+              if (!rcvr.isFloat) rcvr.isFloat = true;
           }
           return this.popNandPushIfOK(argCount + 1, (float.exponent << 1) | float.sign);
         }
