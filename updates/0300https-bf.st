@@ -1,1 +1,1 @@
-'Switch update stream to https'updateURL _ 'https://lively-web.org/users/bert/St78/updates/'
+'Switch update stream to https'updateURL = 'http://lively-web.org/users/bert/St78/updates/'	[updateURL _ 'https://lively-web.org/users/bert/St78/updates/']
