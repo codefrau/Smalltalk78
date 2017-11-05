@@ -1,0 +1,1 @@
+'Switch update stream to https'updateURL _ 'https://lively-web.org/users/bert/St78/updates/'
