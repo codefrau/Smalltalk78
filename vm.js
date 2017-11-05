@@ -710,11 +710,6 @@ Object.subclass('users.bert.St78.vm.Image',
         newObject.initInstanceOf(aClass, indexableSize, nilObj);
         return newObject;
     },
-    clone: function(object) {
-        var newObject = new users.bert.St78.vm.Object(this.tempOop());
-        newObject.initAsClone(object);
-        return newObject;
-    },
 },
 'operations', {
     bulkBecome: function(fromArray, toArray, twoWay) {
