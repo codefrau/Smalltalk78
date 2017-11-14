@@ -99,6 +99,21 @@ Object.extend(String.prototype, {
     startsWith: function(pattern) { return this.indexOf(pattern) === 0; }
 });
 
+window.Strings = {
+    format: function(template) {
+        var args = arguments,
+            arg = 0;
+        return template.replace(/%s/g, function() {return args[++arg]});
+    }
+};
+
+window.$world = {
+    inform: window.alert,
+    prompt: function(text, callback, defaultText) {
+        callback(window.prompt(text, defaultText));
+    },
+};
+
 //////////////////////////////////////////////////////////////////////////////
 // load vm.js
 //////////////////////////////////////////////////////////////////////////////
