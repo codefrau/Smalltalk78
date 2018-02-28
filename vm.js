@@ -3296,6 +3296,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             return this.popNandPushIfOK(argCount+1, this.makePointWithXandY(this.display.width, this.display.height));
         }
         this.setDisplayAndCursor(rcvr);
+        this.vm.breakOutOfInterpreter = this.vm.breakOutOfInterpreter || true;   // show on screen
         this.vm.popN(argCount); // return self
         return true;
 	},
