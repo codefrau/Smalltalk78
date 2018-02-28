@@ -619,6 +619,16 @@ Object.subclass('users.bert.St78.vm.Image',
             delete pool[oopStr];
             return anObj.oop = parseInt(oopStr);
         }
+        //// support for more than 32 K objects:
+        //if (!this.largeOops) this.largeOops = 0x10000;
+        //if (this.largeOops <= 0xFFFFFFF0)
+        //  return anObj.oop = this.largeOops += 2;
+        //// ... but this requires compacting the large-oop space
+        //// at GC time,and writing to an extended image format with
+        //// more 32 bits/slot, and reading that extended format.
+        //// Another complication is CompiledMethods which know about
+        //// the 16 bit literal pointers.
+
         this.vm.primHandler.filePut('spacereport.txt', this.spaceReport());
         throw isClass ? "too many classes" : "too many objects";
     },
