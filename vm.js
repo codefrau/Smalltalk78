@@ -609,6 +609,7 @@ Object.subclass('users.bert.St78.vm.Image',
         this.newSpaceCount = 0;
         this.nextTempOop = -2;
         this.gcCount++;
+        return Object.keys(this.freeOops).length;
     },
     allocateOopFor: function(anObj) {
         // get an oop from the pool of unused oops
