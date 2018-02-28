@@ -978,7 +978,9 @@ Object.subclass('users.bert.St78.vm.Image',
             sign = -1;
         });
         classes = classes.sort(function(a,b){return byClass[b.oop].space - byClass[a.oop].space});
-        var report = "";
+        var report = "",
+            totalCount = 0,
+            totalSpace = 0;
         for (var i = 0; i < classes.length; i++) {
             var cls = classes[i],
                 name = cls.className(),
@@ -995,7 +997,10 @@ Object.subclass('users.bert.St78.vm.Image',
             if (count || space)
                 if (foreach) foreach(line);
                 else report += line + "\n";
+            totalCount += count;
+            totalSpace += space;
         }
+        if (!removedObjects) report += 'Total: ' + totalCount + ' objects, ' + totalSpace + ' bytes';
         return report;
     },
     printPathTo: function(goal) {
