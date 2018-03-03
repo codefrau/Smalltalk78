@@ -2707,7 +2707,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 46: return this.primitiveInstField(argCount); //instField:
             case 47: return this.primitiveInstField(argCount); //instField: <-
             case 48: return this.primitivePerform(argCount); // Object>>perform:
-            case 49: return this.popNandPushIntIfOK(1, 999); // Object>>refct
+            case 49: return this.primitiveRefCount(argCount); // Object>>refct
             case 50: return this.primitiveScanWord(argCount); // TextScanner>>scanword:
             //case 51: String.alignForDisplay
             case 52: return this.emulatePrimitive(argCount, newMethod, newMethodClass); // do primitive if possible
@@ -3299,6 +3299,16 @@ Object.subclass('users.bert.St78.vm.Primitives',
         debugger;
         return true;
     },
+    primitiveRefCount: function(argCount) {
+        var rcvr = this.vm.top(),
+            count = 0;
+        if (!this.vm.isSmallInt(rcvr)) {
+            count = this.vm.image.referencesTo(rcvr).length;
+            count = this.makeLargeIfNeeded(count);
+        }
+        this.vm.popNandPush(argCount + 1, count);
+        return true;
+    },
     primitiveBeDisplayAndCursor: function(argCount) {
         var rcvr = this.vm.top();
         if (rcvr.stClass !== this.bitBltClass) {
@@ -3309,7 +3319,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         this.vm.breakOutOfInterpreter = this.vm.breakOutOfInterpreter || true;   // show on screen
         this.vm.popN(argCount); // return self
         return true;
-	},
+  	},
 
     primitiveWait: function(argCount) {
         if (argCount !== 1) return false;
