@@ -2722,7 +2722,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 62: return this.primitiveKeyboardNext(argCount);
             case 66: return this.primitiveFileString(argCount);  //  co-opted from user primPort:
             case 68: return this.primitiveMouseButtons(argCount);
-            case 71: return false; // primitiveTime
+            case 71: return this.primitiveSecondClock(argCount); // primitiveTime - seconds since 1901
             // the primitives below were not in the original Notetaker
             case 100: return this.primitiveAllInstances(argCount);
             case 101: return this.primitiveClipboardText(argCount);
@@ -2907,14 +2907,15 @@ Object.subclass('users.bert.St78.vm.Primitives',
         throw "cannot make smalltalk object";
     },
     makeLargeInt: function(integer) {
-        if (integer < -0x80000000 || integer > 0x7FFFFFFF) {
+        // JS numbers are only accurate to +/- 2**53
+        if (integer < -0x20000000000000 || integer > 0x1fffffffffffff) {
             this.success = false;
             return 0;
         }
         var negative = integer < 0,
             bytes = [];
         if (negative) integer = -integer;
-        while (integer) {bytes.push(integer & 0xFF); integer = integer >> 8}
+        while (integer) { bytes.push(integer & 0xFF); integer = Math.floor(integer / 256); }
         var natural = this.vm.instantiateClass(this.naturalClass, bytes.length),
             large = this.vm.instantiateClass(this.largeIntegerClass, 0);
         natural.bytes = bytes;
@@ -3585,12 +3586,12 @@ Object.subclass('users.bert.St78.vm.Primitives',
             dest.methodPointersModified(this.vm.image, destIndex, count);
         return true;
     },
-	secondClock: function() {
-	    var date = new Date();
+    primitiveSecondClock: function(argCount) {
+        var date = new Date();
         var seconds = date.getTime() / 1000 | 0;    // milliseconds -> seconds
         seconds -= date.getTimezoneOffset() * 60;   // make local time
         seconds += ((69 * 365 + 17) * 24 * 3600);   // adjust epoch from 1970 to 1901
-        return this.makeLargeIfNeeded(seconds);
+        return this.popNandPushIfOK(argCount + 1, this.makeLargeIfNeeded(seconds));
     },
 },
 'files', {
