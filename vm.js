@@ -2013,6 +2013,9 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     nono: function() {
         throw "Oh No!";
     },
+    forceInterruptCheck: function() {
+        this.interruptCheckCounter = -1000;
+    },
     checkForInterrupts: function() {
         //Check for interrupts at sends and backward jumps
         if (this.interruptCheckCounter-- > 0) return; //only really check every 100 times or so
@@ -2031,13 +2034,14 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             this.breakOutTick = now + (this.breakOutTick - this.lastTick);
         }
         //Feedback logic attempts to keep interrupt response around 3ms...
-        if ((now - this.lastTick) < this.interruptChecksEveryNms)  //wrapping is not a concern
+        if ((now - this.lastTick) < this.interruptChecksEveryNms) { //wrapping is not a concern
             this.interruptCheckCounterFeedBackReset += 10;
-        else {
-            if (this.interruptCheckCounterFeedBackReset <= 1000)
+        } else {
+            if (this.interruptCheckCounterFeedBackReset <= 1000) {
                 this.interruptCheckCounterFeedBackReset = 1000;
-            else
+            } else {
                 this.interruptCheckCounterFeedBackReset -= 12;
+            }
         }
     	this.interruptCheckCounter = this.interruptCheckCounterFeedBackReset; //reset the interrupt check counter
     	this.lastTick = now; //used to detect wraparound of millisecond clock
@@ -3135,6 +3139,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             return false;
         var instances = this.vm.image.allInstancesOf(rcvr);
         this.popNandPushIfOK(argCount + 1, this.makeStVector(instances));
+        this.vm.forceInterruptCheck();
         return true;
     },
     primitiveMakePoint: function(argCount) {
@@ -3174,7 +3179,8 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var rcvr = this.stackNonInteger(0);
         var arg = this.stackNonInteger(1);
         if (!this.success) return false;
-        return this.vm.image.bulkBecome([rcvr], [arg], true);;
+        this.vm.forceInterruptCheck();
+        return this.vm.image.bulkBecome([rcvr], [arg], true);
     },
 },
 'eval', {
@@ -3306,6 +3312,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (!this.vm.isSmallInt(rcvr)) {
             count = this.vm.image.referencesTo(rcvr).length;
             count = this.makeLargeIfNeeded(count);
+            this.vm.forceInterruptCheck();
         }
         this.vm.popNandPush(argCount + 1, count);
         return true;
