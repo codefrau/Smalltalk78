@@ -496,8 +496,9 @@ Object.subclass('users.bert.St78.vm.Image',
     }
 },
 'initializing', {
-    initialize: function(oopMap, name, doPatches) {
+    initialize: function(oopMap, name, doPatches, largeOops) {
         this.name = name;
+        this.largeOops = largeOops || 0;
         this.maxTenuresBeforeGC = 1000;
         this.tenuresSinceLastGC = 0;
         this.gcCount = 0;
@@ -508,14 +509,16 @@ Object.subclass('users.bert.St78.vm.Image',
         this.freeOops = {};         // pool for real oops
         this.freeClassOops = {};    // pool for real class oops (lower bits 0)
         // link all objects into oldspace
-        var prevObj;
-        for (var oop = 0; oop < 0xFFFF; oop += 2)
+        var prevObj,
+            large = !!this.largeOops,
+            maxOop = Math.max(this.largeOops, 0xFFFE);
+        for (var oop = 0; oop <= maxOop; oop += 2)
             if (oopMap[oop]) {
                 this.oldSpaceCount++;
-                this.oldSpaceBytes += oopMap[oop].totalBytes();
+                this.oldSpaceBytes += oopMap[oop].totalBytes(large);
                 if (prevObj) prevObj.nextObject = oopMap[oop];
                 prevObj = oopMap[oop];
-            } else {
+            } else if (oop < 0x10000) {
                 (oop & NT.OOP_MASK ? this.freeOops : this.freeClassOops)[oop] = true;
             }
         this.firstOldObject = oopMap[0];
@@ -585,8 +588,7 @@ Object.subclass('users.bert.St78.vm.Image',
             }
             obj = obj.nextObject;
         }
-    }
-
+    },
 },
 'garbage collection', {
 
@@ -601,15 +603,19 @@ Object.subclass('users.bert.St78.vm.Image',
 
         var newObjects = this.markReachableObjects();
         var removedObjects = this.removeUnmarkedOldObjects();
+        if (this.largeOops) this.compactLargeOops();
         this.appendToOldObjects(newObjects);
+        if (this.largeOops) this.updateOldSpaceBytes();
+        /*
         this.spaceReport(newObjects, removedObjects, function(line){console.log(line)});
         console.log(Strings.format("GC: %s allocations, %s unchecked tenures, %s released, %s tenured, now %s total (%s bytes)",
             this.newSpaceCount, this.tenuresSinceLastGC, removedObjects.length, newObjects.length, this.oldSpaceCount, this.oldSpaceBytes));
+        */
         this.tenuresSinceLastGC = 0;
         this.newSpaceCount = 0;
         this.nextTempOop = -2;
         this.gcCount++;
-        return Object.keys(this.freeOops).length;
+        return this.availableOops();
     },
     allocateOopFor: function(anObj) {
         // get an oop from the pool of unused oops
@@ -619,22 +625,22 @@ Object.subclass('users.bert.St78.vm.Image',
             delete pool[oopStr];
             return anObj.oop = parseInt(oopStr);
         }
-        //// support for more than 32 K objects:
-        //if (!this.largeOops) this.largeOops = 0x10000;
-        //if (this.largeOops <= 0xFFFFFFF0)
-        //  return anObj.oop = this.largeOops += 2;
-        //// ... but this requires compacting the large-oop space
-        //// at GC time,and writing to an extended image format with
-        //// more 32 bits/slot, and reading that extended format.
-        //// Another complication is CompiledMethods which know about
-        //// the 16 bit literal pointers.
+        // support for more than 32 K objects
+        if (!this.largeOops && NT.largeOops) {
+            this.largeOops = 0xFFFE;   // so first large oop is 0x10000
+            console.log("Too many oops - switching from 16 to 32 bits");
+        }
+        if (this.largeOops >= 0xFFFE && this.largeOops <= 0xFFFFFFF0) {
+            return anObj.oop = this.largeOops += 2;
+        }
 
         this.vm.primHandler.filePut('spacereport.txt', this.spaceReport());
         throw isClass ? "too many classes" : "too many objects";
     },
     freeOopFor: function(anObj) {
         if (anObj.oop > 0) {
-            (anObj.oop & NT.OOP_MASK ? this.freeOops : this.freeClassOops)[anObj.oop] = true;
+            if (anObj.oop < 0x10000)
+                (anObj.oop & NT.OOP_MASK ? this.freeOops : this.freeClassOops)[anObj.oop] = true;
             anObj.oop = null;
         } else throw "attempt to free invalid oop";
     },
@@ -686,7 +692,7 @@ Object.subclass('users.bert.St78.vm.Image',
                 var corpse = next;
                 obj.nextObject = corpse.nextObject; // drop from list
                 this.oldSpaceCount--;
-                this.oldSpaceBytes -= corpse.totalBytes();
+                this.oldSpaceBytes -= corpse.totalBytes(!!this.largeOops);
                 this.freeOopFor(corpse);
                 removed.push(corpse);
             }
@@ -705,9 +711,34 @@ Object.subclass('users.bert.St78.vm.Image',
             oldObj.nextObject = newObj;
             oldObj = newObj;
             this.oldSpaceCount++;
-            this.oldSpaceBytes += newObj.totalBytes();
+            this.oldSpaceBytes += newObj.totalBytes(!!this.largeOops);
         }
         this.lastOldObject = oldObj;
+    },
+    compactLargeOops: function() {
+        // in 32 bits, oops are not freed but reassigned
+        var nextOop = 0x10000 - 2;
+        var obj = this.firstOldObject,
+            n = 0;
+        while (obj) {
+            if (obj.oop >= 0x10000) {
+                obj.oop = nextOop += 2;
+                n++;
+            }
+            obj = obj.nextObject;
+        }
+        this.largeOops = nextOop;
+    },
+    updateOldSpaceBytes: function() {
+        // with large oops, object size can change depending on the oops it holds
+        var large = !!this.largeOops,
+            obj = this.firstOldObject,
+            bytes = 0;
+        while (obj) {
+            bytes += obj.totalBytes(large);
+            obj = obj.nextObject;
+        }
+        this.oldSpaceBytes = bytes;
     },
 },
 'creating', {
@@ -795,10 +826,11 @@ Object.subclass('users.bert.St78.vm.Image',
     writeDiffToBuffer: function(baseImage) {
         // write only objects in this image that are not in baseImage
         // assumes both images are freshly loaded, not run
+        if (this.largeOops) throw new Error("32 bit image deltas not supported");
         var delta = this.diffFrom(baseImage),
             deltaBytes = 0;
         for (var i = 0; i < delta.length; i++)
-            deltaBytes += delta[i].totalBytes();
+            deltaBytes += delta[i].totalBytes(false);
         var magic = 'Sd78',
             version = 0x0100, // 1.0
             headerSize = 18,
@@ -825,6 +857,7 @@ Object.subclass('users.bert.St78.vm.Image',
         return data.buffer;
     },
     writeToBuffer: function() {
+        if (this.largeOops) return this.writeToBufferLarge()
         this.fullGC(); // collect all objects
         var magic = 'St78',
             version = 0x0100, // 1.0
@@ -852,6 +885,40 @@ Object.subclass('users.bert.St78.vm.Image',
             if (obj.isCompiledMethod())           // store literal oops into bytes
                 obj.methodPointersModified(this);
             pos = obj.writeTo(data, pos, this);
+            obj = obj.nextObject;
+            n++;
+        }
+        if (pos !== headerSize + this.oldSpaceBytes) throw "wrong image size";
+        if (n !== this.oldSpaceCount) throw "wrong object count";
+        return data.buffer;
+    },
+    writeToBufferLarge: function() {
+        this.fullGC(); // collect all objects
+        var magic = 'St78',
+            version = 0x0200, // 2.0
+            headerSize = 28,
+            data = new DataView(new ArrayBuffer(headerSize + this.oldSpaceBytes)),
+            pos = 0;
+        // magic bytes
+        for (var i = 0; i < 4; i++)
+            data.setUint8(pos++, magic.charCodeAt(i));
+        // version
+        data.setUint16(pos, version); pos += 2;
+        // header size
+        data.setUint16(pos, headerSize); pos += 2;
+        // image size
+        data.setUint32(pos, this.oldSpaceCount); pos += 4;
+        data.setUint32(pos, this.oldSpaceBytes); pos += 4;
+        data.setUint32(pos, this.largeOops); pos += 4;
+        // current process and display
+        data.setUint32(pos, this.vm.activeProcess.oop); pos += 4;
+        data.setUint32(pos,this.vm.primHandler.displayBlt.oop); pos += 4;
+        if (pos !== headerSize) throw "wrong header size";
+        // objects
+        var obj = this.firstOldObject,
+            n = 0;
+        while (obj) {
+            pos = obj.writeToLarge(data, pos, this);
             obj = obj.nextObject;
             n++;
         }
@@ -954,6 +1021,11 @@ Object.subclass('users.bert.St78.vm.Image',
         };
         return instances;
     },
+    availableOops: function() {
+        return this.largeOops
+            ? (0xFFFFFFF0 - this.largeOops) / 2
+            : Object.keys(this.vm.image.freeOops).length;
+    },
 },
 'debugging',
 {
@@ -976,7 +1048,7 @@ Object.subclass('users.bert.St78.vm.Image',
         [objects || this.allObjects(), removedObjects||[]].forEach(function(objs) {
             objs.forEach(function(obj) {
                 var cls = obj.stClass,
-                    space = sign * obj.totalBytes();
+                    space = sign * obj.totalBytes(!!this.largeOops);
                 if (!byClass[cls.oop]) {
                     byClass[cls.oop] = {count: 0, space: 0, max: space}
                     classes.push(cls);
@@ -1068,10 +1140,11 @@ Object.extend(users.bert.St78.vm.Image, {
         var result = this.oopmapFromBuffer(buffer, 'St78'),
             oopMap = result.oopMap,
             processOop = result.processOop,
-            displayOop = result.displayOop;
+            displayOop = result.displayOop,
+            largeOops = result.largeOops;
         for (var oop in oopMap)
             oopMap[oop].initFromImage(oopMap);
-        var image = new this(oopMap, name);
+        var image = new this(oopMap, name, false, largeOops);
         image.userProcess = oopMap[processOop];
         image.userDisplay = oopMap[displayOop];
         return image;
@@ -1128,16 +1201,26 @@ Object.extend(users.bert.St78.vm.Image, {
                 nextUint32: function(){pos += 4; return data.getUint32(pos-4)},
                 nextBytes: function(n){pos += n; return new DataView(data.buffer, pos - n, n)},
             },
-            onePointOh = 0x0100;
+            onePointOh = 0x0100,
+            twoPointOh = 0x0200;
         for (var i = 0; i < 4; i++)
             if (reader.nextUint8() !== magic.charCodeAt(i)) throw "magic number not found";
-        var version = reader.nextUint16();
-        if (version !== onePointOh) throw "cannot read version " + version.toString16();
-        var headerSize = reader.nextUint16(),
-            objectCount = reader.nextUint16(),
-            imageSize = reader.nextUint32(),
-            processOop = reader.nextUint16(),
+        var version = reader.nextUint16(),
+            headerSize = reader.nextUint16(),
+            objectCount, imageSize, largeOops, processOop, displayOop;
+        if (version === onePointOh) {
+            objectCount = reader.nextUint16();
+            imageSize = reader.nextUint32();
+            largeOops = 0;
+            processOop = reader.nextUint16();
             displayOop = reader.nextUint16();
+        } else if (version === twoPointOh) {
+            objectCount = reader.nextUint32();
+            imageSize = reader.nextUint32();
+            largeOops = reader.nextUint32();
+            processOop = reader.nextUint32();
+            displayOop = reader.nextUint32();
+        } else throw "cannot read version " + version.toString(16);
         if (pos !== headerSize) throw "header mismatch";
         var oopMap = {};
         for (var i = 0; i < objectCount; i++) {
@@ -1146,7 +1229,7 @@ Object.extend(users.bert.St78.vm.Image, {
             if (pos & 1) pos++; // odd size
         }
         if (pos !== headerSize + imageSize) throw "size mismatch";
-        return {oopMap: oopMap, processOop: processOop, displayOop: displayOop};
+        return {oopMap: oopMap, processOop: processOop, displayOop: displayOop, largeOops: largeOops};
     },
     saveBufferAs: function(buffer, imageName, thenDo, elseDo) {
         window.localStorage['notetakerImageName'] = imageName;
@@ -1195,37 +1278,56 @@ Object.subclass('users.bert.St78.vm.Object',
     },
     initFromImage: function(oopMap) {
         var stClass = this.objectFromOop(this.data.classOop, oopMap),
-            instSpec = stClass.pointers ? stClass.pointers[NT.PI_CLASS_INSTSIZE] :
-                stClass.data.body.getUint16(NT.PI_CLASS_INSTSIZE * 2) >> 1,
-            bodyBytes = this.data.body && this.data.body.byteLength;
+            instSpec = stClass.classInstSpec(),
+            body = this.data.body,
+            bodyBytes = body && body.byteLength,
+            large = typeof this.data.hash !== 'undefined',
+            oopSize = large ? 4 : 2;
         this.stClass = stClass;
         if (bodyBytes) {
             if (instSpec & NT.FMT_HASPOINTERS) { // pointers
                 this.pointers = [];
-                for (var i = 0; i < bodyBytes; i+=2) {
-                    var oop = this.data.body.getUint16(i);
+                for (var i = 0; i < bodyBytes; i+=oopSize) {
+                    var oop = large ? body.getUint32(i) : body.getUint16(i);
                     var obj = this.objectFromOop(oop, oopMap);
                     this.pointers.push(obj);
                 }
             } else if (instSpec & NT.FMT_HASWORDS) { // words
                 if (this.data.classOop === NT.OOP_CLFLOAT) {
                     this.isFloat = true;
-                    this.float = this.data.body.getFloat64(0);
+                    this.float = body.getFloat64(0);
                 } else {
                     this.words = [];
                     for (var i = 0; i < bodyBytes; i+=2) {
-                        var word = this.data.body.getUint16(i);
+                        var word = body.getUint16(i);
                         this.words.push(word);
+                    }
+                }
+            } else if (large && this.isCompiledMethod()) {
+                this.bytes = [body.getUint8(0), body.getUint8(1)];
+                var numLits = this.methodNumLits(),
+                    litStart = bodyBytes - 4 * this.methodNumLits();
+                for (var i = 2; i < litStart; i++) {
+                    var byte = body.getUint8(i);
+                    this.bytes.push(byte);
+                }
+                if (numLits) {
+                    this.pointers = [];
+                    for (var i = litStart; i < bodyBytes; i += oopSize) {
+                        var oop = body.getUint32(i);
+                        var obj = this.objectFromOop(oop, oopMap);
+                        this.pointers.push(obj);
                     }
                 }
             } else { // bytes
                 this.bytes = [];
                 for (var i = 0; i < bodyBytes; i++) {
-                    var byte = this.data.body.getUint8(i);
+                    var byte = body.getUint8(i);
                     this.bytes.push(byte);
                 }
             }
         }
+        if (large) this.hash = this.data.hash;
         delete this.data;
     },
     readFromObjectTable: function(reader, oopMap) {
@@ -1276,6 +1378,13 @@ Object.subclass('users.bert.St78.vm.Object',
                     this.words = this.fillArray(indexableSize, 0); //Floats require further init of float value
                 else
                     this.bytes = this.fillArray(indexableSize, 0); //Methods require further init of pointers
+    },
+    initHash: function() {
+        // preserve oop from 16 bit objects as hash in 32 bit objects
+        // assign random hash for new objects
+        this.hash = this.oop < 0x10000
+            ? (this.oop >> 1) & NT.MAX_INT
+            : (Math.random() * NT.MAX_INT | 0);
     },
     objectFromOop: function(oop, oopMap) {
         if (oop & 1) {
@@ -1338,6 +1447,8 @@ Object.subclass('users.bert.St78.vm.Object',
         if (this.pointers[NT.PI_LARGEINTEGER_NEG].isTrue) value = - value;
         return value;
     },
+},
+'writing', {
     dataBytes: function() {
         // number of bytes in this object excluding header and class information
         return this.isFloat ? 8 :               // we use IEEE floats instead of the original 3-word format
@@ -1346,7 +1457,9 @@ Object.subclass('users.bert.St78.vm.Object',
             this.pointers ? this.pointers.length * 2 :
             0;
     },
-    totalBytes: function() { // size in bytes this object will take up in image snapshot
+    totalBytes: function(large) { // size in bytes this object will take up in image snapshot
+        if (large && this.isLarge()) return this.totalBytesLarge();
+        // 16 bit oops, image format 1.0
         var dataBytes = this.dataBytes(),
             dataWords = dataBytes+1 >> 1,
             maxSmall = NT.OOP_TAG_SMALL,    // 0x1E
@@ -1355,10 +1468,6 @@ Object.subclass('users.bert.St78.vm.Object',
                 : 4;                               // oop, class oop, 4 bytes size (OOP_TAG_LARGE, 0x1F)
         return (headerWords + dataWords) * 2;
     },
-},
-'writing', {
-
-
     sameAs: function(other) {
         // answer true if this is the same object as the other from a different image
         if (!other) return false;
@@ -1433,6 +1542,80 @@ Object.subclass('users.bert.St78.vm.Object',
         if (pos & 1) pos++;
         return pos;
     },
+    isLarge: function() {
+        if (this.oop < 0) throw new Error("unexpected new object");
+        if (this.oop > 0xFFFF) return true;         // large oop => large
+        if (this.stClass.oop > 0xFFFF) return true; // large class oop => large
+        if (!this.pointers) return false;           // no oops => small
+        for (var i = 0; i < this.pointers.length; i++) {
+            if (this.pointers[i].oop > 0xFFFF) return true;
+        }
+        return false;
+    },
+    dataBytesLarge: function() {
+        // number of bytes in this object excluding header and class information
+        var bytes = this.isFloat ? 8 :          // we use IEEE floats instead of the original 3-word format
+            this.bytes ? this.bytes.length :
+            this.words ? this.words.length * 2 :
+            this.pointers ? this.pointers.length * 4 :
+            0;
+        // large CompiledMethods need extra space for 32 bit literals
+        if (this.bytes && this.pointers)
+            bytes += this.pointers.length * 4;
+        return bytes;
+    },
+    totalBytesLarge: function() {
+        // large objects use 32 bit oops but are still 16 bit aligned
+        var dataBytes = this.dataBytesLarge(),
+            dataWords = dataBytes+1 >> 1,
+            maxSmall = 0xFFFF,
+            headerBytes = dataBytes < maxSmall
+                ? 12          // oop, class oop, hash + size
+                : 16;         // oop, class oop, hash + tag, size
+        return headerBytes + dataWords * 2;
+    },
+    writeToLarge: function(data, pos, image) {
+        // if this is a small (16 bit) object, just write it using old format
+        if (!this.isLarge()) return this.writeTo(data, pos, image);
+
+        // small format writes the oop first, where low bit is 0
+        // large format writes the hash first, sets low bit to 1
+
+        // ensure hash
+        if (typeof this.hash === 'undefined')
+            this.initHash();
+        // Write hash+size, optional large size, oop, class.oop, optional data
+        var byteSize = this.dataBytesLarge(),
+            taggedHash = (this.hash << 1) | 1;
+        if (byteSize < 0xFFFF) { // one word for hash and size
+            data.setUint16(pos, taggedHash); pos += 2;
+            data.setUint16(pos, byteSize);   pos += 2;
+        } else if (byteSize < 0xFFFF) { // two words, marked by 0xFFFF
+            data.setUint16(pos, taggedHash); pos += 2;
+            data.setUint16(pos, 0xFFFF);     pos += 2;
+            data.setUint32(pos, byteSize);   pos += 4;
+        }
+        data.setUint32(pos, this.oop); pos += 4;
+        data.setUint32(pos, this.stClass.oop); pos += 4;
+        // now write data
+        var beforePos = pos;
+        if (this.isFloat)
+            { data.setFloat64(pos, this.float); pos += 8 }
+        else if (this.bytes)
+            for (var i = 0; i < this.bytes.length; i++)
+                { data.setUint8(pos, this.bytes[i]); pos++ }
+        else if (this.words)
+            for (var i = 0; i < this.words.length; i++)
+                { data.setUint16(pos, this.words[i]); pos += 2 };
+        // methods have bytes followed by literal pointers
+        if (this.pointers)
+            for (var i = 0; i < this.pointers.length; i++)
+                { data.setUint32(pos, image.objectToOop(this.pointers[i])); pos += 4 }
+        if (pos !== beforePos + byteSize) throw "written size does not match";
+        // adjust for odd number of bytes
+        if (pos & 1) pos++;
+        return pos;
+    },
 },
 'as class', {
     isClass: function() {
@@ -1448,7 +1631,16 @@ Object.subclass('users.bert.St78.vm.Object',
         if (instSpec & NT.FMT_HASPOINTERS)
             return ((instSpec & NT.FMT_BYTELENGTH) >> 1) - 1; // words, sans header
         return 0;
-    }
+    },
+    classInstSpec: function() {
+        if (this.pointers)
+           return this.pointers[NT.PI_CLASS_INSTSIZE];
+        // while still being oop-mapped
+        if (typeof this.data.hash !== 'undefined')
+            return this.data.body.getUint32(NT.PI_CLASS_INSTSIZE * 4) >> 1;
+        else
+            return this.data.body.getUint16(NT.PI_CLASS_INSTSIZE * 2) >> 1;
+    },
 },
 'debugging', {
     bytesAsUnicode: function(maxLength) {
@@ -1523,6 +1715,7 @@ Object.subclass('users.bert.St78.vm.Object',
     },
     methodInitLits: function(image, optionalOopMap, convertOops) {
         // make literals encoded as oops available as proper pointer objects
+        if (this.pointers) return; // already done (loaded as large obj probably)
         var numLits = this.methodNumLits();
         if (numLits) {
             var lits = [],
@@ -1538,7 +1731,7 @@ Object.subclass('users.bert.St78.vm.Object',
     },
     methodPointersModified: function(image, index, n) {
         // n literal pointers starting at index were modified: copy oops to bytes
-        if (n) return; // we ignore this if sent from bitblt
+        if (n) return; // we ignore this if sent from bitblt at runtime
         // if sent from image saving, copy all
         index = 0; n = this.methodNumLits();
         var bytesPtr = index * 2 + 2; // skip method header
@@ -1616,8 +1809,9 @@ Object.subclass('users.bert.St78.vm.Object',
 
 Object.extend(users.bert.St78.vm.Object, {
     readFromBuffer: function(reader) {
-        var oop = reader.nextUint16(),
-            classOopAndSize = reader.nextUint16(),
+        var oop = reader.nextUint16();
+        if (oop & 1) return this.readFromBufferLarge(reader, oop);
+        var classOopAndSize = reader.nextUint16(),
             byteSize = classOopAndSize & NT.OOP_MASK,
             classOop = classOopAndSize - byteSize;
         if (byteSize === NT.OOP_TAG_SMALL)
@@ -1626,6 +1820,21 @@ Object.extend(users.bert.St78.vm.Object, {
             byteSize = reader.nextUint32();
         var obj = new this(oop);
         obj.data = {
+            classOop: classOop,
+            body: byteSize && reader.nextBytes(byteSize),
+        };
+        return obj;
+    },
+    readFromBufferLarge: function(reader, hashWord) {
+        var hash = hashWord >> 1,
+            byteSize = reader.nextUint16();
+        if (byteSize === 0xFFFF)
+            byteSize = reader.nextUint32();
+        var oop = reader.nextUint32(),
+            classOop = reader.nextUint32();
+        var obj = new this(oop);
+        obj.data = {
+            hash: hash,
             classOop: classOop,
             body: byteSize && reader.nextBytes(byteSize),
         };
@@ -2395,7 +2604,19 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         return this.image.instantiateClass(aClass, indexableSize, this.nilObj);
     },
     getHash: function(object) {
-        return (this.image.objectToOop(object) >> 1) & NT.MAX_INT;
+        // smallints are their own hash
+        if (typeof object === 'number')
+            return object;
+        // in 16 bit images, the hash is the actual oop
+        if (!this.image.largeOops) {
+            // tenures the object
+            return (this.image.objectToOop(object) >> 1) & NT.MAX_INT;
+        }
+        // in 32 bit images, hash is stored explicitely
+        // objects carried over from 16 bits keep their oop as hash
+        if (typeof object.hash === 'undefined')
+            object.initHash();
+        return object.hash;
     },
     arrayFill: function(array, fromIndex, toIndex, value) {
         // assign value to range from fromIndex (inclusive) to toIndex (exclusive)
@@ -3579,10 +3800,11 @@ Object.subclass('users.bert.St78.vm.Primitives',
                 // this is a new CompiledMethod, duplicate its bytes to pointers
                 each.obj.methodInitLits(this.vm.image);
             }
-            if (each.i < 0 || each.i + count > each.obj.pointers.length)
+            if (each.i < 0 || each.i + count > each.obj.pointers.length) {
                 throw Strings.format("bitBltCopyPointers: access out of bounds for %s@%s-%s",
                     each.obj.stInstName(), each.i, each.i + count - 1);
-            }, this);
+            }
+        }, this);
         // now do the copy or store nil
         if (src.isNil)
             this.vm.arrayFill(dest.pointers, destIndex, destIndex+count, src);
