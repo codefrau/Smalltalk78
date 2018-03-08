@@ -1281,7 +1281,7 @@ Object.subclass('users.bert.St78.vm.Object',
             instSpec = stClass.classInstSpec(),
             body = this.data.body,
             bodyBytes = body && body.byteLength,
-            large = typeof this.data.hash !== 'undefined',
+            large = 'hash' in this.data,
             oopSize = large ? 4 : 2;
         this.stClass = stClass;
         if (bodyBytes) {
@@ -1327,7 +1327,7 @@ Object.subclass('users.bert.St78.vm.Object',
                 }
             }
         }
-        if (large) this.hash = this.data.hash;
+        if (this.data.hash > 0) this.hash = this.data.hash; // 0 hash means never assigned
         delete this.data;
     },
     readFromObjectTable: function(reader, oopMap) {
@@ -1378,13 +1378,6 @@ Object.subclass('users.bert.St78.vm.Object',
                     this.words = this.fillArray(indexableSize, 0); //Floats require further init of float value
                 else
                     this.bytes = this.fillArray(indexableSize, 0); //Methods require further init of pointers
-    },
-    initHash: function() {
-        // preserve oop from 16 bit objects as hash in 32 bit objects
-        // assign random hash for new objects
-        this.hash = this.oop < 0x10000
-            ? (this.oop >> 1) & NT.MAX_INT
-            : (Math.random() * NT.MAX_INT | 0);
     },
     objectFromOop: function(oop, oopMap) {
         if (oop & 1) {
@@ -1581,12 +1574,9 @@ Object.subclass('users.bert.St78.vm.Object',
         // small format writes the oop first, where low bit is 0
         // large format writes the hash first, sets low bit to 1
 
-        // ensure hash
-        if (typeof this.hash === 'undefined')
-            this.initHash();
         // Write hash+size, optional large size, oop, class.oop, optional data
         var byteSize = this.dataBytesLarge(),
-            taggedHash = (this.hash << 1) | 1;
+            taggedHash = (this.hash << 1) | 1;  // hash is okay to be undefined
         if (byteSize < 0xFFFF) { // one word for hash and size
             data.setUint16(pos, taggedHash); pos += 2;
             data.setUint16(pos, byteSize);   pos += 2;
@@ -1636,7 +1626,7 @@ Object.subclass('users.bert.St78.vm.Object',
         if (this.pointers)
            return this.pointers[NT.PI_CLASS_INSTSIZE];
         // while still being oop-mapped
-        if (typeof this.data.hash !== 'undefined')
+        if ('hash' in this.data)
             return this.data.body.getUint32(NT.PI_CLASS_INSTSIZE * 4) >> 1;
         else
             return this.data.body.getUint16(NT.PI_CLASS_INSTSIZE * 2) >> 1;
@@ -2604,18 +2594,12 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         return this.image.instantiateClass(aClass, indexableSize, this.nilObj);
     },
     getHash: function(object) {
-        // smallints are their own hash
-        if (typeof object === 'number')
-            return object;
-        // in 16 bit images, the hash is the actual oop
-        if (!this.image.largeOops) {
-            // tenures the object
-            return (this.image.objectToOop(object) >> 1) & NT.MAX_INT;
-        }
-        // in 32 bit images, hash is stored explicitely
-        // objects carried over from 16 bits keep their oop as hash
-        if (typeof object.hash === 'undefined')
-            object.initHash();
+        // in 16 bit objects, the hash is the actual oop
+        var oop = this.image.objectToOop(object);           // allocate non-temp oop
+        if (oop <= 0xFFFF) return (oop >> 1) & NT.MAX_INT;
+        // in 32 bit objects, hash is stored explicitely
+        if (! ('hash' in object))
+            object.hash = Math.random() * NT.MAX_INT + 1 | 0;
         return object.hash;
     },
     arrayFill: function(array, fromIndex, toIndex, value) {
