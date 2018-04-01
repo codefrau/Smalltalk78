@@ -506,8 +506,8 @@ Object.subclass('users.bert.St78.vm.Image',
         this.oldSpaceCount = 0;
         this.oldSpaceBytes = 0;
         this.nextTempOop = -2;      // new objects get negative preliminary oops
-        this.freeOops = {};         // pool for real oops
-        this.freeClassOops = {};    // pool for real class oops (lower bits 0)
+        this.freeOops = [];         // pool for real oops
+        this.freeClassOops = [];    // pool for real class oops (lower bits 0)
         // link all objects into oldspace
         var prevObj,
             large = !!this.largeOops,
@@ -519,7 +519,7 @@ Object.subclass('users.bert.St78.vm.Image',
                 if (prevObj) prevObj.nextObject = oopMap[oop];
                 prevObj = oopMap[oop];
             } else if (oop < 0x10000) {
-                (oop & NT.OOP_MASK ? this.freeOops : this.freeClassOops)[oop] = true;
+                (oop & NT.OOP_MASK ? this.freeOops : this.freeClassOops).push(oop);
             }
         this.firstOldObject = oopMap[0];
         this.lastOldObject = prevObj;
@@ -621,9 +621,8 @@ Object.subclass('users.bert.St78.vm.Image',
         // get an oop from the pool of unused oops
         var isClass = anObj.isClass(),
             pool = isClass ? this.freeClassOops : this.freeOops;
-        for (var oopStr in pool) {
-            delete pool[oopStr];
-            return anObj.oop = parseInt(oopStr);
+        if (pool.length > 0) {
+            return anObj.oop = pool.pop();
         }
         // support for more than 32 K objects
         if (!this.largeOops && NT.largeOops) {
@@ -639,8 +638,9 @@ Object.subclass('users.bert.St78.vm.Image',
     },
     freeOopFor: function(anObj) {
         if (anObj.oop > 0) {
-            if (anObj.oop < 0x10000)
-                (anObj.oop & NT.OOP_MASK ? this.freeOops : this.freeClassOops)[anObj.oop] = true;
+            if (anObj.oop < 0x10000) {
+                (anObj.oop & NT.OOP_MASK ? this.freeOops : this.freeClassOops).push(anObj.oop);
+            }
             anObj.oop = null;
         } else throw "attempt to free invalid oop";
     },
@@ -1024,7 +1024,7 @@ Object.subclass('users.bert.St78.vm.Image',
     availableOops: function() {
         return this.largeOops
             ? (0xFFFFFFF0 - this.largeOops) / 2
-            : Object.keys(this.vm.image.freeOops).length;
+            : this.freeOops.length;
     },
 },
 'debugging',
