@@ -1220,11 +1220,12 @@ Object.extend(users.bert.St78.vm.Image, {
             displayOop = reader.nextUint32();
         } else throw "cannot read version " + version.toString(16);
         if (pos !== headerSize) throw "header mismatch";
-        var oopMap = {};
+        var oopMap = {},
+            wordSize = largeOops ? 4 : 2;
         for (var i = 0; i < objectCount; i++) {
             var obj = users.bert.St78.vm.Object.readFromBuffer(reader);
             oopMap[obj.oop] = obj;
-            if (pos & 1) pos++; // odd size
+            while (pos % wordSize) pos++; // align to next word
         }
         if (pos !== headerSize + imageSize) throw "size mismatch";
         return {oopMap: oopMap, processOop: processOop, displayOop: displayOop, largeOops: largeOops};
@@ -1278,7 +1279,7 @@ Object.subclass('users.bert.St78.vm.Object',
         var stClass = this.objectFromOop(this.data.classOop, oopMap),
             instSpec = stClass.classInstSpec(),
             body = this.data.body,
-            bodyBytes = body && body.byteLength,
+            bodyBytes = this.data.byteSize,
             large = 'hash' in this.data,
             oopSize = large ? 4 : 2;
         this.stClass = stClass;
@@ -1311,6 +1312,8 @@ Object.subclass('users.bert.St78.vm.Object',
                 }
                 if (numLits) {
                     this.pointers = [];
+                    // align to next word
+                    while (litStart % 4) litStart++;
                     for (var i = litStart; i < bodyBytes; i += oopSize) {
                         var oop = body.getUint32(i);
                         var obj = this.objectFromOop(oop, oopMap);
@@ -1456,8 +1459,10 @@ Object.subclass('users.bert.St78.vm.Object',
             maxSmall = NT.OOP_TAG_SMALL,    // 0x1E
             headerWords = dataBytes < maxSmall ? 2 // oop, classOopAndSizeOrLargeTag (up to 30 bytes)
                 : dataBytes <= 0xFFFF ? 3          // oop, class oop, 2 bytes size (OOP_TAG_SMALL, 0x1E)
-                : 4;                               // oop, class oop, 4 bytes size (OOP_TAG_LARGE, 0x1F)
-        return (headerWords + dataWords) * 2;
+                : 4,                               // oop, class oop, 4 bytes size (OOP_TAG_LARGE, 0x1F)
+            totalBytes = (headerWords + dataWords) * 2;
+        if (large && totalBytes % 4) totalBytes += 2; //align to 32 bits if large image
+        return totalBytes;
     },
     sameAs: function(other) {
         // answer true if this is the same object as the other from a different image
@@ -1531,7 +1536,7 @@ Object.subclass('users.bert.St78.vm.Object',
             for (var i = 0; i < this.pointers.length; i++)
                 { data.setUint16(pos, image.objectToOop(this.pointers[i])); pos += 2 }
         }
-        if (pos !== beforePos + byteSize) throw "written size does not match";
+        if (pos !== beforePos + byteSize) throw new Error("written size does not match");
         // adjust for odd number of bytes
         if (pos & 1) pos++;
         return pos;
@@ -1559,18 +1564,26 @@ Object.subclass('users.bert.St78.vm.Object',
         return bytes;
     },
     totalBytesLarge: function() {
-        // large objects use 32 bit oops but are still 16 bit aligned
+        // large objects use 32 bit oops
         var dataBytes = this.dataBytesLarge(),
-            dataWords = dataBytes+1 >> 1,
+            dataWords = dataBytes+3 >> 2,
             maxSmall = 0xFFFF,
-            headerBytes = dataBytes < maxSmall
-                ? 12          // oop, class oop, hash + size
-                : 16;         // oop, class oop, hash + tag, size
-        return headerBytes + dataWords * 2;
+            headerWords = dataBytes < maxSmall
+                ? 3          // oop, class oop, hash + size
+                : 4;         // oop, class oop, hash + tag, size
+        return (headerWords + dataWords) * 4;
     },
     writeToLarge: function(data, pos, image) {
+        var beforePos = pos;
+
         // if this is a small (16 bit) object, just write it using old format
-        if (!this.isLarge()) return this.writeTo(data, pos, image);
+        if (!this.isLarge()) {
+            pos = this.writeTo(data, pos, image);
+            while (pos % 4) pos++;                  // align to 32 bits
+            if (pos !== beforePos + this.totalBytes(true))
+                throw new Error("written size does not match");
+            return pos;
+        }
 
         // small format writes the oop first, where low bit is 0
         // large format writes the hash first, sets low bit to 1
@@ -1589,7 +1602,6 @@ Object.subclass('users.bert.St78.vm.Object',
         data.setUint32(pos, this.oop); pos += 4;
         data.setUint32(pos, this.stClass.oop); pos += 4;
         // now write data
-        var beforePos = pos;
         if (this.isFloat) {
             data.setFloat64(pos, this.float); pos += 8
         } else if (this.bytes) {
@@ -1599,14 +1611,15 @@ Object.subclass('users.bert.St78.vm.Object',
             for (var i = 0; i < this.words.length; i++)
                 { data.setUint16(pos, this.words[i]); pos += 2 };
         }
+        // align to 32 bits
+        while (pos % 4) pos++;
         // methods have bytes followed by literal pointers
         if (this.pointers) {
             for (var i = 0; i < this.pointers.length; i++)
                 { data.setUint32(pos, image.objectToOop(this.pointers[i])); pos += 4 }
         }
-        if (pos !== beforePos + byteSize) throw "written size does not match";
-        // adjust for odd number of bytes
-        if (pos & 1) pos++;
+        if (pos !== beforePos + this.totalBytes(true))
+            throw new Error("written size does not match");
         return pos;
     },
 },
@@ -1814,7 +1827,8 @@ Object.extend(users.bert.St78.vm.Object, {
         var obj = new this(oop);
         obj.data = {
             classOop: classOop,
-            body: byteSize && reader.nextBytes(byteSize),
+            byteSize: byteSize,
+            body: byteSize && reader.nextBytes((byteSize + 1) & ~1),
         };
         return obj;
     },
@@ -1829,7 +1843,8 @@ Object.extend(users.bert.St78.vm.Object, {
         obj.data = {
             hash: hash,
             classOop: classOop,
-            body: byteSize && reader.nextBytes(byteSize),
+            byteSize: byteSize,
+            body: byteSize && reader.nextBytes((byteSize + 3) & ~3),
         };
         return obj;
     },
