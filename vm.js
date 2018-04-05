@@ -1304,7 +1304,7 @@ Object.subclass('users.bert.St78.vm.Object',
             } else if (large && this.isCompiledMethod()) {
                 this.bytes = [body.getUint8(0), body.getUint8(1)];
                 var numLits = this.methodNumLits(),
-                    litStart = bodyBytes - 4 * this.methodNumLits();
+                    litStart = bodyBytes - 4 * numLits;
                 for (var i = 2; i < litStart; i++) {
                     var byte = body.getUint8(i);
                     this.bytes.push(byte);
