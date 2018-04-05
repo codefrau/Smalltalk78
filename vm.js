@@ -943,7 +943,7 @@ Object.subclass('users.bert.St78.vm.Image',
     },
     objectToOop: function(anObject) {
         // newly created objects have a temporary oop, so assign a real one
-        if (typeof anObject ===  "number")
+        if (typeof anObject === "number")
             return (anObject * 2 + 0x10001) & 0xFFFF; // add tag bit, make unsigned
         if (anObject.oop < 0) { // it's a temp oop
             if (this.tenuresSinceLastGC++ > this.maxTenuresBeforeGC) {
@@ -1507,29 +1507,30 @@ Object.subclass('users.bert.St78.vm.Object',
         var byteSize = this.dataBytes();
         // write class oop and size in its lower 6 bits
         if (byteSize < NT.OOP_TAG_SMALL) { // one word for class and size
-           data.setUint16(pos, this.stClass.oop + byteSize);  pos += 2;
+           data.setUint16(pos, this.stClass.oop + byteSize); pos += 2;
         } else if (byteSize <= 0xFFFF) { // two words, marked by 0x1E
-           data.setUint16(pos, this.stClass.oop + NT.OOP_TAG_SMALL);  pos += 2;
+           data.setUint16(pos, this.stClass.oop + NT.OOP_TAG_SMALL); pos += 2;
            data.setUint16(pos, byteSize); pos += 2;
         } else { // three words, marked by 0x1F
-           data.setUint16(pos, this.stClass.oop + NT.OOP_TAG_LARGE);  pos += 2;
+           data.setUint16(pos, this.stClass.oop + NT.OOP_TAG_LARGE); pos += 2;
            data.setUint32(pos, byteSize); pos += 4;
         }
         // now write data
         var beforePos = pos;
-        if (this.isFloat)
-            { data.setFloat64(pos, this.float); pos += 8 }
-        else if (this.bytes) {
+        if (this.isFloat) {
+            data.setFloat64(pos, this.float); pos += 8
+        } else if (this.bytes) {
             if (this.isCompiledMethod())            // store literal oops into bytes
                 this.methodPointersModified(image);
             for (var i = 0; i < this.bytes.length; i++)
                 { data.setUint8(pos, this.bytes[i]); pos++ }
-        } else if (this.words)
+        } else if (this.words) {
             for (var i = 0; i < this.words.length; i++)
                 { data.setUint16(pos, this.words[i]); pos += 2 }
-        else if (this.pointers)
+        } else if (this.pointers) {
             for (var i = 0; i < this.pointers.length; i++)
                 { data.setUint16(pos, image.objectToOop(this.pointers[i])); pos += 2 }
+        }
         if (pos !== beforePos + byteSize) throw "written size does not match";
         // adjust for odd number of bytes
         if (pos & 1) pos++;
@@ -1589,18 +1590,20 @@ Object.subclass('users.bert.St78.vm.Object',
         data.setUint32(pos, this.stClass.oop); pos += 4;
         // now write data
         var beforePos = pos;
-        if (this.isFloat)
-            { data.setFloat64(pos, this.float); pos += 8 }
-        else if (this.bytes)
+        if (this.isFloat) {
+            data.setFloat64(pos, this.float); pos += 8
+        } else if (this.bytes) {
             for (var i = 0; i < this.bytes.length; i++)
                 { data.setUint8(pos, this.bytes[i]); pos++ }
-        else if (this.words)
+        } else if (this.words) {
             for (var i = 0; i < this.words.length; i++)
                 { data.setUint16(pos, this.words[i]); pos += 2 };
+        }
         // methods have bytes followed by literal pointers
-        if (this.pointers)
+        if (this.pointers) {
             for (var i = 0; i < this.pointers.length; i++)
                 { data.setUint32(pos, image.objectToOop(this.pointers[i])); pos += 4 }
+        }
         if (pos !== beforePos + byteSize) throw "written size does not match";
         // adjust for odd number of bytes
         if (pos & 1) pos++;
@@ -1639,7 +1642,7 @@ Object.subclass('users.bert.St78.vm.Object',
         var n = bytes.length;
         if (maxLength && maxLength < n) n = maxLength;
         var chars = [];
-        for (var i = 0; i < n; i++)  {
+        for (var i = 0; i < n; i++) {
             var nt = bytes[i],
                 char = String.fromCharCode(nt),
                 unicode = NT.toUnicode[String.fromCharCode(nt)] || char;
@@ -2344,7 +2347,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             this.push(this.nilObj); //  make room for temps and init them
         this.receiver = overrideReceiver ? newRcvr : this.activeProcessPointers[this.bp + NT.FI_RECEIVER];
         if (this.receiver !== newRcvr)
-            {debugger;  throw "receivers don't match";}
+            {debugger; throw "receivers don't match";}
         if (this.sp < this.lowStackSize)
             this.handleLowStack();
         this.checkForInterrupts();
@@ -2584,7 +2587,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         if (shiftCount<0) return bitsToShift>>-shiftCount; //OK to lose bits shifting right
         //check for lost bits by seeing if computation is reversible
         var shifted = bitsToShift<<shiftCount;
-        if  ((shifted>>shiftCount) === bitsToShift) return shifted;
+        if ((shifted>>shiftCount) === bitsToShift) return shifted;
         return NT.NON_INT;  //non-small result will cause failure
     },
 },
@@ -2873,7 +2876,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (this.doPrimitive(index, argCount-2, newMethod, newMethodClass)) return true;
         this.vm.push(index);
         this.vm.push(pFrame);  // Restore process frame receiver
-        return false;   //  and fail for it
+        return false;   // and fail for it
     },
     doPrimitive: function(index, argCount, newMethod, newMethodClass) {
         this.success = true;
@@ -2929,7 +2932,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 59: return true; //UserView.primCursorLoc←
             case 61: return this.primitiveKeyboardPeek(argCount);
             case 62: return this.primitiveKeyboardNext(argCount);
-            case 66: return this.primitiveFileString(argCount);  //  co-opted from user primPort:
+            case 66: return this.primitiveFileString(argCount);  // co-opted from user primPort:
             case 68: return this.primitiveMouseButtons(argCount);
             case 71: return this.primitiveSecondClock(argCount); // primitiveTime - seconds since 1901
             // the primitives below were not in the original Notetaker
