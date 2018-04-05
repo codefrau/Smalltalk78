@@ -563,7 +563,7 @@ Object.subclass('users.bert.St78.vm.Image',
         var symbolClass = this.objectFromOop(NT.OOP_CLUNIQUESTRING),
             symbol = this.someInstanceOf(symbolClass);
         while (symbol) {
-            if (name.length == symbol.bytes.length && name == symbol.bytesAsUnicode())
+            if (name.length === symbol.bytes.length && name === symbol.bytesAsUnicode())
                 return symbol;
             symbol = this.nextInstanceAfter(symbol);
         }
@@ -991,7 +991,7 @@ Object.subclass('users.bert.St78.vm.Image',
         var references = [],
             ref = this.firstOldObject;
         while (ref) {
-            if (ref.stClass == obj || (ref.pointers && ref.pointers.include(obj)))
+            if (ref.stClass === obj || (ref.pointers && ref.pointers.include(obj)))
                 references.push(ref);
             ref = ref.nextObject;
         };
@@ -1008,7 +1008,7 @@ Object.subclass('users.bert.St78.vm.Image',
         return objects;
     },
     allInstancesOf: function(clsObj) {
-        if (typeof clsObj == "string")
+        if (typeof clsObj === "string")
             clsObj = this.globalNamed(clsObj);
         if (this.newSpaceCount > 0) this.fullGC();
         var inst = this.someInstanceOf(clsObj),
@@ -1067,11 +1067,11 @@ Object.subclass('users.bert.St78.vm.Image',
                 count = byClass[cls.oop].count,
                 space = byClass[cls.oop].space,
                 line = Strings.format("%s%s %s%s, %s bytes",
-                    count>0 && removedObjects ? '+' : '', count, name, count == 1 ? '' : name.slice(-1) == 's' ? 'es' : 's', space);
+                    count>0 && removedObjects ? '+' : '', count, name, count === 1 ? '' : name.slice(-1) === 's' ? 'es' : 's', space);
             if (!removedObjects) {
                 var max = byClass[cls.oop].max,
                     avg = space / count | 0;
-                if (max == avg) line += Strings.format(" (each %s bytes)", max);
+                if (max === avg) line += Strings.format(" (each %s bytes)", max);
                 else line += Strings.format(" (avg %s bytes, max %s bytes)", avg, max);
             }
             if (count || space)
@@ -1100,7 +1100,7 @@ Object.subclass('users.bert.St78.vm.Image',
         var parents = {},
             todo = [],
             follow = function(parent, child) {
-                if (child == goal) {parents[child.oop] = parent; return true;}
+                if (child === goal) {parents[child.oop] = parent; return true;}
                 if (child.pointers && !(child.oop in parents)) {parents[child.oop] = parent; todo.push(child);}
                 return false;
             },
@@ -1414,7 +1414,7 @@ Object.subclass('users.bert.St78.vm.Object',
         // layout of NoteTaker Floats (from MSB):
         // 15 bits exponent in two's complement without bias, 1 bit sign
         // 32 bits mantissa including its highest bit (which is implicit in IEEE 754)
-        if (this.words[1] == 0) return 0.0; // if high-bit of mantissa is 0, then it's all zero
+        if (this.words[1] === 0) return 0.0; // if high-bit of mantissa is 0, then it's all zero
         var nt0 = this.words[0], nt1 = this.words[1], nt2 = this.words[2],
             ntExponent = nt0 >> 1, ntSign = nt0 & 1, ntMantissa = (nt1 & 0x7FFF) << 16 | nt2, // drop high bit of mantissa
             ieeeExponent = (ntExponent + 1022) & 0x7FF, // IEEE: 11 bit exponent, biased
@@ -1464,7 +1464,7 @@ Object.subclass('users.bert.St78.vm.Object',
         if (!other) return false;
         if (this.oop !== other.oop) return false;
         if (this.stClass.oop !== other.stClass.oop) return false;
-        if (this.isFloat) return this.float == other.float;
+        if (this.isFloat) return this.float === other.float;
         var thisBody = this.pointers || this.words || this.bytes,
             otherBody = other.pointers || other.words || other.bytes;
         if (!thisBody && !otherBody) return true;
@@ -1655,7 +1655,7 @@ Object.subclass('users.bert.St78.vm.Object',
     },
     toString: function() {
         return Strings.format('stObj(%s)',
-            this.stClass.constructor == users.bert.St78.vm.Object ? this.stInstName() : this.stClass);
+            this.stClass.constructor === users.bert.St78.vm.Object ? this.stInstName() : this.stClass);
     },
     className: function() {
         var classNameObj = this.pointers[NT.PI_CLASS_TITLE];
@@ -1790,7 +1790,7 @@ Object.subclass('users.bert.St78.vm.Object',
             tableValues = this.pointers[NT.PI_SYMBOLTABLE_VALUES].pointers;
         for (var i = 0; i < tableNames.length; i++) {
             if (tableNames[i].isNil) continue;
-            if (name == tableNames[i].bytesAsUnicode())
+            if (name === tableNames[i].bytesAsUnicode())
                 return tableValues[i];
         }
         return null;
@@ -2188,10 +2188,10 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         while (!this.breakOutOfInterpreter)
             this.interpretOne();
         // this is to allow 'freezing' the interpreter and restarting it asynchronously. See freeze()
-        if (typeof this.breakOutOfInterpreter == "function")
+        if (typeof this.breakOutOfInterpreter === "function")
             return this.breakOutOfInterpreter(thenDo);
         // normally, we answer regularly
-        var result = this.breakOutOfInterpreter == 'break' ? 'break' : Math.min(this.primHandler.idleMS(), 200);
+        var result = this.breakOutOfInterpreter === 'break' ? 'break' : Math.min(this.primHandler.idleMS(), 200);
         if (thenDo) thenDo(result);
         return result;
     },
@@ -2669,7 +2669,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
     printStack: function(ctx, limit) {
         // both args are optional
-        if (typeof ctx == "number") {limit = ctx; ctx = null;}
+        if (typeof ctx === "number") {limit = ctx; ctx = null;}
         if (!ctx) ctx = this.activeProcess;
         if (!limit) limit = 100;
         var stack = '',
@@ -2702,7 +2702,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         var found;
         this.allMethodsDetect(function(classObj, methodObj, selectorObj) {
             var thisMethod = classObj.className() + '>>' + selectorObj.bytesAsUnicode();
-            if (classAndMethodString == thisMethod)
+            if (classAndMethodString === thisMethod)
                 return found = methodObj;
         });
         return found;
@@ -2744,15 +2744,15 @@ Object.subclass('users.bert.St78.vm.Interpreter',
             stack += Strings.format('\n[%s] %s%s', i,
                 bp + NT.FI_FIRST_TEMP - numTemps < i && i <= bp + NT.FI_FIRST_TEMP
                     ? ('temp' + (bp-1+numArgs-i) + '/t' + (bp+numArgs-i) + ': ') :
-                bp + NT.FI_SAVED_BP == i ? ' savedBP: ' :
-                bp + NT.FI_CALLER_PC == i ? 'callerPC: ' :
-                bp + NT.FI_NUMARGS == i ? ' numArgs: ' :
-                bp + NT.FI_METHOD == i ? '  method: ' :
-                bp + NT.FI_MCLASS == i ? '  mclass: ' :
-                bp + NT.FI_RECEIVER == i ? 'receiver: ' :
+                bp + NT.FI_SAVED_BP === i ? ' savedBP: ' :
+                bp + NT.FI_CALLER_PC === i ? 'callerPC: ' :
+                bp + NT.FI_NUMARGS === i ? ' numArgs: ' :
+                bp + NT.FI_METHOD === i ? '  method: ' :
+                bp + NT.FI_MCLASS === i ? '  mclass: ' :
+                bp + NT.FI_RECEIVER === i ? 'receiver: ' :
                 bp + NT.FI_RECEIVER < i && i <= bp + NT.FI_RECEIVER + numArgs
                     ? (' arg' + (bp+5+numArgs-i) + '/t' + (bp+6+numArgs-i) + ': ') :
-                sp == i ? '   sp ==> ' :
+                sp === i ? '   sp ==> ' :
                 '          ', value);
             if (i >= bp + NT.FI_RECEIVER + numArgs && i+1 < ctx.length) {
                 if (!printAll) return stack;
@@ -2771,9 +2771,9 @@ Object.subclass('users.bert.St78.vm.Interpreter',
                                 obj = ctx[i];
                                 value = obj && obj.stInstName ? obj.stInstName(32) : obj;
                                 stack += Strings.format('\n[%s] %s%s', i,
-                                i == j-2 ? '  homeBP: ' :
-                                i == j-1 ? '  homePC: ' :
-                                i == j ?   '   rCode: ' :
+                                i === j-2 ? '  homeBP: ' :
+                                i === j-1 ? '  homePC: ' :
+                                i === j ?   '   rCode: ' :
                                 '          ', value);
                             }
                             i--;
@@ -2796,7 +2796,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         // Answer whether the next bytecode corresponds to a Smalltalk
         // message send or return
         var byte = this.method.bytes[this.pc];
-        return byte >= 0xB0 || byte == 0x8C || byte == 0x83;
+        return byte >= 0xB0 || byte === 0x8C || byte === 0x83;
     },
 });
 
@@ -2948,7 +2948,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             case 204: return this.popNandPushFloatIfOK(1,Math.atan(this.stackFloat(0))); // primitiveArctan
             case 210: return this.popNandPushIfOK(2, this.makeLargeIfNeeded(this.stackLargeInt(0) + this.stackLargeInt(1))); // primitiveAddLargeIntegers
             case 211: return this.popNandPushIfOK(2, this.makeLargeIfNeeded(this.stackLargeInt(0) - this.stackLargeInt(1))); // primitiveSubtractLargeIntegers
-            case 214: {var a = this.stackLargeInt(0), b = this.stackLargeInt(1); return this.popNandPushIfOK(2, a < b ? 1 : a == b ? 2 : 3)}; // primitiveCompareLargeInt
+            case 214: {var a = this.stackLargeInt(0), b = this.stackLargeInt(1); return this.popNandPushIfOK(2, a < b ? 1 : a === b ? 2 : 3)}; // primitiveCompareLargeInt
             case 240: return this.popNandPushFloatIfOK(argCount + 1, this.pathDistance(argCount)); // primitive Dollar1 pathLength
 
         }
@@ -2962,7 +2962,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return this.vm.pop2AndPushBoolResult(bool);
     },
     popNandPushIfOK: function(nToPop, returnValue) {
-        if (!this.success || returnValue == null) return false;
+        if (!this.success || returnValue == null) return false; // null or undefined
         this.vm.popNandPush(nToPop, returnValue);
         return true;
     },
@@ -3089,7 +3089,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
     },
     makeStString: function(jsStringOrArray) {
         var bytes = [];
-        if (typeof jsStringOrArray == "string") {
+        if (typeof jsStringOrArray === "string") {
             for (var i = 0; i < jsStringOrArray.length; i++)
                 bytes.push(jsStringOrArray.charCodeAt(i) & 0xFF);
         } else {
@@ -3159,7 +3159,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return inactivityMS;
     },
     asUint8Array: function(string) {
-        if (string.constructor == Uint8Array) return string;
+        if (string.constructor === Uint8Array) return string;
         var array = new Uint8Array(string.length);
         for (var i = 0; i < string.length; i++)
             array[i] = string.charCodeAt(i);
@@ -3178,7 +3178,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
     indexableSize: function(obj) {
         if (this.vm.isSmallInt(obj)) return -1; // -1 means not indexable
         var instSize = obj.stClass.pointers[NT.PI_CLASS_INSTSIZE];
-        if ((instSize & NT.FMT_ISVARIABLE) == 0) return -1;  // fail if not indexable
+        if ((instSize & NT.FMT_ISVARIABLE) === 0) return -1;  // fail if not indexable
 
         if (obj.bytes) return obj.bytes.length;
         if (obj.words) return obj.words.length;
@@ -3362,7 +3362,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         // Instead we should be checking the instSize spec
         var rcvr = this.stackNonInteger(0);
         if (!this.success || !rcvr.isClass()) return false;
-        if (argCount == 0) // fixed size
+        if (argCount === 0) // fixed size
             return this.popNandPushIfOK(1, this.vm.instantiateClass(rcvr, 0));
         // variable size
         var size = this.stackInteger(1);
@@ -3500,7 +3500,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
 
         // write file asynchronously
         var imageName = window.localStorage['notetakerImageName'];
-        if (!imageName || imageName == 'updated.st78' || !/.*\.st78/.test(imageName))
+        if (!imageName || imageName === 'updated.st78' || !/.*\.st78/.test(imageName))
             imageName = 'default.st78';
 
         $world.prompt("Save image as", function(imageName) {
@@ -3822,11 +3822,11 @@ Object.subclass('users.bert.St78.vm.Primitives',
         if (!this.success) return false;
         var stStringToStore, stringToStore,
             remove = false;
-        if (argCount == 2) {
+        if (argCount === 2) {
             // check for a string argument to store
             stStringToStore = this.stackNonInteger(1);
             if (!this.success) return false;
-            if (stStringToStore == this.vm.nilObj) remove = true;
+            if (stStringToStore === this.vm.nilObj) remove = true;
             else {
                 if (stStringToStore.stClass !== this.stringClass) return false;
                 stringToStore = stStringToStore.bytesAsRawString();
@@ -3863,7 +3863,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             xhr.timeout = 10000;
             xhr.onreadystatechange = function() {
                 if (this.readyState != this.DONE) return;
-                if (this.status == 200) {
+                if (this.status === 200) {
                     if (isDir) {
                         console.log("Got " + this.responseText.length + " bytes from " + fileName);
                         var urls = this.responseText.match(/href="[^"]*"/gi).collect(function(href){return decodeURI(href.match(/"([^"]*)"/)[1])}),
@@ -4102,7 +4102,7 @@ Object.subclass('users.bert.St78.vm.BitBlt',
         // init skew (the difference in word alignment of source and dest)
         var unskew;
         var skewMask;
-        if (this.skew == -16) {
+        if (this.skew === -16) {
             this.skew = unskew = skewMask = 0;
         } else {
             if (this.skew < 0) {
@@ -4161,7 +4161,7 @@ Object.subclass('users.bert.St78.vm.BitBlt',
             if (this.destRule === 0 && this.sourceRule !== 2) { //Store mode avoids dest merge function
                 if ((this.skew === 0) && (this.sourceRule === 0)) {
                     //Non-skewed and no sourceFn: fast copy. TODO: destBits.set(sourceBits.subarray(...)) ?
-                    if (this.hDir == -1) {
+                    if (this.hDir === -1) {
                         for (var word = 2; word < this.nWords; word++) {
                             thisWord = this.sourceBits.getWord(this.sourceIndex);
                             this.destBits.setWord(this.destIndex, thisWord);
