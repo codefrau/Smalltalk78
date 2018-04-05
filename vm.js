@@ -882,8 +882,6 @@ Object.subclass('users.bert.St78.vm.Image',
         var obj = this.firstOldObject,
             n = 0;
         while (obj) {
-            if (obj.isCompiledMethod())           // store literal oops into bytes
-                obj.methodPointersModified(this);
             pos = obj.writeTo(data, pos, this);
             obj = obj.nextObject;
             n++;
@@ -1521,10 +1519,12 @@ Object.subclass('users.bert.St78.vm.Object',
         var beforePos = pos;
         if (this.isFloat)
             { data.setFloat64(pos, this.float); pos += 8 }
-        else if (this.bytes)
+        else if (this.bytes) {
+            if (this.isCompiledMethod())            // store literal oops into bytes
+                this.methodPointersModified(image);
             for (var i = 0; i < this.bytes.length; i++)
                 { data.setUint8(pos, this.bytes[i]); pos++ }
-        else if (this.words)
+        } else if (this.words)
             for (var i = 0; i < this.words.length; i++)
                 { data.setUint16(pos, this.words[i]); pos += 2 }
         else if (this.pointers)
