@@ -3181,12 +3181,12 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return array;
     },
     fromUnicode: function(string) {
+        var fromUnicode = {};
         for (var ntcode in NT.toUnicode) {
-            var unicode = NT.toUnicode[ntcode],
-                regExp = new RegExp(unicode, 'g');
-            string = string.replace(regExp, ntcode);
+            var unicode = NT.toUnicode[ntcode];
+            fromUnicode[unicode] = ntcode;
         }
-        return string;
+        return string.split('').map(c => fromUnicode[c] || c).join('');
     },
 },
 'indexing', {
