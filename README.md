@@ -5,18 +5,17 @@ In this repository is a Virtual Machine written in JavaScript to run a Smalltalk
 
 To learn more, please read our paper [Reviving Smalltalk-78: The First Modern Smalltalk Lives Again][paper].
 The full history of various Smalltalk releases is covered in Dan's [Evolution Of Smalltalk][hopl] article,
-which also includes links to a live version using this VM.
+which also includes links to a live version using this VM in the accompanying [Smalltalk Zoo][zoo] website.
 
 The [index.html][standalone] in this directory should give you a running version for testing, although the browser integration is incomplete (e.g. copy/paste or file management). Pull requests welcome!
 
-The full simulation environment including a graphical VM debugger is on the [Lively Smalltalk-78][lively] page. 
-
-You may also try Alan Borning's [Thinglab][thinglab] which runs on this VM.
+The full simulation environment including a graphical VM debugger is at the [Zoo's Smalltalk-78][full] page.
+There you can also try Adele Goldberg's SimKit and Alan Borning's Thinglab images running on this VM.
 
 All of these work best in **Google Chrome**. Again, pull requests to improve browser compatibility are very welcome!
 
-[lively]: https://lively-web.org/users/bert/Smalltalk-78.html
+[zoo]: https://smalltalkzoo.thechm.org/
+[full]: https://smalltalkzoo.thechm.org/HOPL-St78.html
 [standalone]: https://codefrau.github.io/Smalltalk78/
-[thinglab]: https://www.cdglabs.org/thinglab/
 [paper]: https://freudenbergs.de/vanessa/publications/Ingalls-2014-Smalltalk78.pdf
-[hopl]: https://smalltalkzoo.computerhistory.org/papers/EvolutionOfSmalltalk.pdf
+[hopl]: https://smalltalkzoo.thechm.org/papers/EvolutionOfSmalltalk.pdf
