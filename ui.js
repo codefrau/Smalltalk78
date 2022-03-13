@@ -1,4 +1,4 @@
-module('users.bert.St78.ui').requires("lively.data.FileUpload").toRun(function() {
+module('St78.ui').requires("lively.data.FileUpload").toRun(function() {
 /*
  * Copyright (c) 2013-2020 Vanessa Freudenberg
  *
@@ -21,7 +21,7 @@ module('users.bert.St78.ui').requires("lively.data.FileUpload").toRun(function()
  * THE SOFTWARE.
  */
 
-lively.data.FileUpload.Handler.subclass('users.bert.St78.ui.St78Loader', {
+lively.data.FileUpload.Handler.subclass('St78.ui.St78Loader', {
     handles: function(file) {
         return file.type == 'application/st78-image' || file.name.match(/\.st78$/);
     },
@@ -41,6 +41,6 @@ lively.data.FileUpload.Handler.subclass('users.bert.St78.ui.St78Loader', {
     },
 });
 
-lively.data.St78Import = users.bert.St78.ui.St78Loader;
+lively.data.St78Import = St78.ui.St78Loader;
 
 }) // end of module

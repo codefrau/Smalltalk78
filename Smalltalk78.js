@@ -72,7 +72,7 @@ Object.subclass = function(classPath /* + more args */ ) {
 Object.extend = function(obj /* + more args */ ) {
     // skip arg 0, copy properties of other args to obj
     for (var i = 1; i < arguments.length; i++)
-        for (name in arguments[i])
+        for (var name in arguments[i])
             obj[name] = arguments[i][name];
 };
 
@@ -128,7 +128,7 @@ window.$world = {
     document.getElementsByTagName("head")[0].appendChild(script);
 })();
 
-module("Smalltalk78").requires("users.bert.St78.vm").toRun(function() {
+module("Smalltalk78").requires("St78.vm").toRun(function() {
 
 //////////////////////////////////////////////////////////////////////////////
 // display & event setup
@@ -372,8 +372,8 @@ function interpretLoop() {
 
 function runImage(buffer, imageName, canvas) {
     var display = createDisplay(canvas),
-        image = users.bert.St78.vm.Image.readFromBuffer(buffer, imageName);
-    Smalltalk78.vm = new users.bert.St78.vm.Interpreter(image, display);
+        image = St78.vm.Image.readFromBuffer(buffer, imageName);
+    Smalltalk78.vm = new St78.vm.Interpreter(image, display);
     window.onbeforeunload = function() {
         return "Smalltalk78 is still running";
     };

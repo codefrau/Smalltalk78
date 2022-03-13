@@ -1,4 +1,4 @@
-module('users.bert.St78.vm').requires().toRun(function() {
+module('St78.vm').requires().toRun(function() {
 /*
  * Copyright (c) 2013-2020 Vanessa Freudenberg and Dan Ingalls
  *
@@ -378,7 +378,7 @@ NT = {
     },
 };
 
-Object.subclass('users.bert.St78.vm.ObjectTableReader',
+Object.subclass('St78.vm.ObjectTableReader',
 'about', {
     about: function() {
 /*
@@ -418,7 +418,7 @@ The instsize is an integer (ie low bit = 1) with the following interpretation:
         for (var oti = 0; oti < this.ot.length; oti += 4) {
             var oop = oti / 2;      // 1 more bit for our oops so we get up to 32 K objects
             if (this.refCountOf(oop)) {
-                oopMap[oop] = new users.bert.St78.vm.Object(oop);
+                oopMap[oop] = new St78.vm.Object(oop);
             }
         }
         for (var oop in oopMap)
@@ -464,13 +464,13 @@ The instsize is an integer (ie low bit = 1) with the following interpretation:
     },
 });
 
-Object.subclass('users.bert.St78.vm.Image',
+Object.subclass('St78.vm.Image',
 'about', {
     about: function() {
     /*
     Object Format
     =============
-    Each St78 object is a users.bert.St78.vm.Object, only SmallIntegers are JS numbers.
+    Each St78 object is a St78.vm.Object, only SmallIntegers are JS numbers.
     Instance variables/fields reference other objects directly via the "pointers" property.
     {
         stClass: reference to class object
@@ -748,7 +748,7 @@ Object.subclass('users.bert.St78.vm.Image',
         return this.nextTempOop -= 2;
     },
     instantiateClass: function(aClass, indexableSize, nilObj) {
-        var newObject = new users.bert.St78.vm.Object(this.tempOop());
+        var newObject = new St78.vm.Object(this.tempOop());
         newObject.initInstanceOf(aClass, indexableSize, nilObj);
         return newObject;
     },
@@ -1133,7 +1133,7 @@ Object.subclass('users.bert.St78.vm.Image',
     },
 });
 
-Object.extend(users.bert.St78.vm.Image, {
+Object.extend(St78.vm.Image, {
     readFromBuffer: function(buffer, name) {
         var result = this.oopmapFromBuffer(buffer, 'St78'),
             oopMap = result.oopMap,
@@ -1223,7 +1223,7 @@ Object.extend(users.bert.St78.vm.Image, {
         var oopMap = {},
             wordSize = largeOops ? 4 : 2;
         for (var i = 0; i < objectCount; i++) {
-            var obj = users.bert.St78.vm.Object.readFromBuffer(reader);
+            var obj = St78.vm.Object.readFromBuffer(reader);
             oopMap[obj.oop] = obj;
             while (pos % wordSize) pos++; // align to next word
         }
@@ -1270,7 +1270,7 @@ Object.extend(users.bert.St78.vm.Image, {
     },
 });
 
-Object.subclass('users.bert.St78.vm.Object',
+Object.subclass('St78.vm.Object',
 'initialization', {
     initialize: function(oop) {
         this.oop = oop;
@@ -1668,7 +1668,7 @@ Object.subclass('users.bert.St78.vm.Object',
     },
     toString: function() {
         return Strings.format('stObj(%s)',
-            this.stClass.constructor === users.bert.St78.vm.Object ? this.stInstName() : this.stClass);
+            this.stClass.constructor === St78.vm.Object ? this.stInstName() : this.stClass);
     },
     className: function() {
         var classNameObj = this.pointers[NT.PI_CLASS_TITLE];
@@ -1813,7 +1813,7 @@ Object.subclass('users.bert.St78.vm.Object',
     },
 });
 
-Object.extend(users.bert.St78.vm.Object, {
+Object.extend(St78.vm.Object, {
     readFromBuffer: function(reader) {
         var oop = reader.nextUint16();
         if (oop & 1) return this.readFromBufferLarge(reader, oop);
@@ -1850,14 +1850,14 @@ Object.extend(users.bert.St78.vm.Object, {
     },
 });
 
-Object.subclass('users.bert.St78.vm.Interpreter',
+Object.subclass('St78.vm.Interpreter',
 'initialization', {
     initialize: function(image, display, files) {
         console.log('st78: initializing interpreter');
         this.image = image;
         this.image.vm = this;
         this.initConstants();
-        this.primHandler = new users.bert.St78.vm.Primitives(this, display, files);
+        this.primHandler = new St78.vm.Primitives(this, display, files);
         this.loadImageState();
         this.initVMState();
         this.loadInitialContext(display);
@@ -2804,7 +2804,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
         return stack;
     },
     printByteCodes: function(aMethod, optionalIndent, optionalHighlight, optionalPC) {
-        var printer = new users.bert.St78.vm.InstructionPrinter(aMethod || this.method, this);
+        var printer = new St78.vm.InstructionPrinter(aMethod || this.method, this);
         return printer.printInstructions(optionalIndent, optionalHighlight, optionalPC);
     },
     willSendOrReturn: function() {
@@ -2815,7 +2815,7 @@ Object.subclass('users.bert.St78.vm.Interpreter',
     },
 });
 
-Object.subclass('users.bert.St78.vm.Primitives',
+Object.subclass('St78.vm.Primitives',
 'initialization', {
     initialize: function(vm, display, files) {
         this.vm = vm;
@@ -3520,7 +3520,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
 
         $world.prompt("Save image as", function(imageName) {
             if (!imageName) return alert("not saved");
-            users.bert.St78.vm.Image.saveBufferAs(buffer, imageName);
+            St78.vm.Image.saveBufferAs(buffer, imageName);
         }, imageName);
         return true;
     },
@@ -3581,7 +3581,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         var bitbltObj = this.vm.stackValue(argCount);
         if (bitbltObj.pointers[NT.PI_BITBLT_SOURCEBITS].pointers || bitbltObj.pointers[NT.PI_BITBLT_DESTBITS].pointers)
             return this.bitBltCopyPointers(bitbltObj);
-        var bitblt = new users.bert.St78.vm.BitBlt(this.vm);
+        var bitblt = new St78.vm.BitBlt(this.vm);
         if (!bitblt.loadBitBlt(bitbltObj)) return false;
         bitblt.copyBits();
         if (bitblt.destForm === this.displayBlt.pointers[NT.PI_BITBLT_DEST])
@@ -3616,7 +3616,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
             bbPtrs[NT.PI_BITBLT_SOURCEX] = xtable[ascii];
             bbPtrs[NT.PI_BITBLT_WIDTH] = xtable[ascii+1] - bbPtrs[NT.PI_BITBLT_SOURCEX];
             if (printing) {
-                var bitblt = new users.bert.St78.vm.BitBlt(this.vm);
+                var bitblt = new St78.vm.BitBlt(this.vm);
                 if (!bitblt.loadBitBlt(bb)) return false;
                 bitblt.copyBits();
                 if (bitblt.destForm === this.displayBlt.pointers[NT.PI_BITBLT_DEST])
@@ -3660,7 +3660,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
     setDisplayAndCursor: function(bitBlt, fullRedraw){
         // dest is display form, source is cursor form
         this.displayBlt = bitBlt;   // also stored in image
-        var blt = new users.bert.St78.vm.BitBlt(this.vm);
+        var blt = new St78.vm.BitBlt(this.vm);
         blt.loadBitBlt(this.displayBlt);
         this.displayBits = blt.destBits;
         this.displayPitch = blt.destPitch;
@@ -3955,7 +3955,7 @@ Object.subclass('users.bert.St78.vm.Primitives',
         return d / a.pointers.length;
     }
 });
-Object.subclass('users.bert.St78.vm.BitBlt',
+Object.subclass('St78.vm.BitBlt',
 'initialization', {
     initialize: function(vm) {
         this.vm = vm;
@@ -4381,7 +4381,7 @@ Object.subclass('users.bert.St78.vm.BitBlt',
         return {left: affectedL, top: affectedT, right: affectedR, bottom: affectedB};
     },
 });
-Object.subclass('users.bert.St78.vm.InstructionPrinter',
+Object.subclass('St78.vm.InstructionPrinter',
 'initialization', {
     initialize: function(method, vm) {
         this.method = method;
@@ -4397,7 +4397,7 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
         if (!this.method.isCompiledMethod())
             return "<not a CompiledMethod>";
         this.result = '';
-        this.scanner = new users.bert.St78.vm.InstructionStream(this.method, this.vm);
+        this.scanner = new St78.vm.InstructionStream(this.method, this.vm);
         this.oldPC = this.scanner.pc;
         var end = this.method.methodEndPC();
     	while (this.scanner.pc < end)
@@ -4509,7 +4509,7 @@ Object.subclass('users.bert.St78.vm.InstructionPrinter',
 
 });
 
-Object.subclass('users.bert.St78.vm.InstructionStream',
+Object.subclass('St78.vm.InstructionStream',
 'initialization', {
     initialize: function(method, vm) {
         this.vm = vm;
