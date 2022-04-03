@@ -395,6 +395,7 @@ function downloadImage(imageUrl, thenDo, elseDo) {
 function loadImage(imageName, thenDo, elseDo) {
     // this is the counterpart to saveBufferAs in vm.js
     // (it's not in vm.js because Lively has its own implementation)
+    if (location.search.includes("fresh")) return elseDo();
     if (window.webkitRequestFileSystem) {
         window.webkitRequestFileSystem(PERSISTENT, 5*1024*1024, function(fs) {
             fs.root.getFile(imageName, {create: false}, function(fileEntry) {
@@ -419,6 +420,17 @@ function loadImage(imageName, thenDo, elseDo) {
 }
 
 Smalltalk78.run = function(imageUrl, canvas) {
+    // we let ?image=... override the image name (could be a full URL too)
+    // otherwise the last-saved image name is used
+    // the image then is loaded from browser storage unless ?fresh is given,
+    // in which case it's always downloaded
+    var searchParams = new URLSearchParams(location.search);
+    if (searchParams.get('image')) {
+        imageUrl = searchParams.get('image');
+    } else if (localStorage['notetakerImageName'] && searchParams.get('fresh') == null) {
+        imageUrl = localStorage['notetakerImageName'];
+    }
+    // now load the image, and if that fails, try to download it
     var url = new URL(imageUrl, document.location);
     var imageName = url.pathname.substring(url.pathname.lastIndexOf('/') + 1);
     function run(buffer) { runImage(buffer, imageName, canvas); }
