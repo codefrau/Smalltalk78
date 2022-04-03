@@ -355,10 +355,7 @@ function createDisplay(canvas) {
 // main loop
 //////////////////////////////////////////////////////////////////////////////
 
-var loop; // holds timeout for main loop
-
 function interpretLoop() {
-    clearTimeout(loop);
     try {
         Smalltalk78.vm.interpret(20, function(ms) {
             if (ms > 0) setTimeout(interpretLoop, ms);
@@ -371,6 +368,7 @@ function interpretLoop() {
 }
 
 function runImage(buffer, imageName, canvas) {
+    window.localStorage['notetakerImageName'] = imageName;
     var display = createDisplay(canvas),
         image = St78.vm.Image.readFromBuffer(buffer, imageName);
     Smalltalk78.vm = new St78.vm.Interpreter(image, display);
@@ -386,7 +384,9 @@ Smalltalk78.run = function(imageUrl, canvas) {
     rq.responseType = "arraybuffer";
     rq.onload = function(e) {
         if (rq.status == 200) {
-            runImage(rq.response, imageUrl, canvas);
+            var pathname = new URL(imageUrl, document.location).pathname;
+            var imageName = pathname.substring(pathname.lastIndexOf('/') + 1);
+            runImage(rq.response, imageName, canvas);
         }
         else rq.onerror(rq.statusText);
     };
