@@ -1234,13 +1234,13 @@ Object.extend(St78.vm.Image, {
         window.localStorage['notetakerImageName'] = imageName;
         console.log("Saving image as " + imageName);
         // if we have filesystem storage we can save as binary blob ...
-        if (window.webkitStorageInfo) {
+        if (navigator.webkitPersistentStorage) {
             var showError = function(msg) {
                 alert("Saving failed: " + msg);
                 if (elseDo) elseDo(msg);
                 else $world.inform("Saving failed: " + msg);
             };
-            window.webkitStorageInfo.requestQuota(PERSISTENT, 50*1024*1024, function(grantedBytes) {
+            navigator.webkitPersistentStorage.requestQuota(50*1024*1024, function(grantedBytes) {
                 window.webkitRequestFileSystem(PERSISTENT, grantedBytes, function(fs) {
                     fs.root.getFile(imageName, {create: true}, function(fileEntry) {
                         fileEntry.createWriter(function(fileWriter) {
