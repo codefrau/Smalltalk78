@@ -378,22 +378,55 @@ function runImage(buffer, imageName, canvas) {
     interpretLoop();
 }
 
-Smalltalk78.run = function(imageUrl, canvas) {
+function downloadImage(imageUrl, thenDo, elseDo) {
     var rq = new XMLHttpRequest();
     rq.open("get", imageUrl, true);
     rq.responseType = "arraybuffer";
     rq.onload = function(e) {
         if (rq.status == 200) {
-            var pathname = new URL(imageUrl, document.location).pathname;
-            var imageName = pathname.substring(pathname.lastIndexOf('/') + 1);
-            runImage(rq.response, imageName, canvas);
+            thenDo(rq.response);
         }
         else rq.onerror(rq.statusText);
     };
-    rq.onerror = function(e) {
-        alert("Failed to download:\n" + imageUrl);
-    }
+    rq.onerror = elseDo;
     rq.send();
+}
+
+function loadImage(imageName, thenDo, elseDo) {
+    // this is the counterpart to saveBufferAs in vm.js
+    // (it's not in vm.js because Lively has its own implementation)
+    if (window.webkitRequestFileSystem) {
+        window.webkitRequestFileSystem(PERSISTENT, 5*1024*1024, function(fs) {
+            fs.root.getFile(imageName, {create: false}, function(fileEntry) {
+                fileEntry.file(function(file) {
+                    var reader = new FileReader();
+                    reader.onload = function(e) { thenDo(this.result); };
+                    reader.onerror = elseDo;
+                    reader.readAsArrayBuffer(file);
+                }, elseDo);
+            }, elseDo);
+        }, elseDo);
+    } else {
+        var imageString = window.localStorage['notetakerImage:' + imageName];
+        if (imageString) {
+            var words = new Uint16Array(imageString.length);
+            for (var i = 0; i < words.length; i++)
+                words[i] = imageString.charCodeAt(i) & 0xFFFF;
+            return thenDo(words.buffer);
+        }
+        elseDo();
+    }
+}
+
+Smalltalk78.run = function(imageUrl, canvas) {
+    var url = new URL(imageUrl, document.location);
+    var imageName = url.pathname.substring(url.pathname.lastIndexOf('/') + 1);
+    function run(buffer) { runImage(buffer, imageName, canvas); }
+    loadImage(imageName, run, function() {
+        downloadImage(imageUrl, run, function() {
+            alert("Failed to download: " + imageUrl);
+        });
+    });
 }
 
 // end of module
