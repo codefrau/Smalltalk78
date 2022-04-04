@@ -378,13 +378,15 @@ function runImage(buffer, imageName, canvas) {
     interpretLoop();
 }
 
-function downloadImage(imageUrl, thenDo, elseDo) {
+function downloadImage(imageUrl, imageName, thenDo, elseDo) {
     var rq = new XMLHttpRequest();
     rq.open("get", imageUrl, true);
     rq.responseType = "arraybuffer";
     rq.onload = function(e) {
         if (rq.status == 200) {
-            thenDo(rq.response);
+            var buffer = rq.response;
+            St78.vm.Image.saveBufferAs(buffer, imageName);
+            thenDo(buffer);
         }
         else rq.onerror(rq.statusText);
     };
@@ -435,7 +437,7 @@ Smalltalk78.run = function(imageUrl, canvas) {
     var imageName = url.pathname.substring(url.pathname.lastIndexOf('/') + 1);
     function run(buffer) { runImage(buffer, imageName, canvas); }
     loadImage(imageName, run, function() {
-        downloadImage(imageUrl, run, function() {
+        downloadImage(imageUrl, imageName, run, function() {
             alert("Failed to download: " + imageUrl);
         });
     });
