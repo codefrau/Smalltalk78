@@ -3732,6 +3732,7 @@ Object.subclass('St78.vm.Primitives',
             }
         };
         this.display.ctx.putImageData(this.displayPixels, 0, 0, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
+        this.display.lastDraw = Date.now();
         // show cursor if it was just overwritten
         if (noCursor) return;
         if (this.cursorX + 16 > rect.left && this.cursorX < rect.right &&
@@ -3769,6 +3770,7 @@ Object.subclass('St78.vm.Primitives',
             }
         };
         this.display.ctx.putImageData(this.displayPixels, 0, 0, this.cursorX, this.cursorY, 16, 16);
+        this.display.lastDraw = Date.now();
     },
 	primitiveTicks: function(argCount) {
         //Return the value of the millisecond clock as a large integer.

@@ -139,7 +139,8 @@ function createDisplay(canvas) {
         ctx: canvas.getContext("2d"),
         width: canvas.width,
         height: canvas.height,
-        timeStamp: Date.now(),
+        timeStamp: Date.now(), // for idle detection
+        lastDraw: 0,
         mouseX: 0,
         mouseY: 0,
         buttons: 0,
