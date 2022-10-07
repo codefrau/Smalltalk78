@@ -196,8 +196,8 @@ function createDisplay(canvas) {
         evt.preventDefault();
         display.timeStamp = getTimeStamp(evt);
         var buttons = display.buttons & 7,
-            x = ((evt.pageX - canvas.offsetLeft) * (canvas.width / canvas.offsetWidth)) | 0,
-            y = ((evt.pageY - canvas.offsetTop) * (canvas.height / canvas.offsetHeight)) | 0;
+            x = (evt.offsetX * (canvas.width / canvas.offsetWidth)) | 0,
+            y = (evt.offsetY * (canvas.height / canvas.offsetHeight)) | 0;
         if (!display.buttonsQueue || !display.buttonsQueue.length) {
             display.mouseX = x;
             display.mouseY = y;
