@@ -21,16 +21,28 @@
         line-height: 1.5;
         display: none;
     }
+    body.fullscreen {
+        background: #000;
+    }
+    body.fullscreen #ui {
+        display: none;
+    }
+    body.fullscreen #canvas {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
 </style>
 <script src="Smalltalk78.js"></script>
 <title>Smalltalk-78</title>
 </head>
 
-<body>
+<body id="body">
 
 <canvas id="canvas" width="1024" height="768"></canvas>
 
-<br>
+<p id="ui">
 
 This is a test page for the <a href="https://github.com/codefrau/Smalltalk78">Smalltalk-78</a> VM
 by Vanessa Freudenberg and Dan Ingalls. Not all functions of the
@@ -90,18 +102,25 @@ Ctrl-]  do it in eval (Dispframe in the topleft corner)
 Ctrl-d  done with eval
 </pre>
 
-<script>
-module("St78-Test").requires("Smalltalk78").toRun(function() {
-    Smalltalk78.run("https://smalltalkzoo.thechm.org/images/updated.st78", canvas);
-});
+</p>
 
-helpbutton.onclick = function() {
-    if (help.style.display) {
-        help.style.display = '';
-    } else {
-        help.style.display = 'block';
+<script>
+    const { searchParams} = new URL(window.location.href);
+    if (searchParams.get("width")) canvas.width = searchParams.get("width");
+    if (searchParams.get("height")) canvas.height = searchParams.get("height");
+    if (searchParams.has("fullscreen")) body.classList.add("fullscreen");
+
+    module("St78-Test").requires("Smalltalk78").toRun(function() {
+        Smalltalk78.run("https://smalltalkzoo.thechm.org/images/updated.st78", canvas);
+    });
+
+    helpbutton.onclick = function() {
+        if (help.style.display) {
+            help.style.display = '';
+        } else {
+            help.style.display = 'block';
+        }
     }
-}
 </script>
 
 </body>
