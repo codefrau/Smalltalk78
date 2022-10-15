@@ -179,6 +179,10 @@ NT = {
     MIN_INT: -0x4000,
     NON_INT: -0x5000, // non-small and neg (so non pos16 too)
 
+    // Display colors
+    BLACK: 0xFF000000,
+    WHITE: 0xFFFFFFFF,
+
     // Event constants
     Mouse_Blue: 1,
     Mouse_Yellow: 2,
@@ -3724,7 +3728,7 @@ Object.subclass('St78.vm.Primitives',
             var src = source.getWord(srcIndex);
             var dstIndex = dstPitch * y + dstX;
             for (var x = rect.left; x < rect.right; x++) {
-                dest[dstIndex++] = src & mask ? 0xFF000000 : 0xFFFFFFFF;
+                dest[dstIndex++] = src & mask ? NT.BLACK : NT.WHITE;
                 if (!(mask = mask >> 1)) {
                     mask = 0x8000;
                     src = source.getWord(++srcIndex);
@@ -3765,7 +3769,7 @@ Object.subclass('St78.vm.Primitives',
             var mask = 0x8000;
             var dstIndex = dstPitch * dstY++ + dstX;
             for (var x = 0; x < 16; x++, dstIndex++) {
-                if (srcWord & mask) dst[dstIndex] = 0xFF000000;
+                if (srcWord & mask) dst[dstIndex] = NT.BLACK;
                 mask = mask >> 1;
             }
         };

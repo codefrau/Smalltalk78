@@ -31,6 +31,8 @@
     if (searchParams.get("height")) canvas.height = searchParams.get("height");
 
     module("St78-Test").requires("Smalltalk78").toRun(function() {
+        NT.BLACK = 0xFF665F3E;
+        NT.WHITE = 0xFFFFF052;
         Smalltalk78.run("https://smalltalkzoo.thechm.org/images/updated.st78", canvas);
     });
 

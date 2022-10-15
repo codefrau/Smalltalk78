@@ -32,6 +32,7 @@
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
+        border-radius: 0;
     }
 </style>
 <script src="Smalltalk78.js"></script>
@@ -105,12 +106,31 @@ Ctrl-d  done with eval
 </p>
 
 <script>
-    const { searchParams} = new URL(window.location.href);
-    if (searchParams.get("width")) canvas.width = searchParams.get("width");
-    if (searchParams.get("height")) canvas.height = searchParams.get("height");
-    if (searchParams.has("fullscreen")) body.classList.add("fullscreen");
+    let width, height, fullscreen, black, white;
+    const params = new URL(window.location.href).searchParams;
+    if (params.has("alto")) {
+        width = 608;
+        height = 808;
+        fullscreen = true;
+        black = 0x3E5F66;
+        white = 0x52F0FF;
+    }
+    if (params.get("width")) width = +params.get("width");
+    if (params.get("height")) height = +params.get("height");
+    if (params.has("fullscreen")) fullscreen = true;
+    if (params.has("black")) black = +("0xFF" + params.get("black"));
+    if (params.has("white")) white = +("0xFF" + params.get("white"));
 
-    module("St78-Test").requires("Smalltalk78").toRun(function() {
+    if (width) canvas.width = width;
+    if (height) canvas.height = height;
+    if (fullscreen) {
+        body.classList.add("fullscreen");
+        if (black) body.style.backgroundColor = "#" + black.toString(16).slice(-6);
+    }
+
+    module("main").requires("Smalltalk78").toRun(function() {
+        if (black) NT.BLACK = 0xFF000000 | ((black & 0xFF0000) >> 16) | (black & 0xFF00) | ((black & 0xFF) << 16);
+        if (white) NT.WHITE = 0xFF000000 | ((white & 0xFF0000) >> 16) | (white & 0xFF00) | ((white & 0xFF) << 16);
         Smalltalk78.run("https://smalltalkzoo.thechm.org/images/updated.st78", canvas);
     });
 
