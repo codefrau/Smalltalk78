@@ -1600,7 +1600,7 @@ Object.subclass('St78.vm.Object',
         if (byteSize < 0xFFFF) { // one word for hash and size
             data.setUint16(pos, taggedHash); pos += 2;
             data.setUint16(pos, byteSize);   pos += 2;
-        } else if (byteSize < 0xFFFF) { // two words, marked by 0xFFFF
+        } else { // two words, marked by 0xFFFF
             data.setUint16(pos, taggedHash); pos += 2;
             data.setUint16(pos, 0xFFFF);     pos += 2;
             data.setUint32(pos, byteSize);   pos += 4;
