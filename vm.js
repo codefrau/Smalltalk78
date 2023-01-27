@@ -23,6 +23,8 @@ module('St78.vm').requires().toRun(function() {
 
 
 NT = {
+    MAX_INSTSIZE: 0x100000, // arbitrary limit on instance size
+
     OOP_NIL: 0,
     OOP_FALSE: 2,
     OOP_TRUE: 4,
@@ -3390,7 +3392,7 @@ Object.subclass('St78.vm.Primitives',
             var largeSize = this.stackNonInteger(1);
             if (largeSize.stClass.oop !== NT.OOP_CLLARGEINTEGER) return false;
             size = largeSize.largeIntegerValue();
-            if (size < 0 || size > 200000) return false; // we have our limits
+            if (size < 0 || size > NT.MAX_INSTSIZE) return false; // arbitrary limit
             this.success = true;
         }
         if (!((rcvr.pointers[NT.PI_CLASS_INSTSIZE] & NT.FMT_ISVARIABLE) > 0)) {
