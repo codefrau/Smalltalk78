@@ -277,6 +277,7 @@ NT = {
         pageDown: 198,
         home: 202,
         end: 203,
+        search: 204,
     },
 
     // key bindings: html keydown code to NT symbolic
@@ -290,6 +291,7 @@ NT = {
         's': "compile",
         'z': "undo",
         'l': "cancel",
+        'f': "search",
         'b': "ctlb", // bold
         'i': "ctli", // italic
         'u': "ctlminus", // underline
