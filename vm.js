@@ -1,4 +1,4 @@
-module('St78.vm').requires().toRun(function() {
+module('users.codefrau.St78.vm').requires().toRun(function() {
 /*
  * Copyright (c) 2013-2020 Vanessa Freudenberg and Dan Ingalls
  *
@@ -24,6 +24,7 @@ module('St78.vm').requires().toRun(function() {
 
 NT = {
     MAX_INSTSIZE: 0x100000, // arbitrary limit on instance size
+    largeOops: true, // automatically switch to 32 bit image format
 
     OOP_NIL: 0,
     OOP_FALSE: 2,
@@ -1248,7 +1249,7 @@ Object.extend(St78.vm.Image, {
                 if (elseDo) elseDo(msg);
                 else $world.inform("Saving failed: " + msg);
             };
-            navigator.webkitPersistentStorage.requestQuota(50*1024*1024, function(grantedBytes) {
+            navigator.webkitPersistentStorage.requestQuota(100*1024*1024, function(grantedBytes) {
                 window.webkitRequestFileSystem(PERSISTENT, grantedBytes, function(fs) {
                     fs.root.getFile(imageName, {create: true}, function(fileEntry) {
                         fileEntry.createWriter(function(fileWriter) {

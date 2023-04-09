@@ -1,4 +1,4 @@
-module('St78.ui').requires("lively.data.FileUpload").toRun(function() {
+module('users.codefrau.St78.ui').requires("lively.data.FileUpload").toRun(function() {
 /*
  * Copyright (c) 2013-2020 Vanessa Freudenberg
  *

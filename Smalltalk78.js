@@ -128,7 +128,7 @@ window.$world = {
     document.getElementsByTagName("head")[0].appendChild(script);
 })();
 
-module("Smalltalk78").requires("St78.vm").toRun(function() {
+module("Smalltalk78").requires("users.codefrau.St78.vm").toRun(function() {
 
 //////////////////////////////////////////////////////////////////////////////
 // display & event setup
@@ -400,7 +400,7 @@ function loadImage(imageName, thenDo, elseDo) {
     // (it's not in vm.js because Lively has its own implementation)
     if (location.search.includes("fresh")) return elseDo();
     if (window.webkitRequestFileSystem) {
-        window.webkitRequestFileSystem(PERSISTENT, 5*1024*1024, function(fs) {
+        window.webkitRequestFileSystem(PERSISTENT, 100*1024*1024, function(fs) {
             fs.root.getFile(imageName, {create: false}, function(fileEntry) {
                 fileEntry.file(function(file) {
                     var reader = new FileReader();
