@@ -612,7 +612,7 @@ Object.subclass('St78.vm.Image',
 
         var newObjects = this.markReachableObjects();
         var removedObjects = this.removeUnmarkedOldObjects();
-        if (this.largeOops) this.compactLargeOops();
+        if (this.largeOops) this.compactLargeOops(); // possibly sets largeOops to false
         this.appendToOldObjects(newObjects);
         if (this.largeOops) this.updateOldSpaceBytes();
         /*
@@ -725,18 +725,33 @@ Object.subclass('St78.vm.Image',
         this.lastOldObject = oldObj;
     },
     compactLargeOops: function() {
-        // in 32 bits, oops are not freed but reassigned
-        var nextOop = 0x10000 - 2;
-        var obj = this.firstOldObject,
-            n = 0;
+        if (this.freeOops.length > 0) {
+            // if we have free small oops, maybe we can fall back to 16 bits
+            return this.compactLargeOopsToSmall();
+        }
+        // otherwise just reassign oops in sequence
+        var nextOop = 0xFFFE;  // so the first large oop is 0x10000
+        var obj = this.firstOldObject;
         while (obj) {
-            if (obj.oop >= 0x10000) {
-                obj.oop = nextOop += 2;
-                n++;
-            }
+            if (obj.oop >= 0x10000) obj.oop = nextOop += 2;
             obj = obj.nextObject;
         }
         this.largeOops = nextOop;
+    },
+    compactLargeOopsToSmall: function() {
+        // we had some free small oops, use those first, then large ones
+        this.largeOops = 0xFFFE; // so the first large oop is 0x10000
+        var obj = this.firstOldObject;
+        while (obj) {
+            if (obj.oop >= 0x10000) obj.oop = this.allocateOopFor(obj);
+            obj = obj.nextObject;
+        }
+        // if we did not use any large oops, switch back to 16 bits
+        if (this.largeOops === 0xFFFE) {
+            this.largeOops = 0;
+            this.updateOldSpaceBytes();
+            console.log("Freed oops - switching from 32 to 16 bits");
+        }
     },
     updateOldSpaceBytes: function() {
         // with large oops, object size can change depending on the oops it holds
@@ -866,10 +881,10 @@ Object.subclass('St78.vm.Image',
         return data.buffer;
     },
     writeToBuffer: function() {
-        if (this.largeOops) return this.writeToBufferLarge()
         this.fullGC(); // collect all objects
+        if (this.largeOops) return this.writeToBufferLarge();
         var magic = 'St78',
-            version = 0x0100, // 1.0
+            version = 0x0100, // 1.0: 16 bit oops
             headerSize = 18,
             data = new DataView(new ArrayBuffer(headerSize + this.oldSpaceBytes)),
             pos = 0;
@@ -900,9 +915,9 @@ Object.subclass('St78.vm.Image',
         return data.buffer;
     },
     writeToBufferLarge: function() {
-        this.fullGC(); // collect all objects
+        // this.fullGC(); // happened already
         var magic = 'St78',
-            version = 0x0200, // 2.0
+            version = 0x0200, // 2.0: 32 bit oops
             headerSize = 28,
             data = new DataView(new ArrayBuffer(headerSize + this.oldSpaceBytes)),
             pos = 0;
