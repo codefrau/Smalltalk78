@@ -1292,7 +1292,7 @@ Object.extend(St78.vm.Image, {
                 alertOK("Saved localstorage:" + imageName);
                 if (thenDo) thenDo();
             } catch (e) {
-                alert("Saving failed: " + msg);
+                alert("Saving failed: " + e.msg);
                 if (elseDo) elseDo(e.msg);
             }
         }
