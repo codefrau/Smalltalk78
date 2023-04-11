@@ -1287,9 +1287,14 @@ Object.extend(St78.vm.Image, {
                 chars = [];
             for (var i = 0; i < words.length; i++)
                 chars.push(String.fromCharCode(words[i]));
-            window.localStorage['notetakerImage:' + imageName] = chars.join('');
-            alertOK("Saved localstorage:" + imageName);
-            if (thenDo) thenDo();
+            try {
+                window.localStorage['notetakerImage:' + imageName] = chars.join('');
+                alertOK("Saved localstorage:" + imageName);
+                if (thenDo) thenDo();
+            } catch (e) {
+                alert("Saving failed: " + msg);
+                if (elseDo) elseDo(e.msg);
+            }
         }
     },
 });
