@@ -368,10 +368,9 @@ function interpretLoop() {
     }
 }
 
-function runImage(buffer, imageName, canvas) {
-    window.localStorage['notetakerImageName'] = imageName;
-    var display = createDisplay(canvas),
-        image = St78.vm.Image.readFromBuffer(buffer, imageName);
+function runImage(image, canvas) {
+    window.localStorage['notetakerImageName'] = image.name;
+    var display = createDisplay(canvas);
     Smalltalk78.vm = new St78.vm.Interpreter(image, display);
     window.onbeforeunload = function() {
         return "Smalltalk78 is still running";
@@ -422,11 +421,29 @@ function loadImage(imageName, thenDo, elseDo) {
     }
 }
 
+// It's 2024. We can use modern JS now.
+async function runNotetakerFiles(url, imageName, canvas) {
+    // this is a special case for the original Notetaker files
+    // which have a different format than the images we write
+    const files = ["ObjectTable.nt", "ObjectSpace.nt"];
+    const responses = await Promise.all(files.map(file => fetch(url + "/" + file)));
+    const buffers = await Promise.all(responses.map(response => response.arrayBuffer()));
+    const objectTable = new Uint8Array(buffers[0]);
+    const objectSpace = new Uint8Array(buffers[1]);
+    const reader = new St78.vm.ObjectTableReader(objectTable, objectSpace, 49152);
+    const oopMap = reader.readObjects();
+    const image = new St78.vm.Image(oopMap, imageName, true);
+    runImage(image, canvas)
+}
+
 Smalltalk78.run = function(imageUrl, canvas) {
     // we let ?image=... override the image name (could be a full URL too)
     // otherwise the last-saved image name is used
     // the image then is loaded from browser storage unless ?fresh is given,
     // in which case it's always downloaded
+    // the special image name "notetaker" will load the original unmodified
+    // Notetaker files from ~1978, rather than the default image, which has
+    // been updated (implies ?fresh)
     var searchParams = new URLSearchParams(location.search);
     if (searchParams.get('image')) {
         imageUrl = searchParams.get('image');
@@ -436,7 +453,11 @@ Smalltalk78.run = function(imageUrl, canvas) {
     // now load the image, and if that fails, try to download it
     var url = new URL(imageUrl, document.location);
     var imageName = url.pathname.substring(url.pathname.lastIndexOf('/') + 1);
-    function run(buffer) { runImage(buffer, imageName, canvas); }
+    if (imageName == "notetaker") return runNotetakerFiles(url, imageName, canvas);
+    function run(buffer) {
+        var image = St78.vm.Image.readFromBuffer(buffer, imageName);
+        runImage(image, canvas);
+    }
     loadImage(imageName, run, function() {
         downloadImage(imageUrl, imageName, run, function() {
             alert("Failed to download: " + imageUrl);
