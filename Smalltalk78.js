@@ -262,6 +262,57 @@ function createDisplay(canvas) {
         }
     }
 
+    function doKeyCopy(evt) {
+        if (!navigator.clipboard) return;
+        // simulate copy event for Smalltalk so it places text in clipboard
+        recordKeyboardEvent(NT.kbSymbolic['cut']);
+        // now interpret until Smalltalk has copied to the clipboard
+        display.clipboardStringChanged = false;
+        var start = Date.now();
+        while (!display.clipboardStringChanged && Date.now() - start < 500)
+            display.vm.interpret(20);
+        if (!display.clipboardStringChanged) {
+            console.log("timeout, image did not copy to clipboard");
+            return;
+        }
+        // got it, now copy to the system clipboard
+        navigator.clipboard.writeText(display.clipboardString)
+            .catch(function(err) { console.error("display: copy error " + err.message); });
+    }
+
+    function doKeyPaste(evt) {
+        if (!navigator.clipboard) return;
+        navigator.clipboard
+        .readText()
+        .then(function(clipText) {
+            display.clipboardString = clipText;
+            // simulate paste keyboard event for St78
+            display.keys = []; //  flush other keys
+            recordKeyboardEvent(NT.kbSymbolic['paste']);
+            // now interpret until Smalltalk has read from the clipboard
+            display.clipboardStringChanged = true;
+            var start = Date.now();
+            while (display.clipboardStringChanged && Date.now() - start < 500)
+                display.vm.interpret(20);
+            // if image has not used the clipboard prim, simulate key events
+            if (display.clipboardStringChanged) {
+                console.log("No paste primitive, simulating via keyboard");
+                recordKeyboardEvent(8); // backspace
+                for (var i = 0; i < display.clipboardString.length; i++) {
+                    var char = display.clipboardString.charCodeAt(i);
+                    for (var ntcode in NT.toUnicode) {
+                        var unicode = NT.toUnicode[ntcode].charCodeAt(0);
+                        if (char == unicode) {
+                            char = ntcode.charCodeAt(0);
+                            break;
+                        }
+                    }
+                    recordKeyboardEvent(char, true);
+                }
+            }
+        }).catch(function(err) { console.error("display: paste error " + err.message); });;
+    }
+
     document.onkeydown = function(evt) {
         display.timeStamp = getTimeStamp(evt);
         var code, modifier;
