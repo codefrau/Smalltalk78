@@ -430,8 +430,6 @@ The instsize is an integer (ie low bit = 1) with the following interpretation:
                 oopMap[oop] = new St78.vm.Object(oop);
             }
         }
-        for (var oop in oopMap)
-            oopMap[oop].readFromObjectTable(this, oopMap);
         return oopMap;
     }
 },
@@ -498,14 +496,18 @@ Object.subclass('St78.vm.Image',
 
     Object Table
     ============
-    There is no object table. Objects use direct references. We have immediate untagged ints (+/-16K).
-    The snapshot image format uses 16 bit words for oops and tags the ints.
+    Unlike the original Notetaker implementation, there is no object table.
 
+    Objects use direct references. We have immediate untagged ints (+/-16K).
+    The snapshot image format uses 16 bit words for oops (even) and tags the ints (odd).
+
+    If there are more than 32K objects, and NT.largeOops is true, we us snapshot image format 2.0
+    with 32 bit words for oops. SmallIntegers are still only +/-16K but stored as 32 bit words.
     */
     }
 },
 'initializing', {
-    initialize: function(oopMap, name, doPatches, largeOops) {
+    initialize: function(oopMap, process, display, name, convertTaggedInts, largeOops) {
         this.name = name;
         this.largeOops = largeOops || 0;
         this.maxTenuresBeforeGC = 1000;
@@ -532,8 +534,10 @@ Object.subclass('St78.vm.Image',
             }
         this.firstOldObject = oopMap[0];
         this.lastOldObject = prevObj;
+        this.userProcess = process;
+        this.userDisplay = display;
         this.initKnownObjects(oopMap);
-        this.initCompiledMethods(oopMap, doPatches);
+        this.initCompiledMethods(oopMap, convertTaggedInts);
         console.log("Loaded image " + this.name);
     },
 
@@ -542,15 +546,14 @@ Object.subclass('St78.vm.Image',
         oopMap[NT.OOP_TRUE].isTrue = true;
         oopMap[NT.OOP_FALSE].isFalse = true;
         this.globals = oopMap[NT.OOP_SMALLTALK];
-        this.userProcess = oopMap[NT.OOP_THEPROCESS];
         this.specialOopsVector = this.globalNamed('SpecialOops');
     },
-    initCompiledMethods: function(oopMap, doPatches) {
+    initCompiledMethods: function(oopMap, convertTaggedInts) {
         // make proper pointer objects for literals encoded in bytes
         var cmClass = this.objectFromOop(NT.OOP_CLCOMPILEDMETHOD, oopMap),
             cm = this.someInstanceOf(cmClass);
         while (cm) {
-            cm.methodInitLits(this, oopMap, doPatches);
+            cm.methodInitLits(this, oopMap, convertTaggedInts);
             cm = this.nextInstanceAfter(cm);
         }
     },
@@ -1158,23 +1161,39 @@ Object.subclass('St78.vm.Image',
 });
 
 Object.extend(St78.vm.Image, {
+    readFromObjectTable: function(objectTable, objectSpace, name) {
+        // reads the original object table and object space files
+        // as found on the Notetaker disk pack, converting objects
+        // to our format (e.g. creating IEEE floats from the
+        // Notetaker's 48 bit floats)
+        var reader = new St78.vm.ObjectTableReader(objectTable, objectSpace, 0xC000),
+            oopMap = reader.readObjects(),
+            process = oopMap[NT.OOP_THEPROCESS], // bootstrap process
+            display = null, // indicates to run St78.vm.Interpreter.notetakerPatches
+            convertTaggedInts = true,
+            largeOops = 0;
+        for (var oop in oopMap)
+            oopMap[oop].initFromObjectTable(reader, oopMap);
+        var image = new this(oopMap, process, display, name, convertTaggedInts, largeOops);
+        return image;
+    },
     readFromBuffer: function(buffer, name) {
-        var result = this.oopmapFromBuffer(buffer, 'St78'),
+        // reads a "modern" image created by writeToBuffer()
+        var result = this.readBuffer(buffer, 'St78'),
             oopMap = result.oopMap,
-            processOop = result.processOop,
-            displayOop = result.displayOop,
+            process = oopMap[result.processOop], // active process
+            display = oopMap[result.displayOop],
+            convertTaggedInts = false,
             largeOops = result.largeOops;
         for (var oop in oopMap)
             oopMap[oop].initFromImage(oopMap);
-        var image = new this(oopMap, name, false, largeOops);
-        image.userProcess = oopMap[processOop];
-        image.userDisplay = oopMap[displayOop];
+        var image = new this(oopMap, process, display, name, convertTaggedInts, largeOops);
         return image;
     },
     withDeltaFromBuffer: function(baseImage, buffer, name) {
         // reads an image created by writeDiffToBuffer()
         debugger;
-        var delta = this.oopmapFromBuffer(buffer, 'Sd78'),
+        var delta = this.readBuffer(buffer, 'Sd78'),
             oopMap = {},
             obj = baseImage.firstOldObject;
         // get all objects from base image into oopMap
@@ -1213,7 +1232,7 @@ Object.extend(St78.vm.Image, {
         image.userDisplay = oopMap[delta.displayOop];
         return image;
     },
-    oopmapFromBuffer: function(buffer, magic) {
+    readBuffer: function(buffer, magic) {
         // reads objects created by writeToBuffer() or writeDiffToBuffer()
         var data = new DataView(buffer),
             pos = 0,
@@ -1305,6 +1324,7 @@ Object.subclass('St78.vm.Object',
         this.oop = oop;
     },
     initFromImage: function(oopMap) {
+        // modern image format
         var stClass = this.objectFromOop(this.data.classOop, oopMap),
             instSpec = stClass.classInstSpec(),
             body = this.data.body,
@@ -1360,7 +1380,8 @@ Object.subclass('St78.vm.Object',
         if (this.data.hash > 0) this.hash = this.data.hash; // 0 hash means never assigned
         delete this.data;
     },
-    readFromObjectTable: function(reader, oopMap) {
+    initFromObjectTable: function(reader, oopMap) {
+        // original Notetaker format
         var entry = reader.otAt(this.oop);
         var addr = reader.dataAddress(this.oop);
         var classOop = reader.classOfOop(this.oop);
@@ -1748,8 +1769,9 @@ Object.subclass('St78.vm.Object',
     isCompiledMethod: function() {
         return this.stClass.oop === NT.OOP_CLCOMPILEDMETHOD;
     },
-    methodInitLits: function(image, optionalOopMap, convertOops) {
+    methodInitLits: function(image, optionalOopMap, convertTaggedInts) {
         // make literals encoded as oops available as proper pointer objects
+        // convertTaggedInts is true if we loaded from the original NoteTaker files
         if (this.pointers) return; // already done (loaded as large obj probably)
         var numLits = this.methodNumLits();
         if (numLits) {
@@ -1757,16 +1779,16 @@ Object.subclass('St78.vm.Object',
                 bytesPtr = 2; // skip header word
             for (var i = 0; i < numLits; i++) {
                 var oop = this.bytes[bytesPtr++] + 256 * this.bytes[bytesPtr++];
-                if (convertOops && !(oop & 1)) oop /= 2;
+                if (convertTaggedInts && !(oop & 1)) oop /= 2; // get rid of SmallInt tag bit
                 lits.push(image.objectFromOop(oop, optionalOopMap));
             }
             this.pointers = lits;
-            if (convertOops) this.methodPointersModified(image);
+            if (convertTaggedInts) this.methodPointersModified(image);
         }
     },
     methodPointersModified: function(image, index, n) {
         // n literal pointers starting at index were modified: copy oops to bytes
-        if (n) return; // we ignore this if sent from bitblt at runtime
+        if (n) return; // we defer this if sent from bitblt at runtime
         // if sent from image saving, copy all
         index = 0; n = this.methodNumLits();
         var bytesPtr = index * 2 + 2; // skip method header

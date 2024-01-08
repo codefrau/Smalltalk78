@@ -481,10 +481,8 @@ async function runNotetakerFiles(url, imageName, canvas) {
     const buffers = await Promise.all(responses.map(response => response.arrayBuffer()));
     const objectTable = new Uint8Array(buffers[0]);
     const objectSpace = new Uint8Array(buffers[1]);
-    const reader = new St78.vm.ObjectTableReader(objectTable, objectSpace, 49152);
-    const oopMap = reader.readObjects();
-    const image = new St78.vm.Image(oopMap, imageName, true);
-    runImage(image, canvas)
+    const image = St78.vm.Image.readFromObjectTable(objectTable, objectSpace, imageName);
+    runImage(image, canvas);
 }
 
 Smalltalk78.run = function(imageUrl, canvas) {
