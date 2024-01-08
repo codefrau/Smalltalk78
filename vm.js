@@ -323,6 +323,7 @@ NT = {
         35: '↪', // #: Unique string
         64: '⌾', // @: make point
         94: '⇑', // ^: return
+        95: '←', // _: assignment
         96: 'ⓢ', // `: 's operator
         1: '◦', // ^A: At
         3: '⦂', // ^C: open Colon
@@ -3920,9 +3921,12 @@ Object.subclass('St78.vm.Primitives',
         // if fileName is empty or ends in slash, answer array of files
         var result;
         if (/http(s)?:/.test(fileName)) {
-            alertOK("fetching " + fileName);
-            // we switched to https but the image may still use http
+            // if url does not have a double slash after http: then remove
+            // the protocol so the browser will use it as relative URL
+            if (!/http(s)?:\/\//.test(fileName)) fileName = fileName.replace(/http(s)?:/, '');
+            // HACK: we switched to https but the image may still use http
             fileName = fileName.replace(/^http:(\/\/lively-web.org\/)/, 'https:$1');
+            alertOK("fetching " + fileName);
             var isDir = /\/$/.test(fileName),  // ends in slash
                 unfreeze = this.vm.freeze(),   // freeze VM until we get result
                 xhr = new XMLHttpRequest();
