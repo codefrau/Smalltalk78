@@ -3938,8 +3938,8 @@ Object.subclass('St78.vm.Primitives',
             xhr.onreadystatechange = function() {
                 if (this.readyState != this.DONE) return;
                 if (this.status === 200) {
-                    console.log("Got " + this.responseText.length + " bytes from " + fileName);
                     if (isDir) {
+                        console.log("Got " + this.responseText.length + " bytes from " + fileName);
                         var urls = this.responseText.match(/href="[^"]*"/gi).collect(function(href){return decodeURI(href.match(/"([^"]*)"/)[1])}),
                             dirPath = new URL(fileName, document.baseURI).pathname;
                         // got all the hrefs, find the ones in this dir and extract file names
@@ -3949,6 +3949,7 @@ Object.subclass('St78.vm.Primitives',
                         result = new Uint8Array(this.response);
                     }
                 } else {
+                    console.log("Got " + this.response.byteLength + " bytes from " + fileName);
                     alert("Download failed (" + this.status + ") " + fileName);
                 }
                 unfreeze();
