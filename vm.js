@@ -23,6 +23,8 @@ module('users.codefrau.St78.vm').requires().toRun(function() {
 
 
 NT = {
+    VM_DATE: "2024-01-11",
+
     MAX_INSTSIZE: 0x100000, // arbitrary limit on instance size
     largeOops: true, // automatically switch to 32 bit image format
 
@@ -3936,15 +3938,14 @@ Object.subclass('St78.vm.Primitives',
             xhr.onreadystatechange = function() {
                 if (this.readyState != this.DONE) return;
                 if (this.status === 200) {
+                    console.log("Got " + this.responseText.length + " bytes from " + fileName);
                     if (isDir) {
-                        console.log("Got " + this.responseText.length + " bytes from " + fileName);
                         var urls = this.responseText.match(/href="[^"]*"/gi).collect(function(href){return decodeURI(href.match(/"([^"]*)"/)[1])}),
-                            dirPath = fileName.match(/[^:]*:\/\/[^\/]*(\/.*\/)[^\/]*/)[1];
+                            dirPath = new URL(fileName, document.baseURI).pathname;
                         // got all the hrefs, find the ones in this dir and extract file names
                         result = urls.select(function(url){return url.startsWith(dirPath)})
                             .collect(function(path){return path.slice(dirPath.length)}).uniq();
                     } else {
-                        console.log("Got " + this.response.byteLength + " bytes from " + fileName);
                         result = new Uint8Array(this.response);
                     }
                 } else {
@@ -3973,14 +3974,24 @@ Object.subclass('St78.vm.Primitives',
         // write to this.fileStrings and window.localStorage
         // If the filename starts with http do a web put
         if (/http(s)?:/.test(fileName)) {
+            // if url does not have a double slash after http: then remove
+            // the protocol so the browser will use it as relative URL
+            if (!/http(s)?:\/\//.test(fileName)) fileName = fileName.replace(/http(s)?:/, '');
             console.log('Uploading ' + stringToStore.length + ' bytes to ' + fileName);
-            new WebResource(fileName)
-                .beAsync()
-                .createProgressBar('Uploading ' + stringToStore.length + ' bytes ...')
-                .whenDone(function(content, status) {
-                    if (status.isSuccess()) alertOK("Uploaded to " + fileName);
-                    else alert("Upload failed")})
-                .put(this.asUint8Array(stringToStore));
+            if (typeof WebResource !== 'undefined') { // use Lively's WebResource
+                new WebResource(fileName)
+                    .beAsync()
+                    .createProgressBar('Uploading ' + stringToStore.length + ' bytes ...')
+                    .whenDone(function(content, status) {
+                        if (status.isSuccess()) alertOK("Uploaded to " + fileName);
+                        else alert("Upload failed")})
+                    .put(this.asUint8Array(stringToStore));
+            } else { // use fetch
+                fetch(fileName, {method: 'PUT', body: stringToStore})
+                    .then(function(response) {
+                        if (!response.ok) console.warn("Upload failed " + response.status + " " + response.statusText + " " + fileName);
+                    });
+            }
         } else { // otherwise, use our fileStrings
             if (fileName[0] != '.') alertOK("storing " + fileName);
             this.fileStrings[fileName] = stringToStore;
