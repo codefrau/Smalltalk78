@@ -7,7 +7,7 @@ To learn more, please read our paper [Reviving Smalltalk-78: The First Modern Sm
 The full history of various Smalltalk releases is covered in Dan's [Evolution Of Smalltalk][hopl] article,
 which also includes links to a live version using this VM in the accompanying [Smalltalk Zoo][zoo] website.
 
-The [index.html][standalone] in this directory should give you a running version for testing, although the browser integration is incomplete (e.g. copy/paste or file management). Pull requests welcome!
+The [index.html][standalone] in this directory should give you a running version for testing, although the browser integration is incomplete (e.g. file management). Pull requests welcome!
 
 By default this runs an updated image with fixes. If you feel adventurous, you can run the [original, unmodified image][original] as found on the disk pack, too.
 

@@ -20,6 +20,10 @@
         color: #000;
         line-height: 1.5;
         display: none;
+        background: #EEE;
+        padding: 10px;
+        border-radius: 10px;
+        width: fit-content;
     }
     body.fullscreen {
         background: #000;
@@ -137,8 +141,10 @@ Ctrl-d  done with eval
     helpbutton.onclick = function() {
         if (help.style.display) {
             help.style.display = '';
+            canvas.scrollIntoView({ behavior: 'smooth' });
         } else {
             help.style.display = 'block';
+            helpbutton.scrollIntoView({ behavior: 'smooth' });
         }
     }
 </script>
