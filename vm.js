@@ -3928,6 +3928,10 @@ Object.subclass('St78.vm.Primitives',
             if (!/http(s)?:\/\//.test(fileName)) fileName = fileName.replace(/http(s)?:/, '');
             // HACK: we switched to https but the image may still use http
             fileName = fileName.replace(/^http:(\/\/lively-web.org\/)/, 'https:$1');
+            if (window.location.hostname.startsWith('smalltalkzoo')) {
+                fileName = fileName.replace('lively-web.org', window.location.hostname);
+                fileName = fileName.replace('/users/bert/', '/users/codefrau/');
+            }
             alertOK("fetching " + fileName);
             var isDir = /\/$/.test(fileName),  // ends in slash
                 unfreeze = this.vm.freeze(),   // freeze VM until we get result
