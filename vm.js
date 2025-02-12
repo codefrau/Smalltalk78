@@ -2810,19 +2810,24 @@ Object.subclass('St78.vm.Interpreter',
             if (!debugFrame && bp + NT.FI_SAVED_BP <= i && bp + NT.FI_RECEIVER > i) continue;
             var obj = ctx[i];
             var value = obj && obj.stInstName ? obj.stInstName(32) : obj;
-            stack += Strings.format('\n[%s] %s%s', i,
+            stack += Strings.format('\n%s %s%s',
+                printAll
+                    ? i + '(' + (bp + NT.FI_SAVED_BP === i ? '●':'◦') + (i - NT.PI_PROCESS_STACK) + ')'
+                    : '[' + i + ']',
                 bp + NT.FI_FIRST_TEMP - numTemps < i && i <= bp + NT.FI_FIRST_TEMP
-                    ? ('temp' + (bp-1+numArgs-i) + '/t' + (bp+numArgs-i) + ': ') :
-                bp + NT.FI_SAVED_BP === i ? ' savedBP: ' :
-                bp + NT.FI_CALLER_PC === i ? 'callerPC: ' :
-                bp + NT.FI_NUMARGS === i ? ' numArgs: ' :
-                bp + NT.FI_METHOD === i ? '  method: ' :
-                bp + NT.FI_MCLASS === i ? '  mclass: ' :
-                bp + NT.FI_RECEIVER === i ? 'receiver: ' :
-                bp + NT.FI_RECEIVER < i && i <= bp + NT.FI_RECEIVER + numArgs
-                    ? (' arg' + (bp+5+numArgs-i) + '/t' + (bp+6+numArgs-i) + ': ') :
-                sp === i ? '   sp ==> ' :
-                '          ', value);
+                    ? ('temp' + (bp-1+numArgs-i) + '/t' + (bp+numArgs-i) + ': ')
+                    : bp + NT.FI_SAVED_BP === i ? ' savedBP: '
+                    : bp + NT.FI_CALLER_PC === i ? 'callerPC: '
+                    : bp + NT.FI_NUMARGS === i ? ' numArgs: '
+                    : bp + NT.FI_METHOD === i ? '  method: '
+                    : bp + NT.FI_MCLASS === i ? '  mclass: '
+                    : bp + NT.FI_RECEIVER === i ? 'receiver: '
+                    : bp + NT.FI_RECEIVER < i && i <= bp + NT.FI_RECEIVER + numArgs
+                        ? (' arg' + (bp+5+numArgs-i) + '/t' + (bp+6+numArgs-i) + ': ')
+                    : sp === i
+                        ? '   sp ==> '
+                    : '          ',
+                value);
             if (i >= bp + NT.FI_RECEIVER + numArgs && i+1 < ctx.length) {
                 if (!printAll) return stack;
                 sp = bp + NT.FI_LAST_ARG + numArgs;
