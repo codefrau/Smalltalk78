@@ -2533,11 +2533,17 @@ Object.subclass('St78.vm.Interpreter',
         this.push(argCount);
         this.pushPCBP();
         if (this.sp !== newFrame) throw "bad frame size";
+        // we only externalize this here once, not on every push/pop
+        // temps and the current stack will extend below BP, but
+        // it's used only for ProcessFrame>>successor which looks no further than BP
+        // we could subtract an arbitrary number to account for temps+stack, but it's not needed
+        this.activeProcessPointers[NT.PI_PROCESS_TOP] = (this.activeProcessPointers.length - this.sp) - 1;
     },
     popFrame: function() {
         this.popN(this.bp - this.sp); // drop temps
         this.popPCBP();                         // restore previous frame and pc
         this.popN(4 + this.methodNumArgs);      // drop old frame + args
+        this.activeProcessPointers[NT.PI_PROCESS_TOP] = (this.activeProcessPointers.length - this.sp) - 1;
     },
     loadFromFrame: function(aFrame) {
         // cache values from current frame in slots
