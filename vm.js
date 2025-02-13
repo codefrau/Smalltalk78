@@ -2353,7 +2353,7 @@ Object.subclass('St78.vm.Interpreter',
             if (mDict.isNil) throw "cannotInterpret";
             var newMethod = this.lookupSelectorInDict(mDict, selector);
             if (!newMethod.isNil) {
-                //load cache entry here and return
+                // cache the method and return
                 cacheEntry.method = newMethod;
                 cacheEntry.methodClass = currentClass;
                 cacheEntry.primIndex = newMethod.methodPrimitiveIndex();
@@ -2366,11 +2366,14 @@ Object.subclass('St78.vm.Interpreter',
         if (this.breakOnMNU)
             this.breakNow('MNU: ' + startingClass.className() + '>>' + selector.bytesAsUnicode());
         if (this.specialObjects[0].isCompiledMethod()) {
-            cacheEntry.method = this.specialObjects[0];      // Object>>error
-            cacheEntry.methodClass = this.nilObj.stClass;
-            cacheEntry.primIndex = 0;
-            cacheEntry.argCount = 0;
-            return cacheEntry;
+            // run in-image MNU handler
+            var uncachable = {
+                method: this.specialObjects[0],      // Object>>error
+                methodClass: this.nilObj.stClass,    // Object
+                primIndex: 0,
+                argCount: 0,
+            };
+            return uncachable;
         }
         // regular error handling not possible, lookup #error: instead
         var rcvr = this.pop(),
