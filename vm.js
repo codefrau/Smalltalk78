@@ -1,6 +1,6 @@
 module('users.codefrau.St78.vm').requires().toRun(function() {
 /*
- * Copyright (c) 2013-2020 Vanessa Freudenberg and Dan Ingalls
+ * Copyright (c) 2013-2025 Vanessa Freudenberg and Dan Ingalls
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,7 +21,10 @@ module('users.codefrau.St78.vm').requires().toRun(function() {
  * THE SOFTWARE.
  */
 
+// Alias for shorter class paths
+St78 = users.codefrau.St78;
 
+// Constants, accessible without path for brevity
 NT = {
     VM_DATE: "2025-02-12",
 
