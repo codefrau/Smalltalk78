@@ -23,7 +23,7 @@ module('users.codefrau.St78.vm').requires().toRun(function() {
 
 
 NT = {
-    VM_DATE: "2024-01-11",
+    VM_DATE: "2025-02-12",
 
     MAX_INSTSIZE: 0x100000, // arbitrary limit on instance size
     largeOops: true, // automatically switch to 32 bit image format
