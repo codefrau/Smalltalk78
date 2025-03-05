@@ -23,14 +23,26 @@
         cursor: none;
         width: 100%;
     }
-    pre {
+    pre, tt {
         background: #EEE;
         color: #000;
-        line-height: 1.5;
-        display: none;
+    }
+    pre {
         padding: 10px;
         border-radius: 10px;
         width: fit-content;
+        line-height: 1.5;
+    }
+    #help, #syntax {
+        display: none;
+    }
+    tt {
+        padding: 3px;
+        border-radius: 4px;
+        white-space: nowrap;
+    }
+    dt {
+        font-weight: bold;
     }
     body.fullscreen {
         background: #000;
@@ -60,6 +72,7 @@ Also check out the
 <a href="https://smalltalkzoo.thechm.org/HOPL-St78.html" target="_blank">Lively VM Debugger</a>.</p>
 
 <button id="helpbutton">Mouse and Keyboard Help</button>
+<button id="syntaxbutton">Syntax Help</button>
 <button id="fullscreenbutton">Fullscreen</button>
 
 <pre id="help">
@@ -114,6 +127,113 @@ Ctrl-d  done with eval
 
 </p>
 
+<div id="syntax">
+    <p>The syntax of Smalltalk-78 is unchanged from Smalltalk-76, which
+    introduced the regularity of unary, binary, and keyword messages
+    that is still used in modern Smalltalks. Readers may refer to the
+    <a href="https://smalltalkzoo.thechm.org/papers/The%20Smalltalk-76%20Programming%20System.PDF">Smalltalk-76 manual</a>
+    for a full description. There are no blocks as
+    in Smalltalk-80, no booleans, and no meta classes.</p>
+
+    <p>The system uses the ASCII-1963 character set (which had <tt>↑</tt> and
+    <tt>←</tt> arrows in place of the <tt>^</tt> and <tt>_</tt> characters in later
+    ASCII versions). From the control character range, only <tt>Tab</tt> (9) and
+    <tt>Carriage Return</tt> (13) are used as in ASCII, while some others are used
+    for special characters not found in ASCII.
+    These include return and implication arrows <tt>⇑ ⇒</tt>, comparison operators
+    <tt>≤ ≥ ≠ ≡</tt>, indexing
+    and point creation operators <tt>◦ ⊚</tt>, a curved arrow <tt>↪</tt> for literal
+    quoting (used like <tt>#</tt> in Smalltalk-80), a unary minus <tt>¬</tt> (for prefixing
+    negative numbers, as in <tt>3 − −4</tt>), a possessive operator <tt>’s</tt> (evaluates
+    an expression in the context of another object, e.g. <tt>obj ’s 'instvar'</tt>),
+    and a few more. See
+    <a href="https://freudenbergs.de/vanessa/publications/Ingalls-2014-Smalltalk78.pdf" target="_blank">the paper</a>
+    for a complete list.
+    </p>
+    <dl>
+        <dt>Conditional execution</dt>
+        <dd>
+            <p>A block of code can be conditionally evaluated using the <tt>⇒</tt> operator.
+            It maps directly to the “jump if not false” bytecode (where <tt>false</tt>
+            is just an instance of <b>Object</b> known to the VM compared by identity).
+            If the condition is false, the following block of code is skipped.
+            Any object other than false causes the conditional jump not to be
+            taken, so the code block is executed, followed by an unconditional
+            jump to the end of the surrounding code block. This allows putting
+            an “else” case right after the conditional block, as the implementation
+            of <b>Object≫and:</b> demonstrates:
+<pre>
+and: x
+    [self⇒[⇑x] ⇑false]
+</pre>
+            If execution should resume after the else case, another set of
+            brackets needs to be put around it.</p>
+        </dd>
+
+        <dt>Deferred evaluation</dt>
+        <dd>
+            <p>Brackets <tt>[]</tt> are merely a syntactic device to group statements, they do
+            not create a block object as in Smalltalk-80. How then does e.g.
+            <tt>for⦂from:do⦂</tt> work? The magic is not in the brackets, but in the two
+            variants of the colon in a keyword message. The regular colon <tt>:</tt>
+            causes the keyword argument to be evaluated immediately.
+            For an open colon <tt>⦂</tt> however, the compiler generates a “remote copy”
+            of the current context. This <b>RemoteCode</b> can be evaluated later,
+            and even repeatedly if desired.</p>
+
+            <p>There are two variants for evaluation, with and without an
+            argument. The form with an argument <tt>value←</tt> can be used to assign
+            a value to a variable, the form without an argument
+            (eval) just evaluates the code. These work together, as there
+            is no way to pass arguments to a block other than “remotely”
+            assigning to temporary variables. This is perhaps best explained
+            with an example. A possible implementation of <tt>for⦂from:do⦂</tt>
+            could look like this:
+<pre>
+for⦂ var from: vec do⦂ code | stream item
+[
+    stream ← vec asStream.
+    while⦂ [item ← stream next] do⦂ [
+        var value← item.
+        code eval.
+    ]
+]
+</pre>
+            Note that <tt>for⦂from:do⦂</tt> is not actually a method, but a compiler
+            macro (as evidenced by the missing receiver). It could, however,
+            be a regular method as just described.</p>
+        </dd>
+
+        <dt>Assignment Selector</dt>
+        <dd>
+            <p>The last part of a keyword selector can be an
+            assignment arrow <tt>←</tt>. E.g. <tt>stream next← 5</tt> writes an
+            item to the stream, whereas <tt>stream next: 5</tt> reads 5 items
+            from the stream. To the method this is just like any other argument.
+            But on the sending side, the parser treats the expression after <tt>←</tt>
+            as if it was an assignment. That means no parentheses are needed around
+            that expression. This also works for binary operators extended
+            by an assignment arrow, making it a ternary operator. E.g.
+            <tt>a◦1 ← b◦1</tt> uses the <tt>◦</tt> and <tt>◦←</tt> operators.
+            It is equivalent to Smalltalk-80’s <tt>a at: 1 put: (b at: 1)</tt> but
+            reads a lot nicer and needs no parentheses.</p>
+        </dd>
+        <dt>No metaclasses</dt>
+        <dd>
+            <p>The expression <tt>Stream default</tt> looks like it
+            invokes a “class-side method” if it was Smalltalk-80. But
+            Smalltalk-78 did not have a metaclass hierarchy in parallel
+            to the regular class hierarchy. All classes are an instance of
+            <b>Class</b> so no class-specific methods are possible. Instead,
+            <b>Class</b> provides a couple of methods that dispatch to a new
+            instance. E.g. the implementation of <b>Class≫default</b> is
+            <tt>⇑self new default</tt>. In the <b>Stream</b> case, this invokes
+            <b>Stream≫default</b> which initializes thestream for writing on a
+            new <b>String</b>.</p>
+    </dd>
+</dl>
+</div>
+
 <script>
     let width, height, fullscreen, black, white;
     const params = new URL(window.location.href).searchParams;
@@ -145,15 +265,29 @@ Ctrl-d  done with eval
         Smalltalk78.run("https://smalltalkzoo.thechm.org/images/updated.st78", canvas);
     });
 
-    let timeout;
+    let helpTimeout;
     helpbutton.onclick = () => {
-        clearTimeout(timeout);
+        clearTimeout(helpTimeout);
         if (help.style.display) {
             canvas.scrollIntoView({ behavior: 'smooth' });
-            timeout = setTimeout(() => help.style.display = '', 1000);
+            helpTimeout = setTimeout(() => help.style.display = '', 1000);
         } else {
+            if (syntax.style.display) syntax.style.display = '';
             help.style.display = 'block';
             helpbutton.scrollIntoView({ behavior: 'smooth' });
+        }
+    }
+
+    let syntaxTimeout;
+    syntaxbutton.onclick = () => {
+        clearTimeout(syntaxTimeout);
+        if (syntax.style.display) {
+            canvas.scrollIntoView({ behavior: 'smooth' });
+            syntaxTimeout = setTimeout(() => syntax.style.display = '', 1000);
+        } else {
+            if (help.style.display) help.style.display = '';
+            syntax.style.display = 'block';
+            syntaxbutton.scrollIntoView({ behavior: 'smooth' });
         }
     }
 
