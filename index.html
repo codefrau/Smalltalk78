@@ -2,6 +2,12 @@
 <html>
 <head>
 <meta charset="UTF-8">
+<title>Smalltalk78</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="apple-touch-icon" href="index.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="msapplication-TileImage" content="index.png">
 <style>
     body {
         background: #888;
@@ -15,6 +21,7 @@
         background: #000;
         border-radius: 10px;
         cursor: none;
+        width: 100%;
     }
     pre {
         background: #EEE;
@@ -40,7 +47,6 @@
     }
 </style>
 <script src="Smalltalk78.js"></script>
-<title>Smalltalk-78</title>
 </head>
 
 <body id="body">
@@ -122,6 +128,8 @@ Ctrl-d  done with eval
     if (params.has("black")) black = +("0xFF" + params.get("black"));
     if (params.has("white")) white = +("0xFF" + params.get("white"));
 
+    if (navigator.standalone) fullscreen = true;
+
     if (width) canvas.width = width;
     if (height) canvas.height = height;
     if (fullscreen) {
@@ -148,6 +156,8 @@ Ctrl-d  done with eval
     }
 
     fullscreenbutton.onclick = () => {
+        const wantsFullscreen = document.fullscreenElement !== canvas;
+        body.classList.toggle("fullscreen", wantsFullscreen);
         canvas.requestFullscreen();
     }
 
