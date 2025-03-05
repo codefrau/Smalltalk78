@@ -341,6 +341,7 @@ NT = {
         12: '≤', // ^L: Lesser or equal
         // 13: ^M = return
         14: '≠', // ^N: Not equal
+        16: '◣', // ^P: Prompt
         17: '◻', // ^Q: sQuare
         19: 'ⓢ', // ^S: 's operator
         20: '≡', // ^T: Triple equal
@@ -2893,6 +2894,7 @@ Object.subclass('St78.vm.Primitives',
         this.display = display;         // display interface
         this.display.vm = this.vm;
         NT.kbMap = this.vm.image.globalNamed('NTkbMap').bytes;
+        NT.kbMap[20] = 0x14; // NT kb map originally did not have the prompt character
         this.fileStrings = files || {};
         for (var i = 0; i < localStorage.length; i++) {
             var key = localStorage.key(i);
