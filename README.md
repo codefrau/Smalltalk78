@@ -1,7 +1,7 @@
 Smalltalk-78
 ============
 Smalltalk-78 is a variant of Smalltalk-76 stripped down to work on the portable "NoteTaker" machine.
-In this repository is a Virtual Machine written in JavaScript to run a Smalltalk-78 snapshot in the web browser.
+In this repository is a Virtual Machine written in JavaScript to run a snapshot taken in 1979 in the web browser.
 
 To learn more, please read our paper [Reviving Smalltalk-78: The First Modern Smalltalk Lives Again][paper].
 The full history of various Smalltalk releases is covered in Dan's [Evolution Of Smalltalk][hopl] article,
