@@ -92,7 +92,11 @@
 
 <div id="UI">
 <p>This is the <a href="https://github.com/codefrau/Smalltalk78" target="_blank">Smalltalk-78</a> VM
-by Vanessa Freudenberg and Dan Ingalls. For details please read our
+by Vanessa Freudenberg and Dan Ingalls. Changes you make are stored in your own browser when you choose
+“save” from the right-click menu. Use <a href=".">/</a> to load the saved snapshot, or
+<a href="?fresh">/?fresh</a> to start afresh. You can also append <a href="?fullscreen">?fullscreen</a>
+to the URL to remove this help text.<br>
+For details please read our
 <a href="https://freudenbergs.de/vanessa/publications/Ingalls-2014-Smalltalk78.pdf" target="_blank">paper</a>.
 Also check out the
 <a href="https://smalltalkzoo.thechm.org/HOPL-St78.html" target="_blank">Lively VM Debugger</a>.</p>
@@ -151,32 +155,30 @@ Ctrl-]  do it in eval (Dispframe in the topleft corner)
 Ctrl-d  done with eval
 </pre>
 
-</p>
-
 <div id="syntax">
-    <p>The syntax of Smalltalk-78 is unchanged from Smalltalk-76, which
-    introduced the regularity of unary, binary, and keyword messages
-    that is still used in modern Smalltalks. Readers may refer to the
-    <a href="https://smalltalkzoo.thechm.org/papers/The%20Smalltalk-76%20Programming%20System.PDF">Smalltalk-76 manual</a>
-    for a full description. There are no blocks as
+    <p>The syntax of Smalltalk-78 is unchanged from Smalltalk-76 (see
+    <a href="https://smalltalkzoo.thechm.org/papers/The%20Smalltalk-76%20Programming%20System.PDF" target="_blank">here</a>),
+    which introduced the regularity of unary, binary, and keyword messages
+    that is still used in modern Smalltalks. There are not yet blocks as
     in Smalltalk-80, no booleans, and no meta classes.</p>
 
-    <p>The system uses the ASCII-1963 character set (which had <tt>↑</tt> and
-    <tt>←</tt> arrows in place of the <tt>^</tt> and <tt>_</tt> characters in later
-    ASCII versions). From the control character range, only <tt>Tab</tt> (9) and
-    <tt>Carriage Return</tt> (13) are used as in ASCII, while some others are used
-    for special characters not found in ASCII.
-    These include return and implication arrows <tt>⇑ ⇒</tt>, comparison operators
-    <tt>≤ ≥ ≠ ≡</tt>, indexing
-    and point creation operators <tt>◦ ⊚</tt>, a curved arrow <tt>↪</tt> for literal
-    quoting (used like <tt>#</tt> in Smalltalk-80), a unary minus <tt>¬</tt> (for prefixing
-    negative numbers, as in <tt>3 − −4</tt>), a possessive operator <tt>’s</tt> (evaluates
-    an expression in the context of another object, e.g. <tt>obj ’s 'instvar'</tt>),
-    and a few more. See
-    <a href="https://freudenbergs.de/vanessa/publications/Ingalls-2014-Smalltalk78.pdf" target="_blank">the paper</a>
-    for a complete list.
-    </p>
     <dl>
+        <dt>Character Set</dt>
+        <dd>
+            <p>The system uses the ASCII-1963 character set which had <tt>↑</tt> and
+            <tt>←</tt> arrows in place of the <tt>^</tt> and <tt>_</tt> characters in later
+            ASCII versions. From the control character range, only <tt>Tab</tt> (9) and
+            <tt>Carriage Return</tt> (13) are used as in ASCII, while some others are used
+            for special characters not found in ASCII. These include return and implication
+            arrows <tt>⇑ ⇒</tt>, comparison operators <tt>≤ ≥ ≠ ≡</tt>, indexing
+            and point creation operators <tt>◦ ⊚</tt>, a curved arrow <tt>↪</tt> for literal
+            quoting (used like <tt>#</tt> in Smalltalk-80), a unary minus <tt>¬</tt> (for prefixing
+            negative numbers, as in <tt>3 − −4</tt>), a possessive operator <tt>’s</tt> (evaluates
+            an expression in the context of another object, e.g. <tt>obj ’s 'instvar'</tt>),
+            and a few more. See
+            <a href="https://freudenbergs.de/vanessa/publications/Ingalls-2014-Smalltalk78.pdf" target="_blank">the paper</a>
+            for a complete list, and refer to the <a href="javascript:helpbutton.click()">keyboard help</a>.</p>
+        </dd>
         <dt>Conditional execution</dt>
         <dd>
             <p>A block of code can be conditionally evaluated using the <tt>⇒</tt> operator.
