@@ -14,14 +14,9 @@
         color: #EEE;
         font-family: Avenir, sans-serif;
     }
+
     a {
         color: #EEE;
-    }
-    canvas {
-        background: #000;
-        border-radius: 10px;
-        cursor: none;
-        width: 100%;
     }
     pre, tt {
         background: #EEE;
@@ -33,9 +28,6 @@
         width: fit-content;
         line-height: 1.5;
     }
-    #help, #syntax {
-        display: none;
-    }
     tt {
         padding: 3px;
         border-radius: 4px;
@@ -44,18 +36,51 @@
     dt {
         font-weight: bold;
     }
-    body.fullscreen {
+    #canvas {
         background: #000;
+        border-radius: 10px;
+        cursor: none;
     }
-    body.fullscreen > *:not(canvas) {
+    #UI {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 10px;
+    }
+    #help, #syntax {
         display: none;
     }
+    body.fullscreen {
+        background: #000;
+        margin: 0;
+    }
+    body.fullscreen > *:not(#canvascontainer) {
+        display: none;
+    }
+    #canvascontainer {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    body.fullscreen #canvascontainer {
+        width: 100vw;
+        height: 100vh;
+    }
     body.fullscreen #canvas {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
         border-radius: 0;
+    }
+    body:not(.fullscreen) #canvas {
+        width: 100%;
+        max-width: 1024px;
+    }
+    body.fullscreen #canvas {
+            width: auto;
+            height: 100%;
+    }
+    @media (max-aspect-ratio: 4/3) {
+        body.fullscreen #canvas {
+            width: 100%;
+            height: auto;
+        }
     }
 </style>
 <script src="Smalltalk78.js"></script>
@@ -63,8 +88,9 @@
 
 <body id="body">
 
-<canvas id="canvas" width="1024" height="768"></canvas>
+<div id="canvascontainer"><canvas id="canvas" width="1024" height="768"></canvas></div>
 
+<div id="UI">
 <p>This is the <a href="https://github.com/codefrau/Smalltalk78" target="_blank">Smalltalk-78</a> VM
 by Vanessa Freudenberg and Dan Ingalls. For details please read our
 <a href="https://freudenbergs.de/vanessa/publications/Ingalls-2014-Smalltalk78.pdf" target="_blank">paper</a>.
@@ -232,7 +258,8 @@ for⦂ var from: vec do⦂ code | stream item
             new <b>String</b>.</p>
     </dd>
 </dl>
-</div>
+</div> <!-- syntax -->
+</div> <!-- UI -->
 
 <script>
     let width, height, fullscreen, black, white;
@@ -292,13 +319,13 @@ for⦂ var from: vec do⦂ code | stream item
     }
 
     fullscreenbutton.onclick = () => {
-        const wantsFullscreen = document.fullscreenElement !== canvas;
+        const wantsFullscreen = document.fullscreenElement !== canvascontainer;
         body.classList.toggle("fullscreen", wantsFullscreen);
-        canvas.requestFullscreen();
+        if (wantsFullscreen) canvascontainer.requestFullscreen();
     }
 
     document.onfullscreenchange = () => {
-        const isFullscreen = document.fullscreenElement === canvas;
+        const isFullscreen = document.fullscreenElement === canvascontainer;
         body.classList.toggle("fullscreen", isFullscreen);
     }
 </script>
