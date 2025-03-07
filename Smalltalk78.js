@@ -240,6 +240,10 @@ function createDisplay(canvas) {
                 display.buttonsQueue.push(
                     {buttons: buttons, x: x, y: y, time: getTimeStamp(evt)});
         }
+        // run for a while to make sure the image processes the event within the event handler
+        if (evt.type !== 'mousemove') {
+            interpretFor(20);
+        }
     }
     canvas.onmousedown = recordMouseEvent;
     canvas.onmousemove = recordMouseEvent;
@@ -260,6 +264,8 @@ function createDisplay(canvas) {
             if (repeat < 3)
                 q.push(key);
         }
+        // run for a while to make sure the image processes the event within the event handler
+        interpretFor(20);
     }
 
     function doKeyCopy(evt) {
@@ -407,10 +413,11 @@ function createDisplay(canvas) {
 // main loop
 //////////////////////////////////////////////////////////////////////////////
 
+var loop;
 function interpretLoop() {
     try {
         Smalltalk78.vm.interpret(20, function(ms) {
-            if (ms > 0) setTimeout(interpretLoop, ms);
+            if (ms > 0) loop = setTimeout(interpretLoop, ms);
             else        requestAnimationFrame(interpretLoop);
         });
     } catch(error) {
@@ -419,10 +426,19 @@ function interpretLoop() {
     }
 }
 
-function runImage(image, canvas) {
+function interpretFor(milliseconds) {
+    var stoptime = Date.now() + milliseconds;
+    do {
+        clearTimeout(loop);
+        interpretLoop();
+    } while (Date.now() < stoptime);
+}
+
+function runImage(image, canvas, options) {
     window.localStorage['notetakerImageName'] = image.name;
     var display = createDisplay(canvas);
     Smalltalk78.vm = new St78.vm.Interpreter(image, display);
+    if (options && options.onStart) options.onStart(Smalltalk78.vm);
     window.onbeforeunload = function() {
         return "Smalltalk78 is still running";
     };
@@ -485,7 +501,7 @@ async function runNotetakerFiles(url, imageName, canvas) {
     runImage(image, canvas);
 }
 
-Smalltalk78.run = function(imageUrl, canvas) {
+Smalltalk78.run = function(imageUrl, canvas, options) {
     // we let ?image=... override the image name (could be a full URL too)
     // otherwise the last-saved image name is used
     // the image then is loaded from browser storage unless ?fresh is given,
@@ -505,7 +521,7 @@ Smalltalk78.run = function(imageUrl, canvas) {
     if (imageName == "notetaker") return runNotetakerFiles(url, imageName, canvas);
     function run(buffer) {
         var image = St78.vm.Image.readFromBuffer(buffer, imageName);
-        runImage(image, canvas);
+        runImage(image, canvas, options);
     }
     loadImage(imageName, run, function() {
         downloadImage(imageUrl, imageName, run, function() {

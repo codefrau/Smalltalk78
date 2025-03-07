@@ -73,8 +73,8 @@
         max-width: 1024px;
     }
     body.fullscreen #canvas {
-            width: auto;
-            height: 100%;
+        width: auto;
+        height: 100%;
     }
     @media (max-aspect-ratio: 4/3) {
         body.fullscreen #canvas {
@@ -87,6 +87,7 @@
 </head>
 
 <body id="body">
+<input id="input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="position: fixed; top: -1000px;"></input>
 
 <div id="canvascontainer"><canvas id="canvas" width="1024" height="768"></canvas></div>
 
@@ -291,7 +292,18 @@ for⦂ var from: vec do⦂ code | stream item
     module("main").requires("Smalltalk78").toRun(function() {
         if (black) NT.BLACK = 0xFF000000 | ((black & 0xFF0000) >> 16) | (black & 0xFF00) | ((black & 0xFF) << 16);
         if (white) NT.WHITE = 0xFF000000 | ((white & 0xFF0000) >> 16) | (white & 0xFF00) | ((white & 0xFF) << 16);
-        Smalltalk78.run("https://smalltalkzoo.thechm.org/images/updated.st78", canvas);
+        Smalltalk78.run("https://smalltalkzoo.thechm.org/images/updated.st78", canvas, {
+            onStart(vm) {
+                const isTouchDevice = 'ontouchstart' in window;
+                if (isTouchDevice) {
+                    const { display } = vm.primHandler;
+                    display.toggleVirtualKeyboard = (show) => {
+                        console.log(show ? "show keyboard" : "hide keyboard");
+                        show ? input.focus() : input.blur();
+                    }
+                }
+            }
+        });
     });
 
     let helpTimeout;

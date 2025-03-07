@@ -2707,12 +2707,13 @@ Object.subclass('St78.vm.Interpreter',
         // return a 'class>>selector' description for the method
         // in old images this is expensive, we have to search all classes
         if (!aMethod) aMethod = this.method;
+        if (aMethod.printCache) return aMethod.printCache;
         var found;
         this.allMethodsDetect(function(classObj, methodObj, selectorObj) {
             if (methodObj === aMethod)
                 return found = classObj.className() + '>>' + selectorObj.bytesAsUnicode();
         });
-        return found || "?>>?";
+        return aMethod.printCache = found || "?>>?";
     },
     allMethodsDetect: function(callback) {
         // callback(classObj, methodObj, selectorObj) should return true to break out of iteration
@@ -2749,12 +2750,12 @@ Object.subclass('St78.vm.Interpreter',
                 }
         }
     },
-    printStack: function(ctx, limit) {
+    methodsOnStack: function(ctx, limit) {
         // both args are optional
         if (typeof ctx === "number") {limit = ctx; ctx = null;}
         if (!ctx) ctx = this.activeProcess;
         if (!limit) limit = 100;
-        var stack = '',
+        var stack = [],
             process = ctx.pointers,
             bp = this.bp,
             sp = this.sp,
@@ -2766,18 +2767,21 @@ Object.subclass('St78.vm.Interpreter',
                 if (rCode.pointers[NT.PI_RCODE_STACKOFFSET] === process.length - sp) {
                     var homeBP = process.length - rCode.pointers[NT.PI_RCODE_FRAMEOFFSET],
                         homeMethod = process[homeBP + NT.FI_METHOD];
-                    stack = '[] in ' + this.printMethod(homeMethod) + '\n' + stack;
+                    stack.push('[] in ' + this.printMethod(homeMethod));
                     // continue with the frame that eval'ed this remoteCode
                     bp = process.length - process[sp - 2]; // stored BP
                 }
             }
             var method = process[bp + NT.FI_METHOD],
                 deltaBP = process[bp + NT.FI_SAVED_BP] + 1;
-            stack = this.printMethod(method) + '\n' + stack;
+            stack.push(this.printMethod(method));
             if (deltaBP <= 1) return stack;
             bp += deltaBP;
         }
         return stack;
+    },
+    printStack: function(ctx, limit) {
+        return this.methodsOnStack(ctx, limit).join('\n') + '\n';
     },
     findMethod: function(classAndMethodString) {
         // classAndMethodString is 'Class>>method'
@@ -3717,12 +3721,39 @@ Object.subclass('St78.vm.Primitives',
         var length = this.display.keys.length;
         if (!length) this.idleCounter++;
         this.displayFlush();
+        if (typeof this.display.toggleVirtualKeyboard === "function" && !this.display.showingKbd) {
+            // some magic to show the keyboard when needed
+            const stack = this.vm.methodsOnStack();
+            if (stack.some(m => ["Dispframe>>eachtime", "Window>>editTitle"].includes(m))) {
+                this.display.showingKbd = true;
+                this.display.toggleVirtualKeyboard(true, stack);
+            }
+        }
         return this.popNandPushIfOK(argCount+1, length ? this.checkSmallInt(this.display.keys[0] || 0) : this.vm.falseObj);
     },
     primitiveMouseButtons: function(argCount) {
         if (this.display.fetchMouseButtons) this.display.fetchMouseButtons();
-        if (this.display.buttons & 7) this.idleCounter = 0;
-        else this.idleCounter++;
+        if (this.display.buttons & 7) {
+            this.idleCounter = 0;
+            if (typeof this.display.toggleVirtualKeyboard === "function") {
+                // some magic to hide the keyboard when needed
+                const stack = this.vm.methodsOnStack();
+                const ignore = stack.includes("UserView>>runTicks") || stack.includes("Window>>outside");
+                if (!ignore) {
+                    const shouldShowKbd = stack.some(m => ["CodePane>>eachtime", "Dispframe>>eachtime", "Window>>editTitle"].includes(m));
+                    if (shouldShowKbd && !this.display.showingKbd) {
+                        this.display.showingKbd = true;
+                        this.display.toggleVirtualKeyboard(true, stack);
+                    } else if (!shouldShowKbd && this.display.showingKbd) {
+                        const ignoreHide = stack.some(m => ["PanedWindow>>eachtime"].includes(m));
+                        if (!ignoreHide) {
+                            this.display.showingKbd = false;
+                            this.display.toggleVirtualKeyboard(false, stack);
+                        }
+                    }
+                }
+            }
+        } else this.idleCounter++;
         this.displayFlush();
         return this.popNandPushIfOK(argCount+1, this.checkSmallInt(this.display.buttons));
     },
