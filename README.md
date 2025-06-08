@@ -15,9 +15,9 @@ If you feel adventurous, you can run the [original, unmodified image][original] 
 The full simulation environment including a graphical VM debugger is at the [Zoo's Smalltalk-78][full] page.
 There you can also try Adele Goldberg's SimKit and Alan Borning's ThingLab images running on this VM.
 
-[zoo]: https://smalltalkzoo.thechm.org/
-[full]: https://smalltalkzoo.thechm.org/HOPL-St78.html
+[zoo]: https://smalltalkzoo.computerhistory.org/
+[full]: https://smalltalkzoo.computerhistory.org/HOPL-St78.html
 [standalone]: https://codefrau.github.io/Smalltalk78/?fresh
 [original]: https://codefrau.github.io/Smalltalk78/?image=notetaker
 [paper]: https://freudenbergs.de/vanessa/publications/Ingalls-2014-Smalltalk78.pdf
-[hopl]: https://smalltalkzoo.thechm.org/papers/EvolutionOfSmalltalk.pdf
+[hopl]: https://smalltalkzoo.computerhistory.org/papers/EvolutionOfSmalltalk.pdf

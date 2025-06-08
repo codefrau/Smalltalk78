@@ -10,7 +10,7 @@ NOTE: unlike other .st files, this one has LF and Unicode characters in it.
 For experimenting locally, you can change the update URL to e.g. 'http:updates/'.
 "
 
-Smalltalk declare: ↪updateURL as: 'https://smalltalkzoo.thechm.org/users/codefrau/St78/updates/'.
+Smalltalk declare: ↪updateURL as: 'https://smalltalkzoo.computerhistory.org/users/codefrau/St78/updates/'.
 
 UserView understands: 'fileString: fileName "local file name or http URL"
 	[⇑nil] primitive: 66' classified: 'As yet unclassified'.

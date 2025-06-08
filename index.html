@@ -99,7 +99,7 @@ to the URL to remove this help text.<br>
 For details please read our
 <a href="https://freudenbergs.de/vanessa/publications/Ingalls-2014-Smalltalk78.pdf" target="_blank">paper</a>.
 Also check out the
-<a href="https://smalltalkzoo.thechm.org/HOPL-St78.html" target="_blank">Lively VM Debugger</a>.</p>
+<a href="https://smalltalkzoo.computerhistory.org/HOPL-St78.html" target="_blank">Lively VM Debugger</a>.</p>
 
 <button id="helpbutton">Mouse and Keyboard Help</button>
 <button id="syntaxbutton">Syntax Help</button>
@@ -157,7 +157,7 @@ Ctrl-d  done with eval
 
 <div id="syntax">
     <p>The syntax of Smalltalk-78 is unchanged from Smalltalk-76 (see
-    <a href="https://smalltalkzoo.thechm.org/papers/The%20Smalltalk-76%20Programming%20System.PDF" target="_blank">here</a>),
+    <a href="https://smalltalkzoo.computerhistory.org/papers/The%20Smalltalk-76%20Programming%20System.PDF" target="_blank">here</a>),
     which introduced the regularity of unary, binary, and keyword messages
     that is still used in modern Smalltalks. There are not yet blocks as
     in Smalltalk-80, no booleans, and no meta classes.</p>
@@ -291,7 +291,7 @@ for⦂ var from: vec do⦂ code | stream item
     module("main").requires("Smalltalk78").toRun(function() {
         if (black) NT.BLACK = 0xFF000000 | ((black & 0xFF0000) >> 16) | (black & 0xFF00) | ((black & 0xFF) << 16);
         if (white) NT.WHITE = 0xFF000000 | ((white & 0xFF0000) >> 16) | (white & 0xFF00) | ((white & 0xFF) << 16);
-        Smalltalk78.run("https://smalltalkzoo.thechm.org/images/updated.st78", canvas);
+        Smalltalk78.run("https://smalltalkzoo.computerhistory.org/images/updated.st78", canvas);
     });
 
     let helpTimeout;
